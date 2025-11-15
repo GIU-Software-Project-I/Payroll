@@ -1,15 +1,27 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { EmployeeModule } from './modules/employee/employee.module';
-import { PayrollModule } from './modules/payroll/payroll.module';
-import { TimeManagementModule } from './modules/time-management/time-management.module';
-import { RecruitmentModule } from './modules/recruitment/recruitment.module';
-import { LeavesModule } from './modules/leaves/leaves.module';
+import { APP_GUARD } from '@nestjs/core';
+import { MongooseModule } from '@nestjs/mongoose';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
+
 
 @Module({
-  imports: [EmployeeModule, PayrollModule, TimeManagementModule, RecruitmentModule, LeavesModule],
-  controllers: [AppController],
-  providers: [AppService],
+    imports: [
+        ConfigModule.forRoot({ isGlobal: true }),
+        ScheduleModule.forRoot(),
+        MongooseModule.forRootAsync({
+            imports: [ConfigModule],
+            useFactory: async (config: ConfigService) => ({
+                uri: config.get<string>('MONGODB_URI'),
+            }),
+            inject: [ConfigService],
+        }),
+
+
+    ],
+    // providers: [
+    //     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    //     { provide: APP_GUARD, useClass: RolesGuard },
+    // ],
 })
 export class AppModule {}
