@@ -2,6 +2,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { MongoDBModule } from './database/mongodb.module';
+import { PayrollProcessingModule } from './modules/payroll.processing/payroll.processing.module';
 
 @Module({
   imports: [
@@ -10,6 +11,7 @@ import { MongoDBModule } from './database/mongodb.module';
       envFilePath: '.env',
     }),
     MongoDBModule,
+    PayrollProcessingModule,
   ],
   controllers: [],
   providers: [],
