@@ -3,11 +3,11 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 
 // Updated paths
-import { PayGrade, PayGradeSchema } from '../../schemas/pay-grade.schema';
-import { PayType, PayTypeSchema } from '../../schemas/pay-type.schema';
-import { Allowance, AllowanceSchema } from '../../schemas/allowance.schema';
-import { Bonus, BonusSchema } from '../../schemas/bonus.schema';
-import { TerminationBenefit, TerminationBenefitSchema } from '../../schemas/termination-benfit.schema';
+import { PayGrade, PayGradeSchema } from '../../schemas/payroll-config.pay-grade.schema';
+import { PayType, PayTypeSchema } from '../../schemas/payroll-config.pay-type.schema';
+import { Allowance, AllowanceSchema } from '../../schemas/payroll-config.allowance.schema';
+import { Bonus, BonusSchema } from '../../schemas/payroll-config.bonus.schema';
+import { TerminationBenefit, TerminationBenefitSchema } from '../../schemas/payroll-config.termination-benfit.schema';
 
 @Module({
   imports: [
