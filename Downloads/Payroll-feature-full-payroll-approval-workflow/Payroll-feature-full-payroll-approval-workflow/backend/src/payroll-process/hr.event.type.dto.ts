@@ -1,0 +1,6 @@
+export enum HREventType {
+  NORMAL = 'NORMAL',
+  NEW_HIRE = 'NEW_HIRE',
+  RESIGNATION = 'RESIGNATION',
+  TERMINATION = 'TERMINATION',
+}
