@@ -4,7 +4,7 @@ export interface PayrollExceptionDto {
   payrollRunId?: string;
   code: string;
   message: string;
-  field?: string; // e.g., 'bankAccount', 'netPay'
+  field?: string; 
   resolved?: boolean;
   createdAt?: string;
   resolvedAt?: string | null;
