@@ -1,4 +1,3 @@
-// backend/src/modules/payroll-config/payroll-config.module.ts
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 
@@ -10,7 +9,7 @@ import { Dispute, DisputeSchema } from '../../schemas/dispute.schema';
 import { Refund, RefundSchema } from '../../schemas/refund.schema';
 import { AuditLog, AuditLogSchema } from '../../schemas/audit-log.schema';
 
-import { PayrollConfigService } from './payroll-tracking.service';
+import { PayrollTrackingService } from './payroll-tracking.service';
 
 @Module({
   imports: [
@@ -24,7 +23,7 @@ import { PayrollConfigService } from './payroll-tracking.service';
       { name: AuditLog.name, schema: AuditLogSchema },
     ]),
   ],
-  providers: [PayrollConfigService],
-  exports: [MongooseModule, PayrollConfigService],
+  providers: [PayrollTrackingService],
+  exports: [MongooseModule, PayrollTrackingService],
 })
 export class PayrollConfigModule {}

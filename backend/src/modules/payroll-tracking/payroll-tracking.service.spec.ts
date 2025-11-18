@@ -1,16 +1,15 @@
-// backend/src/modules/payroll-config/payroll-config.service.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
-import { PayrollConfigService } from './payroll-tracking.service';
+import { PayrollTrackingService } from './payroll-tracking.service';
 
 describe('PayrollConfigService', () => {
-  let service: PayrollConfigService;
+  let service: PayrollTrackingService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [PayrollConfigService],
+      providers: [PayrollTrackingService],
     }).compile();
 
-    service = module.get<PayrollConfigService>(PayrollConfigService);
+    service = module.get<PayrollTrackingService>(PayrollTrackingService);
   });
 
   it('should be defined', () => {
