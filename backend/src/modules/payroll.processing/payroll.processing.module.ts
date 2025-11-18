@@ -22,6 +22,7 @@ import { PreRunAdjustment, PreRunAdjustmentSchema } from '../../schemas/payroll-
       { name: PreRunAdjustment.name, schema: PreRunAdjustmentSchema },
     ]),
   ],
+  exports:[PayrollProcessingService],
   providers: [PayrollProcessingService],
   controllers: [PayrollProcessingController],
 })
