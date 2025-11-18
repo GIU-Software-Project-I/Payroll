@@ -2,8 +2,6 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 import { PayrollRunStatus } from '../../dto/payroll-process/run.status.dto';
 
-// ... existing code ...
-
 @Schema({
   collection: 'payroll_runs',
   timestamps: true,
@@ -34,3 +32,7 @@ export class PayrollRun {
 
 export type PayrollRunDocument = PayrollRun & Document;
 export const PayrollRunSchema = SchemaFactory.createForClass(PayrollRun);
+
+// Helpful indexes for querying runs by period and status
+PayrollRunSchema.index({ periodId: 1, status: 1 });
+PayrollRunSchema.index({ status: 1, createdAt: -1 });

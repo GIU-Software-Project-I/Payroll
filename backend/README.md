@@ -23,7 +23,13 @@
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+HR System – Payroll Processing & Execution (Milestone 1: Phase 0 – Pre-Run Reviews & Approvals)
+
+This backend provides minimal, working endpoints to support Phase 0 of the Payroll Processing & Execution subsystem:
+- Payroll Specialists can list pending pre-run adjustments (signing bonuses, resignation and termination benefits).
+- Edit a pending item (amount, currency, note) before approval or rejection.
+- Approve or reject each item with a reason (for rejections).
+- Seed demo data to simulate integration with upstream subsystems until real integrations arrive.
 
 ## Project setup
 
@@ -32,6 +38,20 @@ $ npm install
 ```
 
 ## Compile and run the project
+
+Create a .env file with your MongoDB connection string and optional server port:
+
+```env
+MONGODB_URI=mongodb://localhost:27017/payroll
+# Optional: change the server port if 3000 is busy
+PORT=3001
+```
+
+Port selection behavior:
+- If PORT is set in the environment or .env, the app will try to bind to that port. If it is busy, it will automatically try the next available ports (up to 10 more) and start on the first free one.
+- If PORT is not set, the app will try 3000 first. If it is busy, it will automatically try the next available port up to 3009 and start on the first free one. The chosen port is printed in the console.
+
+Then run:
 
 ```bash
 # development
@@ -43,6 +63,40 @@ $ npm run start:dev
 # production mode
 $ npm run start:prod
 ```
+
+## API Endpoints (Phase 0)
+
+- Seed demo data
+  - POST http://localhost:3000/payroll.processing/pre-run/seed-demo
+- List pending adjustments (optional departmentId and type query)
+  - GET http://localhost:3000/payroll.processing/pre-run/pending?departmentId=<mongoId>&type=SIGNING_BONUS|RESIGNATION_BENEFIT
+- Create a pre-run adjustment
+  - POST http://localhost:3000/payroll.processing/pre-run
+  - Body: { "type": "SIGNING_BONUS|RESIGNATION_BENEFIT|TERMINATION_BENEFIT", "employeeId": "<mongoId>", "departmentId": "<mongoId>", "amount": 1000, "currency": "EGP", "note": "optional" }
+- Edit a pending adjustment
+  - PATCH http://localhost:3000/payroll.processing/pre-run/:id
+  - Body: { "amount": 1200, "currency": "EGP", "note": "updated" }
+- Approve a pending adjustment
+  - POST http://localhost:3000/payroll.processing/pre-run/:id/approve
+  - Body: { "actorId": "<userId>" }
+- Reject a pending adjustment
+  - POST http://localhost:3000/payroll.processing/pre-run/:id/reject
+  - Body: { "reason": "not eligible", "actorId": "<userId>" }
+
+## Shared types access across the project
+
+To make common types/enums easily accessible across modules, a shared barrel and TypeScript path alias are provided:
+
+- Alias: @shared
+- Barrel file: src/shared/index.ts (re-exports DTO enums like PreRunAdjustmentType, PayrollRunStatus, etc.)
+
+Usage example in any file:
+
+```ts
+import { PreRunAdjustmentType, PayrollRunStatus } from '@shared';
+```
+
+No breaking changes: existing relative imports continue to work. The alias is optional and available for new code.
 
 ## Run tests
 

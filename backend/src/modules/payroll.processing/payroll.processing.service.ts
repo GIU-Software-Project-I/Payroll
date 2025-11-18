@@ -1,265 +1,145 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import {
-  ApprovalAction,
-  ApprovalActionDocument,
-} from '../../schemas/payroll-processing/approval.action.schema';
+  PreRunAdjustment,
+  PreRunAdjustmentDocument,
+} from '../../schemas/payroll-processing/pre.run.adjustment.schema';
 import {
-  PayrollItem,
-  PayrollItemDocument,
-} from '../../schemas/payroll-processing/payroll.item.schema';
-import {
-  PayrollRun,
-  PayrollRunDocument,
-} from '../../schemas/payroll-processing/payroll.run.schema';
-import { PayrollRunStatus } from '../../dto/payroll-process/run.status.dto';
-import { HREventType } from '../../dto/payroll-process/hr.event.type.dto';
-import {
-  ApprovalActionType,
-  SigningBonusReviewDto,
-  TerminationBenefitsReviewDto,
-  ResignationBenefitsReviewDto,
-  SigningBonusEditDto,
-  TerminationBenefitsEditDto,
-  ResignationBenefitsEditDto,
-} from '../../dto/payroll-process/approval.action.dto';
+  CreatePreRunAdjustmentDto,
+  PreRunAdjustmentStatus,
+  PreRunAdjustmentType,
+} from '../../dto/payroll-process/pre.run.adjustment.dto';
 
 @Injectable()
 export class PayrollProcessingService {
   constructor(
-    @InjectModel(ApprovalAction.name)
-    private readonly approvalActionModel: Model<ApprovalActionDocument>,
-    @InjectModel(PayrollItem.name)
-    private readonly payrollItemModel: Model<PayrollItemDocument>,
-    @InjectModel(PayrollRun.name)
-    private readonly payrollRunModel: Model<PayrollRunDocument>,
+    @InjectModel(PreRunAdjustment.name)
+    private readonly preRunModel: Model<PreRunAdjustmentDocument>,
   ) {}
 
-  // ============== REVIEW / APPROVAL ==============
-
-  async reviewSigningBonus(
-    runId: string,
-    dto: SigningBonusReviewDto,
-  ): Promise<ApprovalActionDocument> {
-    const run = await this.ensureRunExists(runId);
-
-    const action = dto.approve
-      ? ApprovalActionType.SIGNING_BONUS_APPROVE
-      : ApprovalActionType.SIGNING_BONUS_REJECT;
-
-    return this.approvalActionModel.create({
-      payrollRunId: run._id,
-      actorId: new Types.ObjectId(dto.actorId),
-      actorRole: dto.actorRole,
-      action,
-      reason: dto.reason,
-    });
-  }
-
-  async reviewTerminationBenefits(
-    runId: string,
-    dto: TerminationBenefitsReviewDto,
-  ): Promise<ApprovalActionDocument> {
-    const run = await this.ensureRunExists(runId);
-
-    // Only make sense if there are termination items in this run
-    const hasTerminationItems = await this.payrollItemModel.exists({
-      payrollRunId: run._id,
-      hrEventType: HREventType.TERMINATION,
-    });
-
-    if (!hasTerminationItems) {
-      throw new BadRequestException('No termination items found for this payroll run.');
-    }
-
-    const action = dto.approve
-      ? ApprovalActionType.TERMINATION_BENEFITS_APPROVE
-      : ApprovalActionType.TERMINATION_BENEFITS_REJECT;
-
-    return this.approvalActionModel.create({
-      payrollRunId: run._id,
-      actorId: new Types.ObjectId(dto.actorId),
-      actorRole: dto.actorRole,
-      action,
-      reason: dto.reason,
-    });
-  }
-
-  async reviewResignationBenefits(
-    runId: string,
-    dto: ResignationBenefitsReviewDto,
-  ): Promise<ApprovalActionDocument> {
-    const run = await this.ensureRunExists(runId);
-
-    const hasResignationItems = await this.payrollItemModel.exists({
-      payrollRunId: run._id,
-      hrEventType: HREventType.RESIGNATION,
-    });
-
-    if (!hasResignationItems) {
-      throw new BadRequestException('No resignation items found for this payroll run.');
-    }
-
-    const action = dto.approve
-      ? ApprovalActionType.RESIGNATION_BENEFITS_APPROVE
-      : ApprovalActionType.RESIGNATION_BENEFITS_REJECT;
-
-    return this.approvalActionModel.create({
-      payrollRunId: run._id,
-      actorId: new Types.ObjectId(dto.actorId),
-      actorRole: dto.actorRole,
-      action,
-      reason: dto.reason,
-    });
-  }
-
-  // ============== EDIT AMOUNTS ==============
-
-  async editSigningBonus(
-    payrollItemId: string,
-    dto: SigningBonusEditDto,
-  ): Promise<PayrollItemDocument> {
-    const item = await this.ensurePayrollItemExists(payrollItemId);
-
-    item.signingBonusAmount = dto.newAmount;
-    return item.save();
-  }
-
-  async editTerminationBenefits(
-    payrollItemId: string,
-    dto: TerminationBenefitsEditDto,
-  ): Promise<PayrollItemDocument> {
-    const item = await this.ensurePayrollItemExists(payrollItemId);
-
-    if (item.hrEventType !== HREventType.TERMINATION) {
-      throw new BadRequestException(
-        'Termination benefits can only be edited for termination events.',
-      );
-    }
-
-    item.terminationBenefitsAmount = dto.newAmount;
-    return item.save();
-  }
-
-  async editResignationBenefits(
-    payrollItemId: string,
-    dto: ResignationBenefitsEditDto,
-  ): Promise<PayrollItemDocument> {
-    const item = await this.ensurePayrollItemExists(payrollItemId);
-
-    if (item.hrEventType !== HREventType.RESIGNATION) {
-      throw new BadRequestException(
-        'Resignation benefits can only be edited for resignation events.',
-      );
-    }
-
-    item.resignationBenefitsAmount = dto.newAmount;
-    return item.save();
-  }
-
-  // ============== PAYROLL INITIATION GATE ==============
-
-  /**
-   * Initiates a payroll run, but only if all required reviews are completed:
-   * - Signing bonus review, if any signing bonuses exist in the run.
-   * - Termination benefits review, if any termination items exist.
-   * - Resignation benefits review, if any resignation items exist.
-   */
-  async initiatePayrollRun(runId: string): Promise<PayrollRunDocument> {
-    const run = await this.ensureRunExists(runId);
-
-    if (run.status !== PayrollRunStatus.PRE_RUN) {
-      throw new BadRequestException(
-        `Payroll run must be in PRE_RUN status to be initiated (current: ${run.status}).`,
-      );
-    }
-
-    const items = await this.payrollItemModel.find({ payrollRunId: run._id });
-
-    if (!items.length) {
-      throw new BadRequestException('Payroll run has no items to process.');
-    }
-
-    const needsSigningBonusReview = items.some(
-      (i) => i.signingBonusAmount && i.signingBonusAmount > 0,
-    );
-
-    const needsTerminationReview = items.some((i) => i.hrEventType === HREventType.TERMINATION);
-
-    const needsResignationReview = items.some((i) => i.hrEventType === HREventType.RESIGNATION);
-
-    // Check existence of the necessary approval actions
-    if (needsSigningBonusReview) {
-      const hasSigningBonusReview = await this.approvalActionModel.exists({
-        payrollRunId: run._id,
-        action: {
-          $in: [ApprovalActionType.SIGNING_BONUS_APPROVE, ApprovalActionType.SIGNING_BONUS_REJECT],
-        },
-      });
-
-      if (!hasSigningBonusReview) {
-        throw new BadRequestException(
-          'Signing bonus review (approve or reject) is required before initiating this payroll run.',
-        );
+  async listPendingAdjustments(departmentId?: string, type?: PreRunAdjustmentType) {
+    const filter: Record<string, unknown> = { status: PreRunAdjustmentStatus.PENDING };
+    if (departmentId) {
+      if (!Types.ObjectId.isValid(departmentId)) {
+        throw new BadRequestException('Invalid departmentId');
       }
+      filter.departmentId = new Types.ObjectId(departmentId);
     }
-
-    if (needsTerminationReview) {
-      const hasTerminationReview = await this.approvalActionModel.exists({
-        payrollRunId: run._id,
-        action: {
-          $in: [
-            ApprovalActionType.TERMINATION_BENEFITS_APPROVE,
-            ApprovalActionType.TERMINATION_BENEFITS_REJECT,
-          ],
-        },
-      });
-
-      if (!hasTerminationReview) {
-        throw new BadRequestException(
-          'Termination benefits review (approve or reject) is required before initiating this payroll run.',
-        );
+    if (type) {
+      if (!Object.values(PreRunAdjustmentType).includes(type)) {
+        throw new BadRequestException('Invalid type');
       }
+      filter.type = type;
     }
-
-    if (needsResignationReview) {
-      const hasResignationReview = await this.approvalActionModel.exists({
-        payrollRunId: run._id,
-        action: {
-          $in: [
-            ApprovalActionType.RESIGNATION_BENEFITS_APPROVE,
-            ApprovalActionType.RESIGNATION_BENEFITS_REJECT,
-          ],
-        },
-      });
-
-      if (!hasResignationReview) {
-        throw new BadRequestException(
-          'Resignation benefits review (approve or reject) is required before initiating this payroll run.',
-        );
-      }
-    }
-
-    run.status = PayrollRunStatus.INITIATED;
-    return run.save();
+    return this.preRunModel.find(filter).lean().exec();
   }
 
-  // ============== HELPERS ==============
+  async seedDemoAdjustments(): Promise<number> {
+    const count = await this.preRunModel.countDocuments({}).exec();
+    if (count > 0) return 0;
 
-  private async ensureRunExists(runId: string): Promise<PayrollRunDocument> {
-    const run = await this.payrollRunModel.findById(runId);
-    if (!run) {
-      throw new NotFoundException('Payroll run not found.');
-    }
-    return run;
+    const demo: Partial<PreRunAdjustment>[] = [
+      {
+        type: PreRunAdjustmentType.SIGNING_BONUS,
+        employeeId: new Types.ObjectId(),
+        departmentId: new Types.ObjectId(),
+        amount: 5000,
+        currency: 'EGP',
+        status: PreRunAdjustmentStatus.PENDING,
+        note: 'New hire signing bonus',
+      },
+      {
+        type: PreRunAdjustmentType.RESIGNATION_BENEFIT,
+        employeeId: new Types.ObjectId(),
+        departmentId: new Types.ObjectId(),
+        amount: 3000,
+        currency: 'EGP',
+        status: PreRunAdjustmentStatus.PENDING,
+        note: 'Resignation settlement',
+      },
+      {
+        type: PreRunAdjustmentType.TERMINATION_BENEFIT,
+        employeeId: new Types.ObjectId(),
+        departmentId: new Types.ObjectId(),
+        amount: 8000,
+        currency: 'EGP',
+        status: PreRunAdjustmentStatus.PENDING,
+        note: 'Termination compensation',
+      },
+    ];
+
+    const inserted = await this.preRunModel.insertMany(demo);
+    return inserted.length;
   }
 
-  private async ensurePayrollItemExists(payrollItemId: string): Promise<PayrollItemDocument> {
-    const item = await this.payrollItemModel.findById(payrollItemId);
-    if (!item) {
-      throw new NotFoundException('Payroll item not found.');
+  async createAdjustment(dto: CreatePreRunAdjustmentDto) {
+    return this.preRunModel.create({
+      ...dto,
+      employeeId: new Types.ObjectId(dto.employeeId),
+      departmentId: dto.departmentId ? new Types.ObjectId(dto.departmentId) : undefined,
+      status: PreRunAdjustmentStatus.PENDING,
+    });
+  }
+
+  async approveAdjustment(id: string, actorId?: string) {
+    if (!Types.ObjectId.isValid(id)) throw new BadRequestException('Invalid id');
+    const update: Partial<PreRunAdjustment> = {
+      status: PreRunAdjustmentStatus.APPROVED,
+      approvedBy: actorId && Types.ObjectId.isValid(actorId) ? new Types.ObjectId(actorId) : undefined,
+      rejectionReason: undefined,
+      rejectedBy: undefined,
+    };
+
+    const doc = await this.preRunModel
+      .findOneAndUpdate({ _id: new Types.ObjectId(id), status: PreRunAdjustmentStatus.PENDING }, update, {
+        new: true,
+      })
+      .exec();
+    if (!doc) throw new NotFoundException('Pre-run adjustment not found or not pending');
+    return doc;
+  }
+
+  async rejectAdjustment(id: string, reason: string, actorId?: string) {
+    if (!Types.ObjectId.isValid(id)) throw new BadRequestException('Invalid id');
+    if (!reason?.trim()) throw new BadRequestException('Reason is required');
+
+    const update: Partial<PreRunAdjustment> = {
+      status: PreRunAdjustmentStatus.REJECTED,
+      rejectionReason: reason,
+      rejectedBy: actorId && Types.ObjectId.isValid(actorId) ? new Types.ObjectId(actorId) : undefined,
+      approvedBy: undefined,
+    };
+
+    const doc = await this.preRunModel
+      .findOneAndUpdate({ _id: new Types.ObjectId(id), status: PreRunAdjustmentStatus.PENDING }, update, {
+        new: true,
+      })
+      .exec();
+    if (!doc) throw new NotFoundException('Pre-run adjustment not found or not pending');
+    return doc;
+  }
+
+  async updateAdjustment(id: string, updates: { amount?: number; currency?: string; note?: string }) {
+    if (!Types.ObjectId.isValid(id)) throw new BadRequestException('Invalid id');
+
+    const payload: Partial<PreRunAdjustment> = {};
+    if (typeof updates.amount === 'number') payload.amount = updates.amount;
+    if (typeof updates.currency === 'string') payload.currency = updates.currency;
+    if (typeof updates.note === 'string') payload.note = updates.note;
+
+    if (Object.keys(payload).length === 0) {
+      throw new BadRequestException('No fields to update');
     }
-    return item;
+
+    const doc = await this.preRunModel
+      .findOneAndUpdate(
+        { _id: new Types.ObjectId(id), status: PreRunAdjustmentStatus.PENDING },
+        { $set: payload },
+        { new: true },
+      )
+      .exec();
+    if (!doc) throw new NotFoundException('Pre-run adjustment not found or not pending');
+    return doc;
   }
 }

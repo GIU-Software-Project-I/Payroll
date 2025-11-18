@@ -11,6 +11,7 @@ import {
   PayrollItemSchema,
 } from '../../schemas/payroll-processing/payroll.item.schema';
 import { PayrollRun, PayrollRunSchema } from '../../schemas/payroll-processing/payroll.run.schema';
+import { PreRunAdjustment, PreRunAdjustmentSchema } from '../../schemas/payroll-processing/pre.run.adjustment.schema';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { PayrollRun, PayrollRunSchema } from '../../schemas/payroll-processing/p
       { name: ApprovalAction.name, schema: ApprovalActionSchema },
       { name: PayrollItem.name, schema: PayrollItemSchema },
       { name: PayrollRun.name, schema: PayrollRunSchema },
+      { name: PreRunAdjustment.name, schema: PreRunAdjustmentSchema },
     ]),
   ],
   providers: [PayrollProcessingService],

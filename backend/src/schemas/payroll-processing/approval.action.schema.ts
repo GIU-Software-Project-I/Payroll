@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 import { ApprovalActionType } from '../../dto/payroll-process/approval.action.dto';
+
 @Schema({
   collection: 'approval_actions',
   timestamps: true,
@@ -24,3 +25,7 @@ export class ApprovalAction {
 
 export type ApprovalActionDocument = ApprovalAction & Document;
 export const ApprovalActionSchema = SchemaFactory.createForClass(ApprovalAction);
+
+// Indexes to quickly retrieve actions for a run and by recency
+ApprovalActionSchema.index({ payrollRunId: 1, createdAt: -1 });
+ApprovalActionSchema.index({ actorId: 1, createdAt: -1 });

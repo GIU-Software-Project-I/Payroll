@@ -1,68 +1,39 @@
-import { Body, Controller, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Patch } from '@nestjs/common';
 import { PayrollProcessingService } from './payroll.processing.service';
-import {
-  SigningBonusReviewDto,
-  TerminationBenefitsReviewDto,
-  ResignationBenefitsReviewDto,
-  SigningBonusEditDto,
-  TerminationBenefitsEditDto,
-  ResignationBenefitsEditDto,
-} from '../../dto/payroll-process/approval.action.dto';
+import { ApprovePreRunAdjustmentDto, CreatePreRunAdjustmentDto, RejectPreRunAdjustmentDto, UpdatePreRunAdjustmentDto, PreRunAdjustmentType } from '../../dto/payroll-process/pre.run.adjustment.dto';
 
-@Controller('payroll-processing')
+@Controller('payroll.processing')
 export class PayrollProcessingController {
-  constructor(private readonly payrollProcessingService: PayrollProcessingService) {}
+  constructor(private readonly service: PayrollProcessingService) {}
 
-  // ============== REVIEW / APPROVAL ==============
-
-  @Post('runs/:runId/signing-bonus/review')
-  reviewSigningBonus(@Param('runId') runId: string, @Body() dto: SigningBonusReviewDto) {
-    return this.payrollProcessingService.reviewSigningBonus(runId, dto);
+  @Get('pre-run/pending')
+  listPending(@Query('departmentId') departmentId?: string, @Query('type') type?: PreRunAdjustmentType) {
+    return this.service.listPendingAdjustments(departmentId, type);
   }
 
-  @Post('runs/:runId/termination-benefits/review')
-  reviewTerminationBenefits(
-    @Param('runId') runId: string,
-    @Body() dto: TerminationBenefitsReviewDto,
-  ) {
-    return this.payrollProcessingService.reviewTerminationBenefits(runId, dto);
+  @Post('pre-run/seed-demo')
+  async seedDemo() {
+    const created = await this.service.seedDemoAdjustments();
+    return { created };
   }
 
-  @Post('runs/:runId/resignation-benefits/review')
-  reviewResignationBenefits(
-    @Param('runId') runId: string,
-    @Body() dto: ResignationBenefitsReviewDto,
-  ) {
-    return this.payrollProcessingService.reviewResignationBenefits(runId, dto);
+  @Post('pre-run')
+  create(@Body() dto: CreatePreRunAdjustmentDto) {
+    return this.service.createAdjustment(dto);
   }
 
-  // ============== EDIT AMOUNTS ==============
-
-  @Post('items/:itemId/signing-bonus/edit')
-  editSigningBonus(@Param('itemId') itemId: string, @Body() dto: SigningBonusEditDto) {
-    return this.payrollProcessingService.editSigningBonus(itemId, dto);
+  @Post('pre-run/:id/approve')
+  approve(@Param('id') id: string, @Body() dto: ApprovePreRunAdjustmentDto) {
+    return this.service.approveAdjustment(id, dto.actorId);
   }
 
-  @Post('items/:itemId/termination-benefits/edit')
-  editTerminationBenefits(
-    @Param('itemId') itemId: string,
-    @Body() dto: TerminationBenefitsEditDto,
-  ) {
-    return this.payrollProcessingService.editTerminationBenefits(itemId, dto);
+  @Post('pre-run/:id/reject')
+  reject(@Param('id') id: string, @Body() dto: RejectPreRunAdjustmentDto) {
+    return this.service.rejectAdjustment(id, dto.reason, dto.actorId);
   }
 
-  @Post('items/:itemId/resignation-benefits/edit')
-  editResignationBenefits(
-    @Param('itemId') itemId: string,
-    @Body() dto: ResignationBenefitsEditDto,
-  ) {
-    return this.payrollProcessingService.editResignationBenefits(itemId, dto);
-  }
-
-  // ============== INITIATE RUN ==============
-
-  @Post('runs/:runId/initiate')
-  initiatePayrollRun(@Param('runId') runId: string) {
-    return this.payrollProcessingService.initiatePayrollRun(runId);
+  @Patch('pre-run/:id')
+  update(@Param('id') id: string, @Body() dto: UpdatePreRunAdjustmentDto) {
+    return this.service.updateAdjustment(id, dto);
   }
 }
