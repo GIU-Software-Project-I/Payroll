@@ -3,6 +3,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
+import {CombinedModule} from "./modules/employee/modules/Combined-Module";
 
 
 @Module({
@@ -16,7 +17,7 @@ import { ScheduleModule } from '@nestjs/schedule';
             }),
             inject: [ConfigService],
         }),
-
+        CombinedModule
 
     ],
     // providers: [
