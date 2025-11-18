@@ -4,6 +4,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import {CombinedModule} from "./modules/employee/modules/Combined-Module";
+import {TimeManagementModule} from "./modules/time-management/time-management.module";
+import {LeavesModule} from "./modules/leaves/modules/Leaves.Module";
 
 
 @Module({
@@ -17,7 +19,9 @@ import {CombinedModule} from "./modules/employee/modules/Combined-Module";
             }),
             inject: [ConfigService],
         }),
-        CombinedModule
+        CombinedModule,
+        TimeManagementModule,
+LeavesModule,
 
     ],
     // providers: [
