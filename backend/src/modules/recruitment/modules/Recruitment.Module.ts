@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { ApplicationSchema } from '../models/Recruitment/application.schema';
-import { AssessmentTemplateSchema } from '../models/Recruitment/assessment-template.schema';
-import { HiringProcessTemplateSchema } from '../models/Recruitment/hiring-process-template.schema';
-import { InterviewSchema } from '../models/Recruitment/interview.schema';
-import { JobRequisitionSchema } from '../models/Recruitment/job-requisition.schema';
-import { OfferSchema } from '../models/Recruitment/offer.schema';
+import {Application, ApplicationSchema} from '../models/Recruitment/application.schema';
+import {AssessmentTemplate, AssessmentTemplateSchema} from '../models/Recruitment/assessment-template.schema';
+import {HiringProcessTemplate, HiringProcessTemplateSchema} from '../models/Recruitment/hiring-process-template.schema';
+import {Interview, InterviewSchema} from '../models/Recruitment/interview.schema';
+import {JobRequisition, JobRequisitionSchema} from '../models/Recruitment/job-requisition.schema';
+import {Offer, OfferSchema} from '../models/Recruitment/offer.schema';
 import {AssessmentTemplateController} from "../controllers/Recruitment/AssessmentTemplate-Controller";
 import {ApplicationController} from "../controllers/Recruitment/Application-Controller";
 import {HiringProcessTemplateController} from "../controllers/Recruitment/HiringProcessTemplate-Controller";
@@ -23,12 +23,13 @@ import {JobRequisitionService} from "../services/Recruitment/Job-Requisition-Ser
 @Module({
     imports: [
         MongooseModule.forFeature([
-            { name: 'Application', schema: ApplicationSchema },
-            { name: 'AssessmentTemplate', schema: AssessmentTemplateSchema },
-            { name: 'HiringProcessTemplate', schema: HiringProcessTemplateSchema },
-            { name: 'Interview', schema: InterviewSchema },
-            { name: 'JobRequisition', schema: JobRequisitionSchema },
-            { name: 'Offer', schema: OfferSchema }
+            { name: Application.name, schema: ApplicationSchema },
+            { name: AssessmentTemplate.name, schema: AssessmentTemplateSchema },
+            { name: HiringProcessTemplate.name
+                , schema: HiringProcessTemplateSchema },
+            { name: Interview.name, schema: InterviewSchema },
+            { name: JobRequisition.name, schema: JobRequisitionSchema },
+            { name: Offer.name, schema: OfferSchema }
         ])
     ],
     controllers: [

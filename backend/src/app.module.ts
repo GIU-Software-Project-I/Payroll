@@ -6,6 +6,9 @@ import { ScheduleModule } from '@nestjs/schedule';
 import {CombinedModule} from "./modules/employee/modules/Combined-Module";
 import {TimeManagementModule} from "./modules/time-management/time-management.module";
 import {LeavesModule} from "./modules/leaves/modules/Leaves.Module";
+import {RecruitmentModule} from "./modules/recruitment/modules/Recruitment.Module";
+import {OnboardingModule} from "./modules/recruitment/modules/Onboarding.Module";
+import {OffboardingModule} from "./modules/recruitment/modules/Offboarding.Module";
 
 
 @Module({
@@ -22,6 +25,9 @@ import {LeavesModule} from "./modules/leaves/modules/Leaves.Module";
         CombinedModule,
         TimeManagementModule,
 LeavesModule,
+        RecruitmentModule,
+        OnboardingModule,
+        OffboardingModule,
 
     ],
     // providers: [
