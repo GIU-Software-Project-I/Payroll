@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { getModelToken } from '@nestjs/mongoose';
 import { PayrollProcessingController } from './payroll.processing.controller';
+import { PayrollProcessingService } from './payroll.processing.service';
+import { PayrollItem } from '../../schemas/payroll-processing/payroll.item.schema';
+import { PayrollRun } from '../../schemas/payroll-processing/payroll.run.schema';
 
 describe('PayrollProcessingController', () => {
   let controller: PayrollProcessingController;
@@ -7,6 +11,11 @@ describe('PayrollProcessingController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [PayrollProcessingController],
+      providers: [
+        PayrollProcessingService,
+        { provide: getModelToken(PayrollItem.name), useValue: {} },
+        { provide: getModelToken(PayrollRun.name), useValue: {} },
+      ],
     }).compile();
 
     controller = module.get<PayrollProcessingController>(PayrollProcessingController);

@@ -6,13 +6,11 @@ import { PayrollProcessingService } from './payroll.processing.service';
 export class PayrollProcessingController {
   constructor(private readonly payrollProcessingService: PayrollProcessingService) {}
 
-  // ADD THIS ENDPOINT:
   @Post('seed-dummy-data')
   async seedDummyData() {
     return this.payrollProcessingService.seedDummyData();
   }
 
-  // Your existing endpoints...
   @Get()
   async getAllPayrollRuns() {
     return this.payrollProcessingService.getAllPayrollRuns();

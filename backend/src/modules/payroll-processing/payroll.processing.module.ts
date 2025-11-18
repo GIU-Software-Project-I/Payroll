@@ -1,11 +1,10 @@
-// backend/src/modules/payroll.processing/payroll.processing.module.ts
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { PayrollProcessingService } from './payroll.processing.service';
 import { PayrollProcessingController } from './payroll.processing.controller';
 
 import { PayrollRun, PayrollRunSchema } from '../../schemas/payroll-processing/payroll.run.schema';
-// MAKE SURE THIS IMPORT EXISTS:
+
 import {
   ExternalDataCache,
   ExternalDataCacheSchema,
