@@ -3,12 +3,16 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { config } from 'dotenv';
 
-// Load .env manually for debugging
-config();
-console.log('MONGODB_URI from .env:', process.env.MONGODB_URI ? '✅ Loaded' : '❌ Not loaded');
+config(); // load .env
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  await app.listen(3000);
+
+  const port = process.env.PORT || 3000;
+  await app.listen(port);
+
+  console.log(`✅ Nest application is running at http://localhost:${port}`);
+  console.log('MONGODB_URI from .env:', process.env.MONGODB_URI ? '✅ Loaded' : '❌ Not loaded');
 }
+
 void bootstrap();

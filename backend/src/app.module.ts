@@ -1,7 +1,7 @@
-// backend/src/app.module.ts
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { MongoDBModule } from './database/mongodb.module';
+import { PayrollTrackingModule } from './modules/payroll-tracking/payroll-tracking.module';
 
 @Module({
   imports: [
@@ -10,6 +10,7 @@ import { MongoDBModule } from './database/mongodb.module';
       envFilePath: '.env',
     }),
     MongoDBModule,
+    PayrollTrackingModule,
   ],
   controllers: [],
   providers: [],

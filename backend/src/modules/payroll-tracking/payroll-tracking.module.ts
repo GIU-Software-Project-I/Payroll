@@ -1,15 +1,17 @@
+// src/modules/payroll-tracking/payroll-tracking.module.ts
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-
-import { Employee, EmployeeSchema } from '../../schemas/employee.schema';
-import { Department, DepartmentSchema } from '../../schemas/department.schema';
-import { Payslip, PayslipSchema } from '../../schemas/payslip.schema';
-import { Claim, ClaimSchema } from '../../schemas/claim.schema';
-import { Dispute, DisputeSchema } from '../../schemas/dispute.schema';
-import { Refund, RefundSchema } from '../../schemas/refund.schema';
-import { AuditLog, AuditLogSchema } from '../../schemas/audit-log.schema';
-
 import { PayrollTrackingService } from './payroll-tracking.service';
+
+// Corrected schema imports
+import { Employee, EmployeeSchema } from '../../schemas/payroll-tracking/employee.schema';
+import { Department, DepartmentSchema } from '../../schemas/payroll-tracking/department.schema';
+import { Payslip, PayslipSchema } from '../../schemas/payroll-tracking/payslip.schema';
+import { Claim, ClaimSchema } from '../../schemas/payroll-tracking/claim.schema';
+import { Dispute, DisputeSchema } from '../../schemas/payroll-tracking/dispute.schema';
+import { Refund, RefundSchema } from '../../schemas/payroll-tracking/refund.schema';
+import { AuditLog, AuditLogSchema } from '../../schemas/payroll-tracking/audit-log.schema';
+
 
 @Module({
   imports: [
@@ -26,4 +28,4 @@ import { PayrollTrackingService } from './payroll-tracking.service';
   providers: [PayrollTrackingService],
   exports: [MongooseModule, PayrollTrackingService],
 })
-export class PayrollConfigModule {}
+export class PayrollTrackingModule {}
