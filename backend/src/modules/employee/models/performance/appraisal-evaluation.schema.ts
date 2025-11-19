@@ -40,7 +40,7 @@ export class AppraisalEvaluation {
     // WHY: Manager may save progress before submitting.
     // Supports workflow.
 
-    @Prop({ default: null })
+    @Prop({ type: Date, default: null })
     finalizedAt?: Date | null;
     // WHY: Used for publishing schedule + HR dashboards.
 

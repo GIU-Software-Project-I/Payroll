@@ -72,13 +72,13 @@ export class StructureChangeRequest {
     @Prop({ type: Types.ObjectId, ref: 'HR', default: null })
     reviewedBy?: Types.ObjectId | null;
 
-    @Prop({ default: null })
+    @Prop({ type: Date, default: null })
     reviewedAt?: Date | null;
 
     @Prop({ type: Types.ObjectId, ref: 'HR', default: null })
     ApprovedBy?: Types.ObjectId | null;
 
-    @Prop({ default: null })
+    @Prop({ type: Date, default: null })
     ApprovedAt?: Date | null;
 
     @Prop()

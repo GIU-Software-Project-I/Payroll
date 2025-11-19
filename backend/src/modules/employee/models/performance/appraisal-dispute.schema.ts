@@ -45,7 +45,7 @@ export class AppraisalDispute {
     resolvedBy?: Types.ObjectId | null;
     // WHY: Identifies HR Manager resolving the dispute.
 
-    @Prop({ default: null })
+    @Prop({ type: Date, default: null })
     resolvedAt?: Date | null;
     // WHY: Time-based appeal metrics.
 }

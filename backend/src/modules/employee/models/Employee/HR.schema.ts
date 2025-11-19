@@ -33,7 +33,7 @@ export class HR extends User {
 
     // ROLES & ACCESS (US-E7-05, BR-20a)
     @Prop({type: String, enum: Object.values(Roles), index: true})
-    roles!: Roles.HR; // used for RBAC, e.g., EMPLOYEE, MANAGER, HR, SYS_ADMIN
+    roles!: Roles; // used for RBAC, e.g., EMPLOYEE, MANAGER, HR, SYS_ADMIN
 
     //Data Flow: Notification N-040 (Profile change request submitted) sent to HR/Manager.
 

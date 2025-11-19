@@ -44,9 +44,20 @@ export class Department {
     deactivatedBy?:Types.ObjectId;
 
     // BR-22: Version history for audit compliance
-    @Prop([{field: String, oldValue: String, newValue: String, changedBy: Types.ObjectId, ref:'HR',changedAt: Date,
+    @Prop([{
+        field: String,
+        oldValue: String,
+        newValue: String,
+        changedBy: { type: Types.ObjectId, ref: 'HR' },
+        changedAt: Date
     }])
-    changeHistory?: Array<Record<string, any>>;
+    changeHistory?: Array<{
+        field?: string;
+        oldValue?: string;
+        newValue?: string;
+        changedBy?: Types.ObjectId;
+        changedAt?: Date;
+    }>;
 }
 
 export const DepartmentSchema = SchemaFactory.createForClass(Department);

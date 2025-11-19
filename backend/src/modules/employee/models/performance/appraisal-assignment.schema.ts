@@ -40,7 +40,7 @@ export class AppraisalAssignment {
     // REQ-AE-06: HR monitors progress.
     // BR 22, 37(a): Tracking & audit requirements.
 
-    @Prop({ default: null })
+    @Prop({ type: Date, default: null })
     completedAt?: Date | null;
     // WHY: Used for deadlines + reminders.
     // Notifications triggered when overdue.

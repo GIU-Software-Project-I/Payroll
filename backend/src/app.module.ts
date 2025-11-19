@@ -3,10 +3,18 @@ import { APP_GUARD } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
-import {CombinedModule} from "./modules/employee/modules/Combined-Module";
 import { PayrollProcessingModule
  } from './modules/payroll/processing/processing.module';
 import { PayrollConfigModule } from './modules/payroll/config-policy/payroll-config.module';   
+
+
+import {TimeManagementModule} from "./modules/time-management/time-management.module";
+import {LeavesModule} from "./modules/leaves/modules/Leaves.Module";
+import {RecruitmentModule} from "./modules/recruitment/modules/Recruitment.Module";
+import {OnboardingModule} from "./modules/recruitment/modules/Onboarding.Module";
+import {OffboardingModule} from "./modules/recruitment/modules/Offboarding.Module";
+import {EmployeeModule} from "./modules/employee/modules/Employee.Module";
+
 
 @Module({
     imports: [
@@ -19,9 +27,16 @@ import { PayrollConfigModule } from './modules/payroll/config-policy/payroll-con
             }),
             inject: [ConfigService],
         }),
-        CombinedModule,
         PayrollProcessingModule,
-        PayrollConfigModule
+        PayrollConfigModule,
+
+        EmployeeModule,
+        TimeManagementModule,
+LeavesModule,
+        RecruitmentModule,
+        OnboardingModule,
+        OffboardingModule,
+
     ],
     // providers: [
     //     { provide: APP_GUARD, useClass: JwtAuthGuard },

@@ -25,7 +25,7 @@ export class Manager extends User {
 
     // ROLES & ACCESS (US-E7-05, BR-20a)
     @Prop({type: String, enum: Object.values(Roles), index: true})
-    roles!: Roles.MANAGER; // used for RBAC, e.g., EMPLOYEE, MANAGER, HR, SYS_ADMIN
+    roles!: Roles.LINE_MANAGER; // used for RBAC, e.g., EMPLOYEE, MANAGER, HR, SYS_ADMIN
 }
 
 export const ManagerSchema = SchemaFactory.createForClass(Manager);
