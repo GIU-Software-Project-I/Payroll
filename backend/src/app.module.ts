@@ -14,6 +14,7 @@ import {RecruitmentModule} from "./modules/recruitment/modules/Recruitment.Modul
 import {OnboardingModule} from "./modules/recruitment/modules/Onboarding.Module";
 import {OffboardingModule} from "./modules/recruitment/modules/Offboarding.Module";
 import {EmployeeModule} from "./modules/employee/modules/Employee.Module";
+import { PayrollTrackingModule } from './modules/payroll/tracking/tracking.module';
 
 
 @Module({
@@ -29,10 +30,11 @@ import {EmployeeModule} from "./modules/employee/modules/Employee.Module";
         }),
         PayrollProcessingModule,
         PayrollConfigModule,
+        PayrollTrackingModule,
 
         EmployeeModule,
         TimeManagementModule,
-LeavesModule,
+        LeavesModule,
         RecruitmentModule,
         OnboardingModule,
         OffboardingModule,
