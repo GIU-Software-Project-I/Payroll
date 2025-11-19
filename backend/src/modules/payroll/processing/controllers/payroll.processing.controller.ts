@@ -1,6 +1,6 @@
 // backend/src/modules/payroll.processing/payroll.processing.controller.ts
 import { Controller, Get, Post } from '@nestjs/common';
-import { PayrollProcessingService } from './payroll.processing.service';
+import { PayrollProcessingService } from '../services/payroll.processing.service';
 
 @Controller('payroll-processing')
 export class PayrollProcessingController {

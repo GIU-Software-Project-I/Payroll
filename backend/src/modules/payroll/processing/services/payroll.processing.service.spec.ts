@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { PayrollProcessingService } from '../payroll.processing/payroll.processing.service';
+import { PayrollProcessingService } from '../services/payroll.processing.service';
+import { expect } from '@jest/globals';
 
 describe('PayrollProcessingService', () => {
   let service: PayrollProcessingService;

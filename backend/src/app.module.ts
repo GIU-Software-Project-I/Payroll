@@ -6,7 +6,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import {CombinedModule} from "./modules/employee/modules/Combined-Module";
 import { PayrollProcessingModule
  } from './modules/payroll/processing/processing.module';
-
+import { PayrollConfigModule } from './modules/payroll/config-policy/payroll-config.module';   
 
 @Module({
     imports: [
@@ -20,8 +20,8 @@ import { PayrollProcessingModule
             inject: [ConfigService],
         }),
         CombinedModule,
-        PayrollProcessingModule
-
+        PayrollProcessingModule,
+        PayrollConfigModule
     ],
     // providers: [
     //     { provide: APP_GUARD, useClass: JwtAuthGuard },
