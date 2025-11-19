@@ -5,7 +5,6 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { PayrollRun } from '../entities/payroll.run.schema';
-// ADD THIS IMPORT
 import { ExternalDataCache } from '../entities/external.data.cache.schema';
 import { DummyPayrollRuns, DummyExternalData } from '../data/dummy.payroll.data';
 
@@ -13,7 +12,7 @@ import { DummyPayrollRuns, DummyExternalData } from '../data/dummy.payroll.data'
 export class PayrollProcessingService {
   constructor(
     @InjectModel(PayrollRun.name) private payrollRunModel: Model<PayrollRun>,
-    // ADD THIS INJECTION
+
     @InjectModel(ExternalDataCache.name) private externalDataModel: Model<ExternalDataCache>,
   ) {
     console.log('PayrollRun Model:', this.payrollRunModel ? '✅ Loaded' : '❌ Missing');
