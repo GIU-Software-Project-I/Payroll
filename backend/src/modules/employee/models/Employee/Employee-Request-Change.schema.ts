@@ -1,5 +1,5 @@
 import {Prop, Schema, SchemaFactory} from "@nestjs/mongoose";
-import {HydratedDocument, Types} from "mongoose";
+import {HydratedDocument, Types, Schema as MongooseSchema} from "mongoose";
 
 export enum ChangeRequestStatus {
     PENDING = 'Pending',
@@ -19,10 +19,10 @@ export class EmployeeChangeRequest {
     @Prop({ required: true })
     field!: string; // e.g., 'position', 'department', 'nationalId', 'maritalStatus'
 
-    @Prop()
+    @Prop({ type: MongooseSchema.Types.Mixed })
     oldValue: any;
 
-    @Prop()
+    @Prop({ type: MongooseSchema.Types.Mixed })
     newValue: any;
 
     @Prop({ type: String, enum: Object.values(ChangeRequestStatus), default: ChangeRequestStatus.PENDING })

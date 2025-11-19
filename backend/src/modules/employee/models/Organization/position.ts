@@ -72,7 +72,7 @@ export class Position {
     status?: PositionStatus;
 
     // delimiting: when closed but history preserved (BR-12, BR-37)
-    @Prop({ default: null })
+    @Prop({ type: Date, default: null })
     validUntil?: Date | null; // BR 37 (Historical records must be preserved using delimiting)."????
 
     @Prop({ type: String })

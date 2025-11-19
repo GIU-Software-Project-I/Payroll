@@ -1,6 +1,6 @@
 // /database/os/position-history.schema.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import { Document, Types, Schema as MongooseSchema } from 'mongoose';
 
 export type PositionHistoryDocument = PositionHistory & Document;
 
@@ -10,10 +10,10 @@ export class PositionHistory {
     positionId!: Types.ObjectId;
 
     // old / new snapshots (immutable historical record) — BR-22 + BR-37
-    @Prop()
+    @Prop({ type: MongooseSchema.Types.Mixed })
     oldValue!: Record<string, any>;
 
-    @Prop()
+    @Prop({ type: MongooseSchema.Types.Mixed })
     newValue!: Record<string, any>;
 
     // e.g. Create, Update, Deactivate, Delimit
@@ -21,11 +21,11 @@ export class PositionHistory {
     changeType!: string;
 
     // who changed it — BR-22
-    @Prop({ type: Types.ObjectId, ref: 'Employee', required: true })
+    @Prop({ type: Types.ObjectId, ref: 'HR', required: true })
     changedBy?: Types.ObjectId;
 
     // redundant timestamp for audit search (also createdAt)
-    @Prop({ required: true })
+    @Prop({ type: Date, required: true })
     timestamp!: Date;
 }
 
