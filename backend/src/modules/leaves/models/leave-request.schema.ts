@@ -1,45 +1,60 @@
+// schemas/leave-request.schema.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import {Document, HydratedDocument, Types} from 'mongoose';
-import { LeaveType } from './leave-type.schema';
-import {LeaveBalance} from "./leave-balance.schema";
+import { HydratedDocument, Types } from 'mongoose';
+import { LeaveStatus } from '../enums/leave-status.enum';
 
-export type LeaveRequestDocument = HydratedDocument<LeaveRequest>
-
-export enum LeaveStatus {
-    PENDING = "pending",
-    APPROVED = "approved",
-    REJECTED="rejected",
-    CANCELLED = "cancelled",
-}
+export type LeaveRequestDocument = HydratedDocument<LeaveRequest>;
 
 @Schema({ timestamps: true })
 export class LeaveRequest {
+  @Prop({ type: Types.ObjectId, ref: 'Employee', required: true })
+  employeeId: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: 'LeaveType', required: true })
+  leaveTypeId: Types.ObjectId;
+
+  @Prop({
+    type: { from: Date, to: Date },
+    required: true,
+  })
+  dates: { from: Date; to: Date };
+
   @Prop({ required: true })
-  employeeId!: string; //  // Employee code or Mongo id from subsystem 1 ???
-
-  @Prop({ type: Types.ObjectId, ref: LeaveType.name, required: true })
-  leaveTypeId!: Types.ObjectId;
-
-  @Prop({ required: true })
-  startDate!: Date;
-
-  @Prop({ required: true })
-  endDate!: Date;
-
-  @Prop({ required: true })
-  durationDays!: number;
-
-  @Prop({ String: true , enum: Object.values(LeaveStatus), required: true, default: LeaveStatus.PENDING })
-  status!: LeaveStatus;
+  durationDays: number;
 
   @Prop()
-  justification!: string;
+  justification?: string;
 
-  @Prop()
-  attachmentUrls!: string[]; // combine attachments in the same schema
+  @Prop({ type: Types.ObjectId, ref: 'Attachment' })
+  attachmentId?: Types.ObjectId;
 
-  @Prop()
-  submittedAt!: Date;
+  @Prop({
+    type: [
+      {
+        role: String,
+        status: String,
+        decidedBy: { type: Types.ObjectId, ref: 'Employee' },
+        decidedAt: Date,
+      },
+    ],
+    default: [],
+  })
+  approvalFlow: {
+    role: string;
+    status: string;
+    decidedBy?: Types.ObjectId;
+    decidedAt?: Date;
+  }[];
+
+  @Prop({
+    enum: LeaveStatus,
+    default: LeaveStatus.PENDING,
+  })
+  status: LeaveStatus;
+
+  @Prop({ default: false })
+  irregularPatternFlag: boolean;
 }
 
-export const LeaveRequestSchema = SchemaFactory.createForClass(LeaveRequest);
+export const LeaveRequestSchema =
+  SchemaFactory.createForClass(LeaveRequest);

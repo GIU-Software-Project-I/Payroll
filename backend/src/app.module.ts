@@ -6,13 +6,14 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { PayrollProcessingModule} from './modules/payroll/processing/processing.module';
 import { PayrollConfigModule } from './modules/payroll/config-policy/payroll-config.module';   
 import {TimeManagementModule} from "./modules/time-management/time-management.module";
-import {LeavesModule} from "./modules/leaves/modules/Leaves.Module";
+
 
 import { PayrollTrackingModule } from './modules/payroll/tracking/tracking.module';
 import {RecruitmentModule} from "./modules/recruitment/module/Recruitment.module";
 import {OrganizationStructureModule} from "./modules/employee/modules/organization-structure.module";
 import {EmployeeModule} from "./modules/employee/modules/employee.module";
 import {PerformanceModule} from "./modules/employee/modules/performance.module";
+import {LeavesModule} from "./modules/leaves/modules/leaves.module";
 
 
 @Module({
