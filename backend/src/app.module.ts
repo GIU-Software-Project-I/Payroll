@@ -3,18 +3,13 @@ import { APP_GUARD } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
-import { PayrollProcessingModule
- } from './modules/payroll/processing/processing.module';
+import { PayrollProcessingModule} from './modules/payroll/processing/processing.module';
 import { PayrollConfigModule } from './modules/payroll/config-policy/payroll-config.module';   
-
-
 import {TimeManagementModule} from "./modules/time-management/time-management.module";
 import {LeavesModule} from "./modules/leaves/modules/Leaves.Module";
-import {RecruitmentModule} from "./modules/recruitment/modules/Recruitment.Module";
-import {OnboardingModule} from "./modules/recruitment/modules/Onboarding.Module";
-import {OffboardingModule} from "./modules/recruitment/modules/Offboarding.Module";
 import {EmployeeModule} from "./modules/employee/modules/Employee.Module";
 import { PayrollTrackingModule } from './modules/payroll/tracking/tracking.module';
+import {RecruitmentModule} from "./modules/recruitment/module/Recruitment.module";
 
 
 @Module({
@@ -31,13 +26,11 @@ import { PayrollTrackingModule } from './modules/payroll/tracking/tracking.modul
         PayrollProcessingModule,
         PayrollConfigModule,
         PayrollTrackingModule,
-
+RecruitmentModule,
         EmployeeModule,
         TimeManagementModule,
         LeavesModule,
-        RecruitmentModule,
-        OnboardingModule,
-        OffboardingModule,
+
 
     ],
     // providers: [

@@ -1,5 +1,5 @@
 /* eslint-disable prettier/prettier */
-// src/modules/payroll-tracking/payroll-tracking.module.ts
+// src/module/payroll-tracking/payroll-tracking.module.ts
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { PayrollTrackingService } from '../tracking/services/payroll-tracking.service';

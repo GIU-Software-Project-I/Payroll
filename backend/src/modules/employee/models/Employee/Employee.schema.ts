@@ -14,8 +14,8 @@ export class Employee extends User {
     @Prop()
     jobTitle!: string;
 
-    @Prop()
-    dateOfHire!: Date;
+    // @Prop()
+    // dateOfHire!: Date;
 
     @Prop()
     managerId!: string;

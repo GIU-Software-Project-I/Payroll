@@ -10,9 +10,9 @@ export class Manager extends User {
     @Prop([{ type: Types.ObjectId, ref: 'Employee' }])
     directReports?: Types.ObjectId[];
 
-    // BR-3e: Managers also report to higher-level managers (chain of command)
-    @Prop({ type: Types.ObjectId, ref: 'Manager' })
-    supervisor?: Types.ObjectId;
+    // // BR-3e: Managers also report to higher-level managers (chain of command)
+    // @Prop({ type: Types.ObjectId, ref: 'Manager' })
+    // supervisor?: Types.ObjectId;
 
     // US-M1-01: Track approval delegation when manager is unavailable
     // Allows temporary delegation of approval authority during leave/absence

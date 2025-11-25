@@ -1,5 +1,5 @@
 /* eslint-disable prettier/prettier */
-// src/modules/payroll-config/payroll-config.module.ts
+// src/module/payroll-config/payroll-config.module.ts
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 
