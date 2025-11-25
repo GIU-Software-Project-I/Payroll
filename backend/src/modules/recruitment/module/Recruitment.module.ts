@@ -20,10 +20,9 @@ import {OffBoardingController} from "../controllers/Offboarding/initial-OffBoard
 import {OffBoardingService} from "../services/OffBoarding/initial-OffBoarding.service";
 import {DocumentSchema,Document} from "../models/document.schema";
 import {EmployeeModule} from "../../employee/modules/employee.module";
+import {Onboarding, OnboardingSchema} from "../models/onboarding.schema";
 
-function lOnBoardingService() {
 
-}
 
 @Module({
     imports:[MongooseModule.forFeature([
@@ -39,6 +38,7 @@ function lOnBoardingService() {
         { name: Document.name, schema: DocumentSchema },
         { name: TerminationRequest.name, schema: TerminationRequestSchema },
         { name: ClearanceChecklist.name, schema: ClearanceChecklistSchema },
+        { name:Onboarding.name,schema:OnboardingSchema},
     ]),
         EmployeeModule
     ],
