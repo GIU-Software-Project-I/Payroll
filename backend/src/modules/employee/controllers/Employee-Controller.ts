@@ -26,8 +26,5 @@ export class EmployeeController {
         return this.employeeService.update(id, data);
     }
 
-    @Delete(':id')
-    delete(@Param('id') id: string) {
-        return this.employeeService.delete(id);
-    }
+
 }
