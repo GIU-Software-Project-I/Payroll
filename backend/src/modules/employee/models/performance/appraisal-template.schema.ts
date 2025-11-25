@@ -1,39 +1,96 @@
-import {Prop, Schema, SchemaFactory} from "@nestjs/mongoose";
-import {HydratedDocument, Types} from "mongoose";
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { HydratedDocument, Types } from 'mongoose';
+import {
+  AppraisalRatingScaleType,
+  AppraisalTemplateType,
+} from '../../enums/performance.enums';
 
-
-export enum TemplateType {
-    ANNUAL = 'Annual',
-    PROBATIONARY = 'Probationary',
-    SEMI_ANNUAL = 'Semi-Annual',
-}
 
 export type AppraisalTemplateDocument = HydratedDocument<AppraisalTemplate>;
 
-@Schema({ timestamps: true })
+@Schema({ _id: false })
+export class RatingScaleDefinition {
+  @Prop({
+    type: String,
+    enum: Object.values(AppraisalRatingScaleType),
+    required: true,
+  })
+  type: AppraisalRatingScaleType;
+
+  @Prop({ type: Number, required: true })
+  min: number;
+
+  @Prop({ type: Number, required: true })
+  max: number;
+
+  @Prop({ type: Number, default: 1 })
+  step?: number;
+
+  @Prop({ type: [String], default: [] })
+  labels?: string[];
+}
+
+export const RatingScaleDefinitionSchema = SchemaFactory.createForClass(
+  RatingScaleDefinition,
+);
+
+@Schema({ _id: false })
+export class EvaluationCriterion {
+  @Prop({ type: String, required: true })
+  key: string;
+
+  @Prop({ type: String, required: true })
+  title: string;
+
+  @Prop({ type: String })
+  details?: string;
+
+  @Prop({ type: Number, min: 0, max: 100, default: 0 })
+  weight?: number;
+
+  @Prop({ type: Number })
+  maxScore?: number;
+
+  @Prop({ type: Boolean, default: true })
+  required: boolean;
+}
+
+export const EvaluationCriterionSchema =
+  SchemaFactory.createForClass(EvaluationCriterion);
+
+@Schema({ collection: 'appraisal_templates', timestamps: true })
 export class AppraisalTemplate {
- @Prop({ required: true })
-name!: string; // Name of the template (REQ-PP-01)
+  @Prop({ type: String, required: true, unique: true })
+  name: string;
 
- @Prop({ required: true, enum: Object.values(TemplateType) })
-  type!: TemplateType; // e.g., Annual, Probationary, Semi-Annual (REQ-PP-01),
+  @Prop({ type: String })
+  description?: string;
 
+  @Prop({
+    type: String,
+    enum: Object.values(AppraisalTemplateType),
+    required: true,
+  })
+  templateType: AppraisalTemplateType;
 
-@Prop({ type: [String], required: true })
- ratingScales!: string[]; // Defined rating scales (e.g., Excellent, Good) (REQ-PP-01, BR 14)
+  @Prop({ type: RatingScaleDefinitionSchema, required: true })
+  ratingScale: RatingScaleDefinition;
 
-@Prop({ type: [String], required: true })
-evaluationCriteria?: string[]; // Criteria for scoring (REQ-PP-01)
+  @Prop({ type: [EvaluationCriterionSchema], default: [] })
+  criteria: EvaluationCriterion[];
 
-    @Prop({ type: [Types.ObjectId], ref: 'Department', default: [] })
-assignedDepartments?: Types.ObjectId[];
- //Which departments this template applies to (REQ-PP-01, Phase 1)
+  @Prop({ type: String })
+  instructions?: string;
 
-    @Prop({ default: true })
-    active!: boolean;
-    // WHY: Allows disabling deprecated templates without deleting them.
-    // BR 37: Preserve historical templates.
- }
+  @Prop({ type: [Types.ObjectId], ref: 'Department', default: [] })
+  applicableDepartmentIds: Types.ObjectId[];
 
-export const AppraisalTemplateSchema = SchemaFactory.createForClass(AppraisalTemplate);
+  @Prop({ type: [Types.ObjectId], ref: 'Position', default: [] })
+  applicablePositionIds: Types.ObjectId[];
 
+  @Prop({ type: Boolean, default: true })
+  isActive: boolean;
+}
+
+export const AppraisalTemplateSchema =
+  SchemaFactory.createForClass(AppraisalTemplate);

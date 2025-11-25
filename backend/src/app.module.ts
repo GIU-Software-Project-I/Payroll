@@ -7,9 +7,12 @@ import { PayrollProcessingModule} from './modules/payroll/processing/processing.
 import { PayrollConfigModule } from './modules/payroll/config-policy/payroll-config.module';   
 import {TimeManagementModule} from "./modules/time-management/time-management.module";
 import {LeavesModule} from "./modules/leaves/modules/Leaves.Module";
-import {EmployeeModule} from "./modules/employee/modules/Employee.Module";
+
 import { PayrollTrackingModule } from './modules/payroll/tracking/tracking.module';
 import {RecruitmentModule} from "./modules/recruitment/module/Recruitment.module";
+import {OrganizationStructureModule} from "./modules/employee/modules/organization-structure.module";
+import {EmployeeModule} from "./modules/employee/modules/employee.module";
+import {PerformanceModule} from "./modules/employee/modules/performance.module";
 
 
 @Module({
@@ -28,6 +31,9 @@ import {RecruitmentModule} from "./modules/recruitment/module/Recruitment.module
         PayrollTrackingModule,
 RecruitmentModule,
         EmployeeModule,
+        OrganizationStructureModule,
+        PerformanceModule,
+
         TimeManagementModule,
         LeavesModule,
 

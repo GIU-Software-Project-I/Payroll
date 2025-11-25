@@ -1,38 +1,37 @@
-import {Prop, SchemaFactory} from "@nestjs/mongoose";
-import { HydratedDocument, Schema, Types } from "mongoose";
-import {User} from "./User.schema";
-import {Roles} from "./User-Role";
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { HydratedDocument, Types } from 'mongoose';
+import { CandidateStatus } from '../../enums/employee-profile.enums';
 
+import { UserProfileBase } from './user-schema';
 
 export type CandidateDocument = HydratedDocument<Candidate>;
 
+@Schema({ collection: 'candidates', timestamps: true })
+export class Candidate extends UserProfileBase {
+  @Prop({ type: String, required: true, unique: true })
+  candidateNumber: string;
 
-export class Candidate extends User {
+  @Prop({ type: Types.ObjectId, ref: 'Department' })
+  departmentId?: Types.ObjectId;
 
-    @Prop({ type: Types.ObjectId, ref: 'Application', required: true })
-    ApplicationId!: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: 'Position' })
+  positionId?: Types.ObjectId;
 
-@Prop({ required: true })
-    resumeFileName!: string; // Original resume file name
+  @Prop({ type: Date })
+  applicationDate?: Date;
 
-    @Prop({ required: true })
-    resumeFileUrl!: string; // Path to stored resume file
+  @Prop({
+    type: String,
+    enum: Object.values(CandidateStatus),
+    default: CandidateStatus.APPLIED,
+  })
+  status: CandidateStatus;
 
-    @Prop()
-   Offer?: boolean; // Original cover letter file name
+  @Prop({ type: String })
+  resumeUrl?: string;
 
-    @Prop({type:Types.ObjectId, ref:'Offer'})
-    OfferId?: Types.ObjectId;
-
-    @Prop({ type: Types.ObjectId, ref: 'JobRequisition', required: true })
-    JobRequisitionId?: Types.ObjectId;
-
-    @Prop({type:Types.ObjectId, ref:'Position'})
-    roleAppliedFor?:Types.ObjectId;
-
-    @Prop()
-    role!: Roles.CANDIDATE;
-
+  @Prop({ type: String })
+  notes?: string;
 }
 
 export const CandidateSchema = SchemaFactory.createForClass(Candidate);

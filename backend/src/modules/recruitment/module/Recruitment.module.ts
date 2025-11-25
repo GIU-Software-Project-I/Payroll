@@ -19,6 +19,7 @@ import {OnBoardingController} from "../controllers/OnBoarding/initial-OnBoarding
 import {OffBoardingController} from "../controllers/Offboarding/initial-OffBoarding.controller";
 import {OffBoardingService} from "../services/OffBoarding/initial-OffBoarding.service";
 import {DocumentSchema,Document} from "../models/document.schema";
+import {EmployeeModule} from "../../employee/modules/employee.module";
 
 function lOnBoardingService() {
 
@@ -39,7 +40,7 @@ function lOnBoardingService() {
         { name: TerminationRequest.name, schema: TerminationRequestSchema },
         { name: ClearanceChecklist.name, schema: ClearanceChecklistSchema },
     ]),
-        //EmployeeProfileModule
+        EmployeeModule
     ],
     controllers: [RecruitmentController,OnBoardingController,OffBoardingController],
     providers: [RecruitmentService,OnBoardingService,OffBoardingService],

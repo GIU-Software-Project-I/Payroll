@@ -1,70 +1,55 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import {Document, HydratedDocument, Types} from 'mongoose';
+import { HydratedDocument, Types } from 'mongoose';
+import { AppraisalDisputeStatus } from '../../enums/performance.enums';
 
-
-export enum DisputeStatus {
-    PENDING = 'Pending',
-    APPROVED = 'Approved',
-    REJECTED = 'Rejected',
-}
 
 export type AppraisalDisputeDocument = HydratedDocument<AppraisalDispute>;
 
-@Schema({ timestamps: true })
+@Schema({ collection: 'appraisal_disputes', timestamps: true })
 export class AppraisalDispute {
-    @Prop({ type: Types.ObjectId, ref: 'AppraisalEvaluation', required: true })
-    evaluationId!: Types.ObjectId;
-    // WHY: Dispute is tied to a specific evaluation result.
-    // REQ-AE-07.
+  @Prop({ type: Types.ObjectId, auto: true })
+  _id: Types.ObjectId;
 
-    @Prop({ type: Types.ObjectId, ref: 'Employee', required: true })
-    raisedBy!: Types.ObjectId;
-    // WHY: Employee who objects.
-    // REQ-AE-07.
-    // BR 31: Objection window rights.
+  @Prop({ type: Types.ObjectId, ref: 'AppraisalRecord', required: true })
+  appraisalId: Types.ObjectId;
 
-    @Prop({ required: true })
-    reason?: string;
-    // WHY: Capture objection rationale.
+  @Prop({ type: Types.ObjectId, ref: 'AppraisalAssignment', required: true })
+  assignmentId: Types.ObjectId;
 
-    @Prop({ default: DisputeStatus.PENDING, enum: Object.values(DisputeStatus) })
-    status!: DisputeStatus;
-    // WHY: HR workflow for dispute resolution.
-    // REQ-OD-07.
-    // BR 31, 32 required logging.
+  @Prop({ type: Types.ObjectId, ref: 'AppraisalCycle', required: true })
+  cycleId: Types.ObjectId;
 
-    @Prop()
-    hrDecision?: string;
-    // WHY: Final HR resolution stored for audit.
+  @Prop({ type: Types.ObjectId, ref: 'EmployeeProfile', required: true })
+  raisedByEmployeeId: Types.ObjectId;
 
-    @Prop()
-    hrComments?: string;
-    // WHY: HR’s justification.
+  @Prop({ type: String, required: true })
+  reason: string;
 
-    @Prop({ type: Types.ObjectId, ref: 'Employee', default: null })
-    resolvedBy?: Types.ObjectId | null;
-    // WHY: Identifies HR Manager resolving the dispute.
+  @Prop({ type: String })
+  details?: string;
 
-    @Prop({ type: Date, default: null })
-    resolvedAt?: Date | null;
-    // WHY: Time-based appeal metrics.
+  @Prop({ type: Date, default: () => new Date() })
+  submittedAt: Date;
+
+  @Prop({
+    type: String,
+    enum: Object.values(AppraisalDisputeStatus),
+    default: AppraisalDisputeStatus.OPEN,
+  })
+  status: AppraisalDisputeStatus;
+
+  @Prop({ type: Types.ObjectId, ref: 'EmployeeProfile' })
+  assignedReviewerEmployeeId?: Types.ObjectId;
+
+  @Prop({ type: String })
+  resolutionSummary?: string;
+
+  @Prop({ type: Date })
+  resolvedAt?: Date;
+
+  @Prop({ type: Types.ObjectId, ref: 'EmployeeProfile' })
+  resolvedByEmployeeId?: Types.ObjectId;
 }
 
-export const AppraisalDisputeSchema = SchemaFactory.createForClass(AppraisalDispute);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+export const AppraisalDisputeSchema =
+  SchemaFactory.createForClass(AppraisalDispute);
