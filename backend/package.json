@@ -9,7 +9,6 @@
     "start:dev": "ts-node --project tsconfig.json src/main.ts",
     "dev": "nodemon --exec ts-node src/main.ts",
     "watch": "tsc -w"
-
   },
   "dependencies": {
     "@nestjs/common": "^11.1.5",
@@ -27,6 +26,7 @@
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
+    "cookie-parser": "^1.4.7",
     "date-fns": "^4.1.0",
     "express": "^5.1.0",
     "html2canvas": "^1.4.1",
@@ -46,6 +46,7 @@
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
+    "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.3",
     "@types/multer": "^2.0.0",
     "@types/node": "^24.5.2",

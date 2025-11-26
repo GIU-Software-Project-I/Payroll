@@ -9,11 +9,15 @@ import {TimeManagementModule} from "./modules/time-management/time-management.mo
 
 
 import { PayrollTrackingModule } from './modules/payroll/tracking/tracking.module';
-import {RecruitmentModule} from "./modules/recruitment/module/Recruitment.module";
-import {OrganizationStructureModule} from "./modules/employee/modules/organization-structure.module";
-import {EmployeeModule} from "./modules/employee/modules/employee.module";
-import {PerformanceModule} from "./modules/employee/modules/performance.module";
-import {LeavesModule} from "./modules/leaves/modules/leaves.module";
+import { RecruitmentModule } from "./modules/recruitment/module/Recruitment.module";
+import { OrganizationStructureModule } from "./modules/employee/modules/organization-structure.module";
+import { EmployeeModule } from "./modules/employee/modules/employee.module";
+import { PerformanceModule } from "./modules/employee/modules/performance.module";
+import { LeavesModule } from "./modules/leaves/modules/leaves.module";
+import { AuthModule } from "./modules/auth/Module/auth-module";
+
+import {AuthorizationGuard} from "./modules/auth/guards/authorization-guard";
+import {AuthenticationGuard} from "./modules/auth/guards/authentication-guard";
 
 
 @Module({
@@ -27,10 +31,11 @@ import {LeavesModule} from "./modules/leaves/modules/leaves.module";
             }),
             inject: [ConfigService],
         }),
+        AuthModule,
         PayrollProcessingModule,
         PayrollConfigModule,
         PayrollTrackingModule,
-RecruitmentModule,
+        RecruitmentModule,
         EmployeeModule,
         OrganizationStructureModule,
         PerformanceModule,
@@ -40,9 +45,9 @@ RecruitmentModule,
 
 
     ],
-    // providers: [
-    //     { provide: APP_GUARD, useClass: JwtAuthGuard },
-    //     { provide: APP_GUARD, useClass: RolesGuard },
-    // ],
+    providers: [
+        { provide: APP_GUARD, useClass: AuthenticationGuard },
+        { provide: APP_GUARD, useClass: AuthorizationGuard },
+    ],
 })
 export class AppModule {}

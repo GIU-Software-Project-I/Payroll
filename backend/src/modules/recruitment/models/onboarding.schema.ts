@@ -10,7 +10,7 @@ export class Onboarding {
 
   @Prop([
     {
-      name: String, // Task name: “Upload ID”, “Set up Email”
+      name: String, // Task name: “Upload ID”, “Set up email”
       department: String, // HR, IT, Admin
       status: { type: String, enum: Object.values(OnboardingTaskStatus), default: OnboardingTaskStatus.PENDING },
       deadline: Date,
