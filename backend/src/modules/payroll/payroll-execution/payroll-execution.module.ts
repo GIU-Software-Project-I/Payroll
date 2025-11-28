@@ -1,0 +1,40 @@
+import { forwardRef, Module } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
+// import controller and services 
+import { PayrollExecutionController } from './controllers/payroll-execution.controller';
+import { PayrollExecutionService } from './services/payroll-execution.service';
+// import schemas from payroll-configuration subsystem
+import { terminationAndResignationBenefits, terminationAndResignationBenefitsSchema } from '../payroll-configuration/models/terminationAndResignationBenefits';
+// import schemas from current subsystem
+import { employeePayrollDetails, employeePayrollDetailsSchema } from './models/employeePayrollDetails.schema';
+import { employeePenalties, employeePenaltiesSchema } from './models/employeePenalties.schema';
+import { employeeSigningBonus, employeeSigningBonusSchema } from './models/EmployeeSigningBonus.schema';
+import { payrollRuns, payrollRunsSchema } from './models/payrollRuns.schema';
+import { paySlip, paySlipSchema } from './models/payslip.schema';
+// import payroll-tracking module
+import { PayrollTrackingModule } from '../payroll-tracking/payroll-tracking.module';
+// import payroll-configuration module
+import { PayrollConfigurationModule } from '../payroll-configuration/payroll-configuration.module';
+// import time-management module
+import { TimeManagementModule } from '../../time-management/time-management.module';
+// import employee module
+import { EmployeeModule } from '../../employee/modules/employee.module';
+// import leaves module
+import { LeavesModule } from '../../leaves/modules/leaves.module';
+
+@Module({
+  imports: [forwardRef(() => PayrollTrackingModule), PayrollConfigurationModule, TimeManagementModule, EmployeeModule, LeavesModule,
+  MongooseModule.forFeature([
+    { name: payrollRuns.name, schema: payrollRunsSchema },
+    { name: paySlip.name, schema: paySlipSchema },
+    { name: employeePayrollDetails.name, schema: employeePayrollDetailsSchema },
+    { name: employeeSigningBonus.name, schema: employeeSigningBonusSchema },
+    { name: terminationAndResignationBenefits.name, schema: terminationAndResignationBenefitsSchema },
+    { name: employeePenalties.name, schema: employeePenaltiesSchema },
+
+  ])],
+  controllers: [PayrollExecutionController],
+  providers: [PayrollExecutionService],
+  exports: [PayrollExecutionService]
+})
+export class PayrollExecutionModule { }

@@ -11,8 +11,7 @@ import {
   EmployeeQualification,
   EmployeeQualificationSchema,
 } from '../models/Employee/qualification.schema';
-import {
-  EmployeeProfileChangeRequest,
+import {EmployeeProfileChangeRequest,
   EmployeeProfileChangeRequestSchema
 } from "../models/Employee/ep-change-request.schema";
 import { OrganizationStructureModule } from './organization-structure.module';
