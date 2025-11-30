@@ -3,10 +3,10 @@ import { APP_GUARD } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
-import { PayrollProcessingModule} from './modules/payroll/processing/processing.module';
-import { PayrollConfigModule } from './modules/payroll/config-policy/payroll-config.module';   
+import { PayrollExecutionModule} from './modules/payroll/payroll-execution/payroll-execution.module';
+import { PayrollConfigurationModule } from './modules/payroll/payroll-configuration/payroll-configuration.module';
 import {TimeManagementModule} from "./modules/time-management/time-management.module";
-import { PayrollTrackingModule } from './modules/payroll/tracking/tracking.module';
+import { PayrollTrackingModule } from './modules/payroll/payroll-tracking/payroll-tracking.module';
 import { RecruitmentModule } from "./modules/recruitment/module/Recruitment.module";
 import { OrganizationStructureModule } from "./modules/employee/modules/organization-structure.module";
 import { EmployeeModule } from "./modules/employee/modules/employee.module";
@@ -30,8 +30,8 @@ import {MailModule} from "./modules/auth/email/Email-Module";
             inject: [ConfigService],
         }),
         AuthModule,
-        PayrollProcessingModule,
-        PayrollConfigModule,
+        PayrollExecutionModule,
+        PayrollConfigurationModule,
         PayrollTrackingModule,
         RecruitmentModule,
         EmployeeModule,
