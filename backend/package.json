@@ -31,6 +31,7 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
     "dotenv": "^17.2.3",
+    "express": "^5.1.0",
     "mongoose": "^8.20.0",
     "nest-winston": "^1.10.2",
     "passport": "^0.7.0",
@@ -45,12 +46,8 @@
     "@eslint/js": "^9.18.0",
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
-<<<<<<< HEAD
     "@nestjs/testing": "^11.1.9",
-=======
-    "@nestjs/testing": "^11.0.1",
     "@types/bcryptjs": "^2.4.6",
->>>>>>> PR-TRACKING
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.19.1",
