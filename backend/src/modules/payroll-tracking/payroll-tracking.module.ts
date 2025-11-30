@@ -2,6 +2,8 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { PayrollTrackingService } from './payroll-tracking.service';
+import { PayrollTrackingController } from './payroll-tracking.controller';
+import { IntegrationsModule } from '../integrations/integrations.module';
 
 // Corrected schema imports
 import { Employee, EmployeeSchema } from '../../schemas/payroll-tracking/employee.schema';
@@ -11,7 +13,6 @@ import { Claim, ClaimSchema } from '../../schemas/payroll-tracking/claim.schema'
 import { Dispute, DisputeSchema } from '../../schemas/payroll-tracking/dispute.schema';
 import { Refund, RefundSchema } from '../../schemas/payroll-tracking/refund.schema';
 import { AuditLog, AuditLogSchema } from '../../schemas/payroll-tracking/audit-log.schema';
-
 
 @Module({
   imports: [
@@ -24,7 +25,9 @@ import { AuditLog, AuditLogSchema } from '../../schemas/payroll-tracking/audit-l
       { name: Refund.name, schema: RefundSchema },
       { name: AuditLog.name, schema: AuditLogSchema },
     ]),
+    IntegrationsModule,
   ],
+  controllers: [PayrollTrackingController],
   providers: [PayrollTrackingService],
   exports: [MongooseModule, PayrollTrackingService],
 })
