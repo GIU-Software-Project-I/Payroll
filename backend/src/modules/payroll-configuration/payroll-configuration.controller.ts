@@ -21,6 +21,10 @@ import { CreatePayTypeDto } from './dto/create-pay-type.dto';
 import { UpdatePayTypeDto } from './dto/update-pay-type.dto';
 import { QueryPayTypeDto } from './dto/query-pay-type.dto';
 import { ApprovePayTypeDto } from './dto/approve-pay-type.dto';
+import { CreateAllowanceDto } from './dto/create-allowance.dto';
+import { UpdateAllowanceDto } from './dto/update-allowance.dto';
+import { QueryAllowanceDto } from './dto/query-allowance.dto';
+import { ApproveAllowanceDto } from './dto/approve-allowance.dto';
 
 @Controller('payroll-configuration')
 @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
@@ -200,4 +204,89 @@ export class PayrollConfigurationController {
       data: payType,
     };
   }
+  // ========== ALLOWANCE ENDPOINTS ==========
+@Post('allowances')
+@HttpCode(HttpStatus.CREATED)
+async createAllowance(@Body() createDto: CreateAllowanceDto) {
+  const allowance = await this.payrollConfigService.createAllowance(createDto);
+  return {
+    statusCode: HttpStatus.CREATED,
+    message: 'Allowance created successfully as DRAFT',
+    data: allowance,
+  };
+}
+
+@Get('allowances/all')
+@HttpCode(HttpStatus.OK)
+async findAllAllowances(@Query() queryDto: QueryAllowanceDto) {
+  const result = await this.payrollConfigService.findAllAllowances(queryDto);
+  return {
+    statusCode: HttpStatus.OK,
+    message: 'Allowances retrieved successfully',
+    ...result,
+  };
+}
+
+@Get('allowances/:id')
+@HttpCode(HttpStatus.OK)
+async findOneAllowance(@Param('id') id: string) {
+  const allowance = await this.payrollConfigService.findOneAllowance(id);
+  return {
+    statusCode: HttpStatus.OK,
+    message: 'Allowance retrieved successfully',
+    data: allowance,
+  };
+}
+
+@Patch('allowances/:id')
+@HttpCode(HttpStatus.OK)
+async updateAllowance(
+  @Param('id') id: string,
+  @Body() updateDto: UpdateAllowanceDto,
+) {
+  const allowance = await this.payrollConfigService.updateAllowance(id, updateDto);
+  return {
+    statusCode: HttpStatus.OK,
+    message: 'Allowance updated successfully',
+    data: allowance,
+  };
+}
+
+@Delete('allowances/:id')
+@HttpCode(HttpStatus.OK)
+async removeAllowance(@Param('id') id: string) {
+  const result = await this.payrollConfigService.removeAllowance(id);
+  return {
+    statusCode: HttpStatus.OK,
+    ...result,
+  };
+}
+
+@Patch('allowances/:id/approve')
+@HttpCode(HttpStatus.OK)
+async approveAllowance(
+  @Param('id') id: string,
+  @Body() approveDto: ApproveAllowanceDto,
+) {
+  const allowance = await this.payrollConfigService.approveAllowance(id, approveDto.approvedBy);
+  return {
+    statusCode: HttpStatus.OK,
+    message: 'Allowance approved successfully',
+    data: allowance,
+  };
+}
+
+@Patch('allowances/:id/reject')
+@HttpCode(HttpStatus.OK)
+async rejectAllowance(
+  @Param('id') id: string,
+  @Body() approveDto: ApproveAllowanceDto,
+) {
+  const allowance = await this.payrollConfigService.rejectAllowance(id, approveDto.approvedBy);
+  return {
+    statusCode: HttpStatus.OK,
+    message: 'Allowance rejected successfully',
+    data: allowance,
+  };
+}
 }

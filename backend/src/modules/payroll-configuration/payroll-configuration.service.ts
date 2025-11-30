@@ -3,12 +3,16 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { payrollPolicies, payrollPoliciesDocument } from '../../schemas/payroll-configuration/payrollPolicies.schema';
 import { payType, payTypeDocument } from '../../schemas/payroll-configuration/payType.schema';
+import { allowance, allowanceDocument } from '../../schemas/payroll-configuration/allowance.schema';
 import { CreatePayrollPolicyDto } from './dto/create-payroll-policy.dto';
 import { UpdatePayrollPolicyDto } from './dto/update-payroll-policy.dto';
 import { QueryPayrollPolicyDto } from './dto/query-payroll-policy.dto';
 import { CreatePayTypeDto } from './dto/create-pay-type.dto';
 import { UpdatePayTypeDto } from './dto/update-pay-type.dto';
 import { QueryPayTypeDto } from './dto/query-pay-type.dto';
+import { CreateAllowanceDto } from './dto/create-allowance.dto';
+import { UpdateAllowanceDto } from './dto/update-allowance.dto';
+import { QueryAllowanceDto } from './dto/query-allowance.dto';
 import { ConfigStatus } from '../../enums/payroll-configuration/payroll-configuration-enums';
 
 
@@ -19,6 +23,8 @@ export class PayrollConfigurationService {
     private payrollPolicyModel: Model<payrollPoliciesDocument>,
     @InjectModel(payType.name)
     private payTypeModel: Model<payTypeDocument>,
+    @InjectModel(allowance.name)
+    private allowanceModel: Model<allowanceDocument>,
   ) {}
  // ========== PAYROLL POLICIES METHODS ==========
   async create(createDto: CreatePayrollPolicyDto): Promise<payrollPolicies> {
@@ -298,4 +304,138 @@ async createPayType(createDto: CreatePayTypeDto): Promise<payType> {
       .exec();
     return rejectedPayType as payType;
   }
+  // ========== ALLOWANCE METHODS ==========
+async createAllowance(createDto: CreateAllowanceDto): Promise<allowance> {
+  // Check if allowance with same name already exists
+  const existingAllowance = await this.allowanceModel.findOne({ 
+    name: createDto.name 
+  }).exec();
+  
+  if (existingAllowance) {
+    throw new BadRequestException(`Allowance '${createDto.name}' already exists`);
+  }
+
+  const newAllowance = new this.allowanceModel({
+    ...createDto,
+    status: ConfigStatus.DRAFT,
+  });
+  
+  return await newAllowance.save();
+}
+
+async findAllAllowances(queryDto: QueryAllowanceDto): Promise<{
+  data: allowance[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}> {
+  const { page = 1, limit = 10, search, status, createdByEmployeeId } = queryDto;
+  const query: any = {};
+
+  if (status) query.status = status;
+  if (createdByEmployeeId) query.createdByEmployeeId = createdByEmployeeId;
+
+  if (search) {
+    query.$or = [
+      { name: { $regex: search, $options: 'i' } },
+    ];
+  }
+
+  const skip = (page - 1) * limit;
+  const [data, total] = await Promise.all([
+    this.allowanceModel.find(query).skip(skip).limit(limit).sort({ createdAt: -1 }).exec(),
+    this.allowanceModel.countDocuments(query).exec(),
+  ]);
+
+  return {
+    data,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
+  };
+}
+
+async findOneAllowance(id: string): Promise<allowance> {
+  const allowance = await this.allowanceModel.findById(id).exec();
+  if (!allowance) {
+    throw new NotFoundException(`Allowance with ID ${id} not found`);
+  }
+  return allowance;
+}
+
+async updateAllowance(id: string, updateDto: UpdateAllowanceDto): Promise<allowance> {
+  const allowance = await this.findOneAllowance(id);
+
+  if (allowance.status !== ConfigStatus.DRAFT) {
+    throw new ForbiddenException(
+      `Cannot update allowance with status '${allowance.status}'. Only DRAFT allowances can be edited.`
+    );
+  }
+
+  const updatedAllowance = await this.allowanceModel
+    .findByIdAndUpdate(id, updateDto, { new: true })
+    .exec();
+  return updatedAllowance as allowance;
+}
+
+async removeAllowance(id: string): Promise<{ message: string }> {
+  const allowance = await this.findOneAllowance(id);
+
+  if (allowance.status !== ConfigStatus.DRAFT) {
+    throw new ForbiddenException(
+      `Cannot delete allowance with status '${allowance.status}'. Only DRAFT allowances can be deleted.`
+    );
+  }
+
+  await this.allowanceModel.findByIdAndDelete(id).exec();
+  return { message: `Allowance '${allowance.name}' has been successfully deleted` };
+}
+
+async approveAllowance(id: string, approvedBy: string): Promise<allowance> {
+  const allowance = await this.findOneAllowance(id);
+
+  if (allowance.status !== ConfigStatus.DRAFT) {
+    throw new BadRequestException(
+      `Cannot approve allowance with status '${allowance.status}'. Only DRAFT allowances can be approved.`
+    );
+  }
+
+  const approvedAllowance = await this.allowanceModel
+    .findByIdAndUpdate(
+      id,
+      {
+        status: ConfigStatus.APPROVED,
+        approvedBy,
+        approvedAt: new Date(),
+      },
+      { new: true }
+    )
+    .exec();
+  return approvedAllowance as allowance;
+}
+
+async rejectAllowance(id: string, approvedBy: string): Promise<allowance> {
+  const allowance = await this.findOneAllowance(id);
+
+  if (allowance.status !== ConfigStatus.DRAFT) {
+    throw new BadRequestException(
+      `Cannot reject allowance with status '${allowance.status}'. Only DRAFT allowances can be rejected.`
+    );
+  }
+
+  const rejectedAllowance = await this.allowanceModel
+    .findByIdAndUpdate(
+      id,
+      {
+        status: ConfigStatus.REJECTED,
+        approvedBy,
+        approvedAt: new Date(),
+      },
+      { new: true }
+    )
+    .exec();
+  return rejectedAllowance as allowance;
+}
 }
