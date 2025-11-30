@@ -17,6 +17,10 @@ import { CreatePayrollPolicyDto } from './dto/create-payroll-policy.dto';
 import { UpdatePayrollPolicyDto } from './dto/update-payroll-policy.dto';
 import { QueryPayrollPolicyDto } from './dto/query-payroll-policy.dto';
 import { ApprovePayrollPolicyDto } from './dto/approve-payroll-policy.dto';
+import { CreatePayTypeDto } from './dto/create-pay-type.dto';
+import { UpdatePayTypeDto } from './dto/update-pay-type.dto';
+import { QueryPayTypeDto } from './dto/query-pay-type.dto';
+import { ApprovePayTypeDto } from './dto/approve-pay-type.dto';
 
 @Controller('payroll-configuration')
 @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
@@ -25,6 +29,7 @@ export class PayrollConfigurationController {
     private readonly payrollConfigService: PayrollConfigurationService,
   ) {}
 
+  // ========== PAYROLL POLICIES ENDPOINTS (ORIGINAL - UNCHANGED) ==========
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() createDto: CreatePayrollPolicyDto) {
@@ -107,6 +112,92 @@ export class PayrollConfigurationController {
       statusCode: HttpStatus.OK,
       message: 'Payroll policy rejected successfully',
       data: policy,
+    };
+  }
+
+  // ========== PAY TYPES ENDPOINTS (ADDED WITH EXPLICIT PATHS) ==========
+  @Post('pay-types')
+  @HttpCode(HttpStatus.CREATED)
+  async createPayType(@Body() createDto: CreatePayTypeDto) {
+    const payType = await this.payrollConfigService.createPayType(createDto);
+    return {
+      statusCode: HttpStatus.CREATED,
+      message: 'Pay type created successfully as DRAFT',
+      data: payType,
+    };
+  }
+
+  @Get('pay-types/all')
+  @HttpCode(HttpStatus.OK)
+  async findAllPayTypes(@Query() queryDto: QueryPayTypeDto) {
+    const result = await this.payrollConfigService.findAllPayTypes(queryDto);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Pay types retrieved successfully',
+      ...result,
+    };
+  }
+
+  @Get('pay-types/:id')
+  @HttpCode(HttpStatus.OK)
+  async findOnePayType(@Param('id') id: string) {
+    const payType = await this.payrollConfigService.findOnePayType(id);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Pay type retrieved successfully',
+      data: payType,
+    };
+  }
+
+  @Patch('pay-types/:id')
+  @HttpCode(HttpStatus.OK)
+  async updatePayType(
+    @Param('id') id: string,
+    @Body() updateDto: UpdatePayTypeDto,
+  ) {
+    const payType = await this.payrollConfigService.updatePayType(id, updateDto);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Pay type updated successfully',
+      data: payType,
+    };
+  }
+
+  @Delete('pay-types/:id')
+  @HttpCode(HttpStatus.OK)
+  async removePayType(@Param('id') id: string) {
+    const result = await this.payrollConfigService.removePayType(id);
+    return {
+      statusCode: HttpStatus.OK,
+      ...result,
+    };
+  }
+
+  @Patch('pay-types/:id/approve')
+  @HttpCode(HttpStatus.OK)
+  async approvePayType(
+    @Param('id') id: string,
+    @Body() approveDto: ApprovePayTypeDto,
+  ) {
+    const payType = await this.payrollConfigService.approvePayType(id, approveDto.approvedBy);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Pay type approved successfully',
+      data: payType,
+    };
+  }
+
+  @Patch('pay-types/:id/reject')
+  @HttpCode(HttpStatus.OK)
+  async rejectPayType(
+    @Param('id') id: string,
+    @Body() approveDto: ApprovePayTypeDto,
+  ) {
+    const payType = await this.payrollConfigService.rejectPayType(id, approveDto.approvedBy);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Pay type rejected successfully',
+      data: payType,
     };
   }
 }
