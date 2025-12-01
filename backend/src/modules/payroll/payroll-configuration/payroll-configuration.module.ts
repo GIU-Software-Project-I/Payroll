@@ -1,9 +1,13 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-// import controllers and services of the current system
+import { ScheduleModule } from '@nestjs/schedule';
+
 import { PayrollConfigurationController } from './controllers/payroll-configuration.controller';
 import { PayrollConfigurationService } from './services/payroll-configuration.service';
-// import all schemas of the system
+import { EmployeeModule } from '../../employee/modules/employee.module';
+import { OrganizationStructureModule } from '../../employee/modules/organization-structure.module';
+import { RecruitmentModule } from '../../recruitment/module/Recruitment.module';
+
 import { CompanyWideSettings, CompanyWideSettingsSchema } from './models/CompanyWideSettings.schema';
 import { allowance, allowanceSchema } from './models/allowance.schema';
 import { insuranceBrackets, insuranceBracketsSchema } from './models/insuranceBrackets.schema';
@@ -12,10 +16,16 @@ import { payType, payTypeSchema } from './models/payType.schema';
 import { signingBonus, signingBonusSchema } from './models/signingBonus.schema';
 import { taxRules, taxRulesSchema } from './models/taxRules.schema';
 import { terminationAndResignationBenefits, terminationAndResignationBenefitsSchema } from './models/terminationAndResignationBenefits';
-import { payGrade } from './models/payGrades.schema';
+import { payGrade, payGradeSchema } from './models/payGrades.schema';
+
+
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
+    EmployeeModule,
+    OrganizationStructureModule,
+    RecruitmentModule,
     MongooseModule.forFeature([
       { name: allowance.name, schema: allowanceSchema },
       { name: signingBonus.name, schema: signingBonusSchema },
@@ -25,11 +35,11 @@ import { payGrade } from './models/payGrades.schema';
       { name: payrollPolicies.name, schema: payrollPoliciesSchema },
       { name: terminationAndResignationBenefits.name, schema: terminationAndResignationBenefitsSchema },
       { name: CompanyWideSettings.name, schema: CompanyWideSettingsSchema },
-      { name: payGrade.name, schema: payTypeSchema }
+      { name: payGrade.name, schema: payGradeSchema }
     ]),
   ],
   controllers: [PayrollConfigurationController],
-  providers: [PayrollConfigurationService],
-  exports:[PayrollConfigurationService]
+  providers: [ PayrollConfigurationService ],
+  exports: [ PayrollConfigurationService ],
 })
 export class PayrollConfigurationModule { }
