@@ -5,6 +5,7 @@ import { PayrollExecutionController } from './controllers/payroll-execution.cont
 import { PayrollExecutionService } from './services/payroll-execution.service';
 // import schemas from payroll-configuration subsystem
 import { terminationAndResignationBenefits, terminationAndResignationBenefitsSchema } from '../payroll-configuration/models/terminationAndResignationBenefits';
+import { signingBonus, signingBonusSchema } from '../payroll-configuration/models/signingBonus.schema';
 // import schemas from current subsystem
 import { employeePayrollDetails, employeePayrollDetailsSchema } from './models/employeePayrollDetails.schema';
 import { employeePenalties, employeePenaltiesSchema } from './models/employeePenalties.schema';
@@ -21,15 +22,18 @@ import { TimeManagementModule } from '../../time-management/time-management.modu
 import { EmployeeModule } from '../../employee/modules/employee.module';
 // import leaves module
 import { LeavesModule } from '../../leaves/modules/leaves.module';
+// import auth module for guards/services
+import { AuthModule } from '../../auth/module/auth-module';
 
 @Module({
-  imports: [forwardRef(() => PayrollTrackingModule), PayrollConfigurationModule, TimeManagementModule, EmployeeModule, LeavesModule,
+  imports: [forwardRef(() => PayrollTrackingModule), PayrollConfigurationModule, TimeManagementModule, EmployeeModule, LeavesModule, AuthModule,
   MongooseModule.forFeature([
     { name: payrollRuns.name, schema: payrollRunsSchema },
     { name: paySlip.name, schema: paySlipSchema },
     { name: employeePayrollDetails.name, schema: employeePayrollDetailsSchema },
     { name: employeeSigningBonus.name, schema: employeeSigningBonusSchema },
     { name: terminationAndResignationBenefits.name, schema: terminationAndResignationBenefitsSchema },
+    { name: signingBonus.name, schema: signingBonusSchema },
     { name: employeePenalties.name, schema: employeePenaltiesSchema },
 
   ])],

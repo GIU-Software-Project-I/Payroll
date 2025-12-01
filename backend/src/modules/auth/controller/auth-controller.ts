@@ -10,15 +10,20 @@ import { SystemRole } from '../../employee/enums/employee-profile.enums';
 import {RegisterEmployeeDto} from "../dto/RegisterEmployee.dto";
 import {RegisterCandidateDto} from "../dto/RegisterCandidate.dto";
 import {LoginDto} from "../dto/Login";
+import { ApiTags, ApiBody, ApiOperation, ApiConsumes } from '@nestjs/swagger';
 
 
 @Controller('auth')
+@ApiTags('Auth')
 export class AuthController {
     constructor(private readonly auth: AuthService) {}
 
     @UseGuards(AuthenticationGuard, AuthorizationGuard)
     @Roles(SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     @Post('register-employee')
+    @ApiConsumes('application/json')
+    @ApiBody({ type: RegisterEmployeeDto })
+    @ApiOperation({ summary: 'Register a new employee (admin only)' })
     async registerEmployee(@Body() dto: RegisterEmployeeDto) {
         try {
             return await this.auth.registerEmployee(dto);
@@ -29,6 +34,9 @@ export class AuthController {
 
     @Public()
     @Post('register-candidate')
+    @ApiConsumes('application/json')
+    @ApiBody({ type: RegisterCandidateDto })
+    @ApiOperation({ summary: 'Register a new candidate (public)' })
     async registerCandidate(@Body() dto: RegisterCandidateDto) {
         try {
             return await this.auth.registerCandidate(dto);
@@ -40,16 +48,24 @@ export class AuthController {
     @Public()
     @HttpCode(HttpStatus.OK)
     @Post('login')
+    @ApiConsumes('application/json')
+    @ApiBody({ type: LoginDto })
+    @ApiOperation({ summary: 'Login (returns cookie-set JWT)' })
     async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
         const result = await this.auth.login(dto.email, dto.password);
         const cookie = await this.auth.getCookieWithJwtToken(result.access_token);
         res.setHeader('Set-Cookie', cookie);
-        return {
+        const responseBody: any = {
             message: 'Login successful',
             user: result.user,
             userType: result.userType,
             expiresIn: '7d'
         };
+        // For local testing convenience, optionally expose the raw access token in the response body
+        if (process.env.EXPOSE_JWT_ON_LOGIN === 'true' || process.env.NODE_ENV !== 'production') {
+            responseBody.access_token = result.access_token;
+        }
+        return responseBody;
     }
 
     @UseGuards(AuthenticationGuard)

@@ -1,0 +1,105 @@
+### Swagger-based REST client for local testing (Rest Client / .http)
+# Usage: install REST Client extension (VSCode), then open this file and click "Send Request" on each request.
+
+# 1) Register Candidate (public)
+POST http://localhost:8000/auth/register-candidate
+Content-Type: application/json
+
+{
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "nationalId": "ID123456789",
+  "personalEmail": "jane.doe@example.com",
+  "password": "s3cureP@ss",
+  "mobilePhone": "+250788123456",
+  "middleName": "A."
+}
+
+###
+# 2) Login (public) — this will set a cookie; response includes user info.
+POST http://localhost:8000/auth/login
+Content-Type: application/json
+
+{
+  "email": "payroll.spec@example.com",
+  "password": "Payroll@1234"
+}
+
+# If your REST client doesn't handle cookies automatically, copy the access_token from the Set-Cookie response and use the Authorization header for subsequent requests:
+# Example header: Authorization: Bearer <access_token>
+
+###
+# 3) Example: List signing bonuses (optional status query) — requires auth
+GET http://localhost:8000/payroll-execution/signing-bonuses?status=pending
+Accept: application/json
+# If needed, uncomment one of the auth methods below
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTJkMDNjZDk4NGM5Y2FkZDZjNTViNDMiLCJlbWFpbCI6InBheXJvbGwuc3BlY0BleGFtcGxlLmNvbSIsInJvbGVzIjpbIlBheXJvbGwgU3BlY2lhbGlzdCJdLCJ1c2VyVHlwZSI6ImVtcGxveWVlIiwiaWF0IjoxNzY0NTU4OTkzLCJleHAiOjE3NjUxNjM3OTN9.-KqNawlAREw3CvydZYCYBdAV6AKV-GLStfQR8nN39Po
+
+###
+# 2b) Register Employee (admin only) — example body. Use Authorization: Bearer <ADMIN_TOKEN>
+POST http://localhost:8000/auth/register-employee
+Content-Type: application/json
+# Authorization: Bearer {{ACCESS_TOKEN}}
+
+{
+  "firstName": "Payroll",
+  "lastName": "Spec",
+  "nationalId": "EMP-PS-0001",
+  "workEmail": "ps-via-api@example.com",
+  "password": "Payroll@1234",
+  "employeeNumber": "PS-API-0001",
+  "dateOfHire": "2025-12-01T00:00:00.000Z",
+  "roles": ["Payroll Specialist"]
+}
+
+###
+# 4) Get single signing bonus by id (set `{{BONUS_ID}}` using the fetch script or one of the IDs below)
+GET http://localhost:8000/payroll-execution/signing-bonuses/{{BONUS_ID}}
+Accept: application/json
+Authorization: Bearer {{ACCESS_TOKEN}}
+
+
+
+###
+# 5) Edit signing bonus (JSON body) — requires PAYROLL_SPECIALIST role
+POST http://localhost:8000/payroll-execution/signing-bonuses/{{BONUS_ID}}/edit
+Content-Type: application/json
+Authorization: Bearer {{ACCESS_TOKEN}}
+
+{
+  "amount": 1200,
+  "paymentDate": "2025-12-15T00:00:00.000Z",
+  "status": "pending",
+  "note": "Adjusting amount per approval"
+}
+
+###
+# 6) Approve single signing bonus
+POST http://localhost:8000/payroll-execution/signing-bonuses/{{BONUS_ID}}/approve
+Content-Type: application/json
+# Authorization: Bearer {{ACCESS_TOKEN}}
+
+###
+# 7) Initiate payroll run (example body)
+POST http://localhost:8000/payroll-execution/initiate
+Content-Type: application/json
+# Authorization: Bearer {{ACCESS_TOKEN}}
+
+{
+  "periodStart": "2025-11-01",
+  "periodEnd": "2025-11-30",
+  "name": "November 2025 payroll",
+  "notes": "Test run"
+}
+
+###
+# 8) Fetch payroll draft by id
+GET http://localhost:8000/payroll-execution/draft/{{DRAFT_ID}}
+Accept: application/json
+# Authorization: Bearer {{ACCESS_TOKEN}}
+
+###
+# Tips:
+# - Replace {{ACCESS_TOKEN}} with the JWT value (if Swagger login sets cookie only, extract token from Set-Cookie header).
+# - Replace {{BONUS_ID}} and {{DRAFT_ID}} with real ids from previous responses.
+# - If the server uses cookies and your REST client supports them, the cookie from /auth/login will be automatically sent. Otherwise use the Authorization header.
