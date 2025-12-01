@@ -1,3 +1,8 @@
+
+
+// ========== End of Lama's Work ==========
+
+// ========== Mano's Work ==========
 import {
   Controller,
   Get,
@@ -23,11 +28,117 @@ import { UpdatePayrollPolicyDto } from '../dto/update-payrollpolicy.dto';
 import { UpdateSigningBonusDto } from '../dto/update-signingbonus.dto';
 import { UpdateTerminationBenefitDto } from '../dto/update-terminationbenefit.dto';
 
+import { BadRequestException } from '@nestjs/common';
+import { CreateTaxRuleDto } from '../dto/create-tax-rule.dto';
+
+import { ApproveTaxRuleDto } from '../dto/approve-tax-rule.dto';
+import { CreateInsuranceDto } from '../dto/create-insurance.dto';
+import { UpdateInsuranceDto } from '../dto/update-insurance.dto';
+import { ApproveInsuranceDto } from '../dto/approve-insurance.dto';
+
 @Controller('payroll-configuration')
 export class PayrollConfigurationController {
   constructor(
     private readonly payrollConfigurationService: PayrollConfigurationService,
   ) {}
+  
+  // ===== TAX RULES =====
+  @Post('tax-rules')
+  @HttpCode(HttpStatus.CREATED)
+  createTaxRule(@Body() dto: CreateTaxRuleDto) {
+    return this.payrollConfigurationService.createTaxRule(dto);
+  }
+
+  @Get('tax-rules')
+  @HttpCode(HttpStatus.OK)
+  getTaxRules() {
+    return this.payrollConfigurationService.getTaxRules();
+  }
+
+  @Get('tax-rules/:id')
+  @HttpCode(HttpStatus.OK)
+  getTaxRuleById(@Param('id') id: string) {
+    return this.payrollConfigurationService.getTaxRuleById(id);
+  }
+
+  @Patch('tax-rules/:id')
+  @HttpCode(HttpStatus.OK)
+  updateLegalRule(@Param('id') id: string, @Body() dto: UpdateTaxRuleDto) {
+    return this.payrollConfigurationService.updateLegalRule(id, dto);
+  }
+
+
+
+  // ===== INSURANCE BRACKETS =====
+  @Post('insurance-brackets')
+  @HttpCode(HttpStatus.CREATED)
+  createInsurance(@Body() dto: CreateInsuranceDto) {
+    return this.payrollConfigurationService.createInsuranceBracket(dto);
+  }
+
+  @Get('insurance-brackets')
+  @HttpCode(HttpStatus.OK)
+  getInsuranceBrackets() {
+    return this.payrollConfigurationService.getInsuranceBrackets();
+  }
+
+  @Get('insurance-brackets/:id')
+  @HttpCode(HttpStatus.OK)
+  getInsuranceBracketById(@Param('id') id: string) {
+    return this.payrollConfigurationService.getInsuranceBracketById(id);
+  }
+
+  @Patch('insurance-brackets/:id')
+  @HttpCode(HttpStatus.OK)
+  updateInsurance(@Param('id') id: string, @Body() dto: UpdateInsuranceDto) {
+    return this.payrollConfigurationService.updateInsuranceBracket(id, dto);
+  }
+
+  @Patch('insurance-brackets/:id/approve')
+  @HttpCode(HttpStatus.OK)
+  approveInsurance(@Param('id') id: string, @Body() dto: ApproveInsuranceDto) {
+    return this.payrollConfigurationService.approveInsuranceBracket(id, dto);
+  }
+
+  @Delete('insurance-brackets/:id')
+  @HttpCode(HttpStatus.OK)
+  deleteInsurance(@Param('id') id: string) {
+    return this.payrollConfigurationService.deleteInsuranceBracket(id);
+  }
+
+
+// ===== INSURANCE BRACKETS =====
+
+@Patch('insurance-brackets/:id/reject')
+@HttpCode(HttpStatus.OK)
+rejectInsurance(@Param('id') id: string, @Body() dto: ApproveInsuranceDto) {
+  return this.payrollConfigurationService.rejectInsuranceBracket(id, dto);
+}
+
+  // ===== CONTRIBUTION CALCULATION =====
+  /**
+   * Calculate employee and employer contributions for a given insurance bracket and salary.
+   * Query parameters:
+   *   - salary: number
+   */
+  @Get('insurance-brackets/:id/calculate-contributions')
+  @HttpCode(HttpStatus.OK)
+  calculateContributions(
+    @Param('id') id: string,
+    @Query('salary') salary: string,
+  ) {
+    const numericSalary = Number(salary);
+    if (isNaN(numericSalary) || numericSalary < 0) {
+      throw new BadRequestException('Salary must be a positive number');
+    }
+    return this.payrollConfigurationService.getInsuranceBracketById(id).then((bracket) => {
+      const result = this.payrollConfigurationService.calculateContributions(bracket, numericSalary);
+      if (!result) {
+        throw new BadRequestException('Salary does not fall within this insurance bracket');
+      }
+      return result;
+    });
+  }
 
   // ==================== ALLOWANCE ENDPOINTS ====================
 
@@ -497,4 +608,5 @@ export class PayrollConfigurationController {
   deleteBackup(@Param('filename') filename: string) {
     return this.payrollConfigurationService.deleteBackup(filename);
   }
+
 }

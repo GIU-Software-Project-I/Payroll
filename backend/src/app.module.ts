@@ -43,9 +43,9 @@ import {AuthenticationGuard} from "./modules/auth/guards/authentication-guard";
 
 
     ],
-    providers: [
-        { provide: APP_GUARD, useClass: AuthenticationGuard },
-        { provide: APP_GUARD, useClass: AuthorizationGuard },
-    ],
+    // providers: [
+    //     { provide: APP_GUARD, useClass: AuthenticationGuard },
+    //     { provide: APP_GUARD, useClass: AuthorizationGuard },
+    // ],
 })
 export class AppModule {}

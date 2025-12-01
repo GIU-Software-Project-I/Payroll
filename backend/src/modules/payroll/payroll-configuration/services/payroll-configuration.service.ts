@@ -1,22 +1,26 @@
+
 import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { ConfigStatus } from '../enums/payroll-configuration-enums';
-import { allowance } from '../models/allowance.schema';
-import { payType } from '../models/payType.schema';
-import { payGrade } from '../models/payGrades.schema';
-import { taxRules } from '../models/taxRules.schema';
-import { insuranceBrackets } from '../models/insuranceBrackets.schema';
+import { allowance, allowanceDocument } from '../models/allowance.schema';
+import { payType, payTypeDocument } from '../models/payType.schema';
+import { payGrade, payGradeDocument } from '../models/payGrades.schema';
+import { taxRules, taxRulesDocument } from '../models/taxRules.schema';
+import { insuranceBrackets, insuranceBracketsDocument } from '../models/insuranceBrackets.schema';
 import { payrollPolicies } from '../models/payrollPolicies.schema';
 import { signingBonus } from '../models/signingBonus.schema';
 import { terminationAndResignationBenefits } from '../models/terminationAndResignationBenefits';
 import { CompanyWideSettings } from '../models/CompanyWideSettings.schema';
 import { UpdateCompanyWideSettingsDto } from '../dto/update-company-settings.dto';
 import { ApproveConfigDto } from '../dto/approve-config.dto';
+import { ApproveInsuranceDto } from '../dto/approve-insurance.dto';
+import { ApproveTaxRuleDto } from '../dto/approve-tax-rule.dto';
 import { UpdateAllowanceDto } from '../dto/update-allowance.dto';
 import { UpdatePayTypeDto } from '../dto/update-paytype.dto';
 import { CreatePayGradeDto } from '../dto/create-paygrade.dto';
@@ -25,19 +29,21 @@ import { UpdateTaxRuleDto } from '../dto/update-taxrule.dto';
 import { UpdatePayrollPolicyDto } from '../dto/update-payrollpolicy.dto';
 import { UpdateSigningBonusDto } from '../dto/update-signingbonus.dto';
 import { UpdateTerminationBenefitDto } from '../dto/update-terminationbenefit.dto';
+import { CreateInsuranceDto } from '../dto/create-insurance.dto';
+import { CreateTaxRuleDto } from '../dto/create-tax-rule.dto';
+import { UpdateInsuranceDto } from '../dto/update-insurance.dto';
 import { OrganizationStructureService } from '../../../employee/Services/Organization-Structure.Service';
 import { OnBoardingService } from '../../../recruitment/services/OnBoarding/initial-OnBoarding.service';
 import { OffBoardingService } from '../../../recruitment/services/OffBoarding/initial-OffBoarding.service';
-
 @Injectable()
 export class PayrollConfigurationService {
   constructor(
-    @InjectModel(allowance.name) private allowanceModel: Model<allowance>,
-    @InjectModel(payType.name) private payTypeModel: Model<payType>,
-    @InjectModel(payGrade.name) private payGradeModel: Model<payGrade>,
-    @InjectModel(taxRules.name) private taxRulesModel: Model<taxRules>,
+    @InjectModel(allowance.name) private allowanceModel: Model<allowanceDocument>,
+    @InjectModel(payType.name) private payTypeModel: Model<payTypeDocument>,
+    @InjectModel(payGrade.name) private payGradeModel: Model<payGradeDocument>,
+    @InjectModel(taxRules.name) private taxRulesModel: Model<taxRulesDocument>,
     @InjectModel(insuranceBrackets.name)
-    private insuranceBracketsModel: Model<insuranceBrackets>,
+    private insuranceBracketsModel: Model<insuranceBracketsDocument>,
     @InjectModel(payrollPolicies.name)
     private payrollPoliciesModel: Model<payrollPolicies>,
     @InjectModel(signingBonus.name)
@@ -51,6 +57,99 @@ export class PayrollConfigurationService {
     private readonly offboardingService: OffBoardingService,
   ) {}
 
+  async createTaxRule(dto: CreateTaxRuleDto) {
+    const exists = await this.taxRulesModel.findOne({ name: dto.name }).exec();
+    if (exists) throw new BadRequestException(`Tax rule '${dto.name}' already exists`);
+    const taxRule = new this.taxRulesModel({ ...dto, status: ConfigStatus.DRAFT });
+    return await taxRule.save();
+  }
+
+  async getTaxRules() {
+    return await this.taxRulesModel.find().sort({ createdAt: -1 }).exec();
+  }
+
+  async getTaxRuleById(id: string) {
+    const taxRule = await this.taxRulesModel.findById(id).exec();
+    if (!taxRule) throw new NotFoundException(`Tax rule with ID ${id} not found`);
+    return taxRule;
+  }
+
+
+
+  async updateLegalRule(id: string, dto: UpdateTaxRuleDto) {
+    const rule = await this.taxRulesModel.findById(id).exec();
+    if (!rule) throw new NotFoundException('Legal rule not found');
+    if (rule.status !== ConfigStatus.DRAFT)
+      throw new ForbiddenException('Only DRAFT rules can be edited');
+
+    return await this.taxRulesModel.findByIdAndUpdate(
+      id,
+      { $set: dto },
+      { new: true, runValidators: false },
+    );
+  }
+
+ 
+
+  // ===== INSURANCE BRACKETS =====
+
+  async createInsuranceBracket(dto: CreateInsuranceDto) {
+    const exists = await this.insuranceBracketsModel.findOne({ name: dto.name }).exec();
+    if (exists) throw new BadRequestException(`Insurance bracket '${dto.name}' already exists`);
+    const bracket = new this.insuranceBracketsModel({ ...dto, status: ConfigStatus.DRAFT });
+    return await bracket.save();
+  }
+
+  async getInsuranceBrackets() {
+    return await this.insuranceBracketsModel.find().sort({ createdAt: -1 }).exec();
+  }
+
+  async getInsuranceBracketById(id: string) {
+    const bracket = await this.insuranceBracketsModel.findById(id).exec();
+    if (!bracket) throw new NotFoundException(`Insurance bracket with ID ${id} not found`);
+    return bracket;
+  }
+
+  async updateInsuranceBracket(id: string, dto: UpdateInsuranceDto) {
+    const bracket = await this.insuranceBracketsModel.findById(id).exec();
+    if (!bracket) throw new NotFoundException('Insurance bracket not found');
+    if (bracket.status !== ConfigStatus.DRAFT)
+      throw new ForbiddenException('Only DRAFT brackets can be edited');
+
+    return await this.insuranceBracketsModel.findByIdAndUpdate(
+      id,
+      { $set: dto },
+      { new: true, runValidators: false },
+    );
+  }
+
+
+
+  async deleteInsuranceBracket(id: string) {
+    const bracket = await this.insuranceBracketsModel.findById(id).exec();
+    if (!bracket) throw new NotFoundException(`Insurance bracket with ID ${id} not found`);
+    if (bracket.status !== ConfigStatus.DRAFT)
+      throw new ForbiddenException('Only DRAFT brackets can be deleted');
+
+    await this.insuranceBracketsModel.findByIdAndDelete(id).exec();
+    return { message: `Insurance bracket '${bracket.name}' successfully deleted` };
+  }
+
+
+
+
+  // ===== HELPER METHOD FOR CONTRIBUTION CALCULATION =====
+
+  /**
+   * Calculate employee and employer contributions based on salary and bracket rates.
+   * Returns null if salary does not fall into bracket range.
+   */
+  calculateContributions(bracket: insuranceBrackets, salary: number) {
+    if (salary < bracket.minSalary || salary > bracket.maxSalary) return null;
+    const employeeContribution = (salary * bracket.employeeRate) / 100;
+    const employerContribution = (salary * bracket.employerRate) / 100;
+    return { employeeContribution, employerContribution };
+  }
   // ==================== ALLOWANCE ====================
 
   /**
@@ -950,4 +1049,6 @@ export class PayrollConfigurationService {
       );
     }
   }
+
+
 }
