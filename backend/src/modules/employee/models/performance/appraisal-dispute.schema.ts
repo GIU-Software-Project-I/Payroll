@@ -2,6 +2,8 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 import { AppraisalDisputeStatus } from '../../enums/performance.enums';
 
+import { AppraisalAssignment } from './appraisal-assignment.schema';
+import { AppraisalCycle } from './appraisal-cycle.schema';
 
 export type AppraisalDisputeDocument = HydratedDocument<AppraisalDispute>;
 

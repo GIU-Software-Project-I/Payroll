@@ -15,7 +15,7 @@ import { LeavesModule } from "./modules/leaves/modules/leaves.module";
 import { AuthModule } from "./modules/auth/module/auth-module";
 import {AuthorizationGuard} from "./modules/auth/guards/authorization-guard";
 import {AuthenticationGuard} from "./modules/auth/guards/authentication-guard";
-import {MailModule} from "./modules/auth/email/Email-Module";
+
 
 
 @Module({
@@ -37,7 +37,7 @@ import {MailModule} from "./modules/auth/email/Email-Module";
         EmployeeModule,
         OrganizationStructureModule,
         PerformanceModule,
-MailModule,
+
         TimeManagementModule,
         LeavesModule,
 

@@ -84,3 +84,102 @@ export class GetMonthlyAttendanceDto {
     month: number;
     year: number;
 }
+<<<<<<< HEAD
+=======
+
+// Attendance Review and Correction DTOs
+export class ReviewAttendanceDto {
+    @ApiProperty({
+        description: 'Attendance Record ID to review',
+        example: '674c1a1b2c3d4e5f6a7b8c9d'
+    })
+    attendanceRecordId: string;
+}
+
+export class CorrectAttendanceDto {
+    @ApiProperty({
+        description: 'Attendance Record ID to correct',
+        example: '674c1a1b2c3d4e5f6a7b8c9d',
+        default: '674c1a1b2c3d4e5f6a7b8c9d'
+    })
+    attendanceRecordId: string = '674c1a1b2c3d4e5f6a7b8c9d';
+
+    @ApiPropertyOptional({
+        description: 'Corrected punches array - Full replacement (use this OR individual add/remove operations)',
+        type: [Object],
+        example: [
+            { type: 'IN', time: '01/12/2025 09:00' },
+            { type: 'OUT', time: '01/12/2025 17:00' }
+        ]
+    })
+    correctedPunches?: Array<{ type: PunchType; time: Date | string }>;
+
+    @ApiPropertyOptional({
+        description: 'Add missing punch IN (format: dd/mm/yyyy hh:mm)',
+        type: String,
+        example: '01/12/2025 09:00'
+    })
+    addPunchIn?: string;
+
+    @ApiPropertyOptional({
+        description: 'Add missing punch OUT (format: dd/mm/yyyy hh:mm)',
+        type: String,
+        example: '01/12/2025 17:00',
+        default: '01/12/2025 17:00'
+    })
+    addPunchOut?: string = '01/12/2025 17:00';
+
+    @ApiPropertyOptional({
+        description: 'Remove punch by index (0-based)',
+        type: Number,
+        example: 2
+    })
+    removePunchIndex?: number;
+
+    @ApiProperty({
+        description: 'Reason for correction (REQUIRED - must be descriptive)',
+        example: 'Employee forgot to punch out',
+        default: 'Employee forgot to punch out'
+    })
+    correctionReason: string = 'Employee forgot to punch out';
+
+    @ApiPropertyOptional({
+        description: 'Corrected by (admin/manager ID)',
+        example: '674c1a1b2c3d4e5f6a7b8c8a',
+        default: '674c1a1b2c3d4e5f6a7b8c8a'
+    })
+    correctedBy?: string = '674c1a1b2c3d4e5f6a7b8c8a';
+}
+
+export class BulkReviewAttendanceDto {
+    @ApiProperty({
+        description: 'Employee ID to review attendance for',
+        example: '674c1a1b2c3d4e5f6a7b8c9d',
+        default: '674c1a1b2c3d4e5f6a7b8c9d'
+    })
+    employeeId: string = '674c1a1b2c3d4e5f6a7b8c9d';
+
+    @ApiProperty({
+        description: 'Start date for review period (format: YYYY-MM-DD)',
+        example: '2025-12-01',
+        default: '2025-12-01'
+    })
+    startDate: string = '2025-12-01';
+
+    @ApiProperty({
+        description: 'End date for review period (format: YYYY-MM-DD)',
+        example: '2025-12-31',
+        default: '2025-12-31'
+    })
+    endDate: string = '2025-12-31';
+
+    @ApiPropertyOptional({
+        description: 'Filter by issue type (ALL = show all issues)',
+        enum: ['MISSING_PUNCH', 'INVALID_SEQUENCE', 'SHORT_TIME', 'ALL'],
+        example: 'ALL',
+        default: 'ALL'
+    })
+    filterByIssue?: string = 'ALL';
+}
+
+>>>>>>> 7104891f826172d6e14a292132b878849990ef1b

@@ -16,6 +16,11 @@ import {
     PunchInDto,
     PunchOutDto,
     UpdateAttendanceRecordDto,
+<<<<<<< HEAD
+=======
+    CorrectAttendanceDto,
+    BulkReviewAttendanceDto,
+>>>>>>> 7104891f826172d6e14a292132b878849990ef1b
 } from '../dto/AttendanceDtos';
 import { AttendanceService } from "../services/AttendanceService";
 
@@ -101,4 +106,240 @@ export class AttendanceController {
     ) {
         return this.attendanceService.updateAttendanceRecord(id, dto);
     }
+<<<<<<< HEAD
+=======
+
+    // --------------------------------------------------
+    // ATTENDANCE REVIEW & CORRECTION
+    // --------------------------------------------------
+
+    @Post('review/:recordId')
+    @ApiOperation({
+        summary: 'Review Attendance Record',
+        description: 'Review a single attendance record for missing punches, invalid sequences, and other issues'
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Attendance record reviewed with issues identified',
+        schema: {
+            type: 'object',
+            properties: {
+                record: { type: 'object' },
+                issues: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            type: { type: 'string', enum: ['MISSING_PUNCH', 'INVALID_SEQUENCE', 'SHORT_TIME', 'NO_PUNCH_OUT', 'NO_PUNCH_IN', 'HOLIDAY_PUNCH'] },
+                            severity: { type: 'string', enum: ['HIGH', 'MEDIUM', 'LOW'] },
+                            description: { type: 'string' },
+                            suggestion: { type: 'string' }
+                        }
+                    }
+                },
+                canFinalize: { type: 'boolean' }
+            }
+        }
+    })
+    @ApiResponse({ status: 404, description: 'Attendance record not found' })
+    async reviewAttendance(@Param('recordId') recordId: string) {
+        return this.attendanceService.reviewAttendanceRecord(recordId);
+    }
+
+    @Post('correct')
+    @ApiOperation({
+        summary: 'Correct Attendance Record',
+        description: 'Correct attendance record by adding/removing/modifying punches. Creates audit trail. Default example shows adding missing punch OUT.'
+    })
+    @ApiBody({
+        type: CorrectAttendanceDto,
+        description: 'Correction request body with default values pre-filled',
+        examples: {
+            'Add Missing Punch Out (Default)': {
+                summary: 'Add missing punch OUT',
+                description: 'Most common scenario - employee forgot to punch out',
+                value: {
+                    attendanceRecordId: '674c1a1b2c3d4e5f6a7b8c9d',
+                    addPunchOut: '01/12/2025 17:00',
+                    correctionReason: 'Employee forgot to punch out',
+                    correctedBy: '674c1a1b2c3d4e5f6a7b8c8a'
+                }
+            },
+            'Add Missing Punch In': {
+                summary: 'Add missing punch IN',
+                description: 'System error - punch in not recorded',
+                value: {
+                    attendanceRecordId: '674c1a1b2c3d4e5f6a7b8c9d',
+                    addPunchIn: '01/12/2025 09:00',
+                    correctionReason: 'System error - punch in not recorded',
+                    correctedBy: '674c1a1b2c3d4e5f6a7b8c8a'
+                }
+            },
+            'Add Both Punches': {
+                summary: 'Add both IN and OUT punches',
+                description: 'Complete day missing - no punches recorded',
+                value: {
+                    attendanceRecordId: '674c1a1b2c3d4e5f6a7b8c9d',
+                    addPunchIn: '01/12/2025 09:00',
+                    addPunchOut: '01/12/2025 17:00',
+                    correctionReason: 'No punches recorded - system malfunction',
+                    correctedBy: '674c1a1b2c3d4e5f6a7b8c8a'
+                }
+            },
+            'Remove Duplicate Punch': {
+                summary: 'Remove duplicate punch',
+                description: 'Employee accidentally punched twice',
+                value: {
+                    attendanceRecordId: '674c1a1b2c3d4e5f6a7b8c9d',
+                    removePunchIndex: 2,
+                    correctionReason: 'Duplicate punch detected - employee punched twice',
+                    correctedBy: '674c1a1b2c3d4e5f6a7b8c8a'
+                }
+            },
+            'Replace All Punches': {
+                summary: 'Replace entire punch sequence',
+                description: 'Complete correction with new punch data',
+                value: {
+                    attendanceRecordId: '674c1a1b2c3d4e5f6a7b8c9d',
+                    correctedPunches: [
+                        { type: 'IN', time: '01/12/2025 09:00' },
+                        { type: 'OUT', time: '01/12/2025 17:00' }
+                    ],
+                    correctionReason: 'Correcting invalid punch sequence',
+                    correctedBy: '674c1a1b2c3d4e5f6a7b8c8a'
+                }
+            },
+            'Lunch Break Correction': {
+                summary: 'Add lunch break punches',
+                description: 'Employee forgot to punch during lunch',
+                value: {
+                    attendanceRecordId: '674c1a1b2c3d4e5f6a7b8c9d',
+                    correctedPunches: [
+                        { type: 'IN', time: '01/12/2025 09:00' },
+                        { type: 'OUT', time: '01/12/2025 12:30' },
+                        { type: 'IN', time: '01/12/2025 13:30' },
+                        { type: 'OUT', time: '01/12/2025 17:00' }
+                    ],
+                    correctionReason: 'Added lunch break punches - employee forgot',
+                    correctedBy: '674c1a1b2c3d4e5f6a7b8c8a'
+                }
+            }
+        }
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Attendance record corrected successfully',
+        schema: {
+            type: 'object',
+            properties: {
+                record: { type: 'object', description: 'Updated attendance record' },
+                correctionApplied: { type: 'string', description: 'Description of correction applied' },
+                previousState: { type: 'object', description: 'Previous state for audit trail' }
+            }
+        }
+    })
+    @ApiResponse({ status: 404, description: 'Attendance record not found' })
+    @ApiResponse({ status: 400, description: 'Invalid correction parameters' })
+    async correctAttendance(@Body() dto: CorrectAttendanceDto) {
+        if (!dto.correctionReason) {
+            throw new BadRequestException('correctionReason is required');
+        }
+        return this.attendanceService.correctAttendanceRecord(dto);
+    }
+
+    @Post('review/bulk')
+    @ApiOperation({
+        summary: 'Bulk Review Attendance',
+        description: 'Review all attendance records for an employee within a date range. Returns records with issues. Default reviews all issues for December 2025.'
+    })
+    @ApiBody({
+        type: BulkReviewAttendanceDto,
+        description: 'Bulk review request with default values pre-filled for December 2025',
+        examples: {
+            'All Issues (Default)': {
+                summary: 'Review all issues for December',
+                description: 'Default - reviews all attendance issues in December 2025',
+                value: {
+                    employeeId: '674c1a1b2c3d4e5f6a7b8c9d',
+                    startDate: '2025-12-01',
+                    endDate: '2025-12-31',
+                    filterByIssue: 'ALL'
+                }
+            },
+            'Missing Punches Only': {
+                summary: 'Filter missing punches',
+                description: 'Shows only records with missing punch IN/OUT',
+                value: {
+                    employeeId: '674c1a1b2c3d4e5f6a7b8c9d',
+                    startDate: '2025-12-01',
+                    endDate: '2025-12-31',
+                    filterByIssue: 'MISSING_PUNCH'
+                }
+            },
+            'Invalid Sequences Only': {
+                summary: 'Filter invalid sequences',
+                description: 'Shows only records with consecutive IN or OUT punches',
+                value: {
+                    employeeId: '674c1a1b2c3d4e5f6a7b8c9d',
+                    startDate: '2025-12-01',
+                    endDate: '2025-12-31',
+                    filterByIssue: 'INVALID_SEQUENCE'
+                }
+            },
+            'Short Time Only': {
+                summary: 'Filter short time issues',
+                description: 'Shows only records with insufficient work hours',
+                value: {
+                    employeeId: '674c1a1b2c3d4e5f6a7b8c9d',
+                    startDate: '2025-12-01',
+                    endDate: '2025-12-31',
+                    filterByIssue: 'SHORT_TIME'
+                }
+            },
+            'Weekly Review': {
+                summary: 'Review last week',
+                description: 'Review attendance for last week of November',
+                value: {
+                    employeeId: '674c1a1b2c3d4e5f6a7b8c9d',
+                    startDate: '2025-11-24',
+                    endDate: '2025-11-30',
+                    filterByIssue: 'ALL'
+                }
+            },
+            'Single Day': {
+                summary: 'Review specific day',
+                description: 'Review attendance for a single day',
+                value: {
+                    employeeId: '674c1a1b2c3d4e5f6a7b8c9d',
+                    startDate: '2025-12-01',
+                    endDate: '2025-12-01',
+                    filterByIssue: 'ALL'
+                }
+            }
+        }
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Bulk review completed',
+        schema: {
+            type: 'array',
+            items: {
+                type: 'object',
+                properties: {
+                    recordId: { type: 'string' },
+                    date: { type: 'string' },
+                    issues: { type: 'array' },
+                    canFinalize: { type: 'boolean' }
+                }
+            }
+        }
+    })
+    @ApiResponse({ status: 400, description: 'Invalid parameters' })
+    async bulkReviewAttendance(@Body() dto: BulkReviewAttendanceDto) {
+        if (!dto.employeeId || !dto.startDate || !dto.endDate) {
+            throw new BadRequestException('employeeId, startDate, and endDate are required');
+        }
+        return this.attendanceService.bulkReviewAttendance(dto);
+    }
+>>>>>>> 7104891f826172d6e14a292132b878849990ef1b
 }

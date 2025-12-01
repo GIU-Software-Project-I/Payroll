@@ -6,8 +6,8 @@ import {AppraisalCycle, AppraisalCycleSchema} from "../models/performance/apprai
 import {AppraisalAssignment, AppraisalAssignmentSchema} from "../models/performance/appraisal-assignment.schema";
 import {AppraisalRecord, AppraisalRecordSchema} from "../models/performance/appraisal-record.schema";
 import {AppraisalDispute, AppraisalDisputeSchema} from "../models/performance/appraisal-dispute.schema";
-import {PerformanceService} from "../Services/Performance.Service";
-import {PerformanceController} from "../Controllers/Performance.Controller";
+import {PerformanceController} from "../controllers/performance.controller";
+import {PerformanceService} from "../services/performance.service";
 
 
 

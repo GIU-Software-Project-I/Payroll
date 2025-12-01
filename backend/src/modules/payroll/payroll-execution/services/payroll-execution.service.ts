@@ -6,13 +6,15 @@ import { employeeSigningBonus, employeeSigningBonusDocument } from '../models/Em
 import { payrollRuns, payrollRunsDocument } from '../models/payrollRuns.schema';
 import { paySlip } from '../models/payslip.schema';
 import { employeePayrollDetails } from '../models/employeePayrollDetails.schema';
-import { BonusStatus, BenefitStatus } from '../enums/payroll-execution-enum';
+import { BonusStatus } from '../enums/payroll-execution-enum';
 import { EmployeeTerminationResignation, EmployeeTerminationResignationDocument } from '../models/EmployeeTerminationResignation.schema';
 import { SystemRole } from '../../../employee/enums/employee-profile.enums';
 import { PayCalculatorService } from '../services/payCalculator.service';
 import { TimeManagementService } from '../../../time-management/time-management.service';
 import { LeavesService } from '../../../leaves/services/leaves.service';
-import { EmployeeProfileService } from '../../../employee/Services/Employee-Profile.Service';
+import { EmployeeProfileService } from '../../../employee/Services/employee-profile.service';
+import { EmployeeSystemRole, EmployeeSystemRoleDocument } from '../../../employee/models/Employee/employee-system-role.schema';
+
 @Injectable()
 export class PayrollExecutionService {
     constructor(
@@ -32,17 +34,65 @@ export class PayrollExecutionService {
         @Optional() private readonly employeeService?: EmployeeProfileService,
         @Optional() private readonly timeService?: TimeManagementService,
         @Optional() private readonly leavesService?: LeavesService,
-        // Payroll drafts have been removed; no draft service injected
+        @Optional() @InjectModel(EmployeeSystemRole.name) private readonly employeeSystemRoleModel?: Model<EmployeeSystemRoleDocument>,
     ) {}
-    // Centralized DB handle and collection names
+
     private get db() {
         return (this.connection && this.connection.db) ? this.connection.db : (mongoose && mongoose.connection && (mongoose.connection.db as any)) || null;
     }
+
     private readonly terminationCollectionName = 'employeeterminationresignations';
-    private readonly terminationRequestsCollectionName = 'terminationrequests';
-    private readonly terminationBenefitsCollectionName = 'terminationandresignationbenefits';
-   
-    // List signing bonuses (optionally filter by status)
+
+    private async ensurePayrollSpecialist(userId?: string | any) {
+        console.log('[payroll-exec] ensurePayrollSpecialist called with userId=', userId);
+        if (!userId) return true;
+        const db = this.db;
+        if (!db) return true;
+        try {
+            const uid = typeof userId === 'string' ? (() => { try { return new mongoose.Types.ObjectId(userId); } catch (e) { return userId; } })() : userId;
+            // Prefer the injected Mongoose model if available
+            if (this.employeeSystemRoleModel) {
+                console.log('[payroll-exec] querying employeeSystemRoleModel for', uid);
+                const r = await this.employeeSystemRoleModel.findOne({ employeeProfileId: uid, isActive: true }).lean().exec();
+                console.log('[payroll-exec] employeeSystemRoleModel result=', r);
+                if (!r) {
+                    console.log('[payroll-exec] no role doc found via model');
+                    throw new ForbiddenException('User not authorized');
+                }
+                if (!Array.isArray(r.roles)) {
+                    console.log('[payroll-exec] role doc roles not an array', r.roles);
+                    throw new ForbiddenException('User not authorized');
+                }
+                if (!r.roles.includes(SystemRole.PAYROLL_SPECIALIST)) {
+                    console.log('[payroll-exec] role doc does not include Payroll Specialist', r.roles);
+                    throw new ForbiddenException('User not authorized');
+                }
+                return true;
+            }
+
+            // Fallback to raw DB query
+            console.log('[payroll-exec] using raw DB fallback, querying employee_system_roles for', uid);
+            const row = await db.collection('employee_system_roles').findOne({ employeeProfileId: uid });
+            console.log('[payroll-exec] raw DB row=', row);
+            if (!row) {
+                console.log('[payroll-exec] raw DB: no role row found');
+                throw new ForbiddenException('User not authorized');
+            }
+            if (!row.roles || !Array.isArray(row.roles)) {
+                console.log('[payroll-exec] raw DB: roles missing or invalid', row.roles);
+                throw new ForbiddenException('User not authorized');
+            }
+            if (!row.roles.includes(SystemRole.PAYROLL_SPECIALIST)) {
+                console.log('[payroll-exec] raw DB: roles do not include Payroll Specialist', row.roles);
+                throw new ForbiddenException('User not authorized');
+            }
+            return true;
+        } catch (e) {
+            console.log('[payroll-exec] ensurePayrollSpecialist error:', e && e.message ? e.message : e);
+            throw new ForbiddenException('User not authorized');
+        }
+    }
+
     async listSigningBonuses(status?: string) {
         const filter: any = {};
         if (status) filter.status = status;
@@ -50,43 +100,27 @@ export class PayrollExecutionService {
     }
 
     async getSigningBonus(id: string) {
-        // Try standard Mongoose lookup first
         const doc = await this.employeeSigningBonusModel.findById(id).lean().exec();
         if (doc) return doc;
-
-        // Fallback: attempt native DB lookup across common collection names
         const possibleExecNames = ['employeesigningbonuses', 'employee_signing_bonuses', 'employee_signingbonuses', 'employee_signing_bonus', 'employeeSigningBonuses', 'employeeSigningBonus'];
-        const objectId = (() => {
-            try { return new mongoose.Types.ObjectId(id); } catch (e) { return null; }
-        })();
+        const objectId = (() => { try { return new mongoose.Types.ObjectId(id); } catch (e) { return null; } })();
         if (!objectId) return null;
-
         const db = this.db;
         if (!db) return null;
-
         for (const name of possibleExecNames) {
             try {
                 const coll = db.collection(name as any);
-                // try ObjectId lookup first
                 let found: any = null;
                 try { found = await coll.findOne({ _id: objectId } as any); } catch (e) { found = null; }
                 if (found) return found;
-                // fallback to string id lookup (some scripts may have inserted string _id values)
                 found = await coll.findOne({ _id: id } as any);
                 if (found) return found;
-            } catch (err) {
-                // ignore and continue
-            }
+            } catch (err) { }
         }
         return null;
     }
 
-    // Edit signing bonus (amount, paymentDate (ISO string), status, note)
-    async updateSigningBonus(
-        id: string,
-        dto: { status?: BonusStatus; paymentDate?: string; amount?: number; note?: string },
-        updatedBy?: string,
-    ) {
+    async updateSigningBonus(id: string, dto: { status?: BonusStatus; paymentDate?: string; amount?: number; note?: string }, updatedBy?: string) {
         await this.ensurePayrollSpecialist(updatedBy);
         const update: any = {};
         if (dto.status !== undefined) update.status = dto.status;
@@ -94,16 +128,13 @@ export class PayrollExecutionService {
         if (dto.note !== undefined) update.note = dto.note;
         if (dto.paymentDate !== undefined) {
             const d = new Date(dto.paymentDate);
-            if (isNaN(d.getTime())) {
-                throw new BadRequestException('Invalid paymentDate; expected ISO date string');
-            }
+            if (isNaN(d.getTime())) throw new BadRequestException('Invalid paymentDate; expected ISO date string');
             update.paymentDate = d;
         }
         const doc = await this.employeeSigningBonusModel.findByIdAndUpdate(id, { $set: update }, { new: true }).exec();
         return doc;
     }
 
-    // Approve a single signing bonus by id
     async approveSigningBonus(id: string, approvedBy?: string) {
         await this.ensurePayrollSpecialist(approvedBy);
         const now = new Date();
@@ -115,7 +146,6 @@ export class PayrollExecutionService {
         return doc;
     }
 
-    // Bulk approve all signing bonuses currently in DRAFT status
     async approveSigningBonuses(approvedBy?: string) {
         await this.ensurePayrollSpecialist(approvedBy);
         const now = new Date();
@@ -130,11 +160,79 @@ export class PayrollExecutionService {
         };
     }
 
-    //  stubs  
+    // Termination/Resignation benefits - minimal CRUD used by controller
+    async listTerminationBenefits(status?: string) {
+        if (this.employeeTerminationResignationModel) {
+            const filter: any = {};
+            if (status) filter.status = status;
+            return this.employeeTerminationResignationModel.find(filter).lean().exec();
+        }
+        const db = this.db;
+        if (!db) return [];
+        const filter: any = {};
+        if (status) filter.status = status;
+        try { return await db.collection(this.terminationCollectionName as any).find(filter).toArray(); } catch (e) { return []; }
+    }
+
+    async getTerminationBenefit(id: string) {
+        try {
+            if (this.employeeTerminationResignationModel) {
+                const doc = await this.employeeTerminationResignationModel.findById(id).lean().exec();
+                if (doc) return doc;
+            }
+        } catch (e) {}
+        const db = this.db;
+        if (!db) return null;
+        try {
+            const oid = (()=>{try{return new mongoose.Types.ObjectId(id);}catch(e){return null;}})();
+            if (oid) return await db.collection(this.terminationCollectionName as any).findOne({ _id: oid } as any);
+            return await db.collection(this.terminationCollectionName as any).findOne({ _id: id } as any);
+        } catch (err) { return null; }
+    }
+
+    async updateTerminationBenefit(id: string, dto: any, updatedBy?: string) {
+        await this.ensurePayrollSpecialist(updatedBy);
+        if (this.employeeTerminationResignationModel) {
+            const update: any = {};
+            if (dto.status !== undefined) update.status = dto.status;
+            if (dto.note !== undefined) update.note = dto.note;
+            if (dto.givenAmount !== undefined) update.givenAmount = dto.givenAmount;
+            const doc = await this.employeeTerminationResignationModel.findByIdAndUpdate(id, { $set: update }, { new: true }).exec();
+            if (doc) return doc;
+        }
+        const db = this.db;
+        if (!db) return null;
+        try {
+            const oid = (()=>{try{return new mongoose.Types.ObjectId(id);}catch(e){return null;}})();
+            const filter = oid ? { _id: oid } : { _id: id };
+            const updateDoc: any = {};
+            if (dto.status !== undefined) updateDoc.status = dto.status;
+            if (dto.note !== undefined) updateDoc.note = dto.note;
+            if (dto.givenAmount !== undefined) updateDoc.givenAmount = dto.givenAmount;
+            await db.collection(this.terminationCollectionName as any).updateOne(filter as any, { $set: updateDoc } as any);
+            return await db.collection(this.terminationCollectionName as any).findOne(filter as any);
+        } catch (err) { return null; }
+    }
+
+    async approveTerminationBenefit(id: string, approvedBy?: string) {
+        await this.ensurePayrollSpecialist(approvedBy);
+        const now = new Date();
+        if (this.employeeTerminationResignationModel) {
+            const doc = await this.employeeTerminationResignationModel.findByIdAndUpdate(id, { $set: { status: 'approved', approvedAt: now } }, { new: true }).exec();
+            if (doc) return doc;
+        }
+        const db = this.db;
+        if (!db) return null;
+        try {
+            const oid = (()=>{try{return new mongoose.Types.ObjectId(id);}catch(e){return null;}})();
+            const filter = oid ? { _id: oid } : { _id: id };
+            await db.collection(this.terminationCollectionName as any).updateOne(filter as any, { $set: { status: 'approved', approvedAt: now } } as any);
+            return await db.collection(this.terminationCollectionName as any).findOne(filter as any);
+        } catch (err) { return null; }
+    }
+
     async initiatePayroll(dto: any, initiatedBy?: string) {
-        // minimal implementation: create a payrollRuns document in DRAFT and return it
         const runId = dto.runId || `PR-${Date.now()}`;
-        // parse and validate payrollPeriod
         let payrollPeriod: Date;
         if (dto.payrollPeriod) {
             payrollPeriod = new Date(dto.payrollPeriod);
@@ -142,16 +240,12 @@ export class PayrollExecutionService {
         } else {
             payrollPeriod = new Date();
         }
-        // payrollSpecialistId (createdBy fallback)
         const payrollSpecialistId = dto.payrollSpecialistId
             ? (typeof dto.payrollSpecialistId === 'string' ? (() => { try { return new mongoose.Types.ObjectId(dto.payrollSpecialistId); } catch (e) { return dto.payrollSpecialistId; } })() : dto.payrollSpecialistId)
             : (initiatedBy ? (() => { try { return new mongoose.Types.ObjectId(initiatedBy); } catch (e) { return initiatedBy; } })() : null);
-
-        // payrollManagerId: prefer provided, otherwise use specialist as placeholder to satisfy schema
         const payrollManagerId = dto.payrollManagerId
             ? (typeof dto.payrollManagerId === 'string' ? (() => { try { return new mongoose.Types.ObjectId(dto.payrollManagerId); } catch (e) { return dto.payrollManagerId; } })() : dto.payrollManagerId)
             : payrollSpecialistId;
-
         const doc: any = {
             runId,
             payrollPeriod,
@@ -169,7 +263,6 @@ export class PayrollExecutionService {
     }
 
     async getDraft(id: string, requestedBy?: string) {
-        // Drafts were removed from the system. Return null or a notice.
         return { message: 'Payroll drafts feature removed; no draft available.' };
     }
 
@@ -189,36 +282,35 @@ export class PayrollExecutionService {
         return { id, generatedBy: triggeredBy };
     }
 
-    // Payroll Initiation persistence and lifecycle
     async createPayrollInitiation(dto: any, createdBy?: string) {
+        console.log('[payroll-exec] createPayrollInitiation called createdBy=', createdBy, 'dto=', dto);
         await this.ensurePayrollSpecialist(createdBy);
-        const runId = dto.runId || `PR-${Date.now()}`;
-        // parse payrollPeriod
-        let payrollPeriod: Date;
-        if (dto.payrollPeriod) {
-            payrollPeriod = new Date(dto.payrollPeriod);
-            if (isNaN(payrollPeriod.getTime())) throw new BadRequestException('Invalid payrollPeriod; expected a valid date');
-        } else {
-            payrollPeriod = new Date();
-        }
-        const payrollSpecialistId = createdBy ? (() => { try { return new mongoose.Types.ObjectId(createdBy); } catch (e) { return createdBy; } })() : null;
-        // use createdBy as payrollManagerId placeholder if not provided
-        const payrollManagerId = dto.payrollManagerId ? (typeof dto.payrollManagerId === 'string' ? (() => { try { return new mongoose.Types.ObjectId(dto.payrollManagerId); } catch (e) { return dto.payrollManagerId; } })() : dto.payrollManagerId) : payrollSpecialistId;
-
-        const doc: any = {
-            runId,
-            payrollPeriod,
-            status: 'draft',
-            entity: dto.entity || 'default',
-            employees: dto.employees ?? 0,
-            exceptions: dto.exceptions ?? 0,
-            totalnetpay: dto.totalnetpay ?? 0,
-            payrollSpecialistId,
-            payrollManagerId,
-            paymentStatus: 'pending',
-        };
-        const created = await this.payrollRunsModel.create(doc);
-        return created;
+            // validate creator is allowed
+            // Ensure required attributes and normalize types before persisting
+            const runId = dto.runId || `PR-${Date.now()}`;
+            let payrollPeriod: Date;
+            if (dto.payrollPeriod) {
+                payrollPeriod = new Date(dto.payrollPeriod);
+                if (isNaN(payrollPeriod.getTime())) throw new BadRequestException('Invalid payrollPeriod; expected a valid date');
+            } else {
+                payrollPeriod = new Date();
+            }
+            const payrollSpecialistId = createdBy ? (() => { try { return new mongoose.Types.ObjectId(createdBy); } catch (e) { return createdBy; } })() : null;
+            const payrollManagerId = dto.payrollManagerId ? (typeof dto.payrollManagerId === 'string' ? (() => { try { return new mongoose.Types.ObjectId(dto.payrollManagerId); } catch (e) { return dto.payrollManagerId; } })() : dto.payrollManagerId) : payrollSpecialistId;
+            const doc: any = {
+                runId,
+                payrollPeriod,
+                status: dto.status || 'draft',
+                entity: dto.entity || 'default',
+                employees: dto.employees ?? 0,
+                exceptions: dto.exceptions ?? 0,
+                totalnetpay: dto.totalnetpay ?? 0,
+                payrollSpecialistId,
+                payrollManagerId,
+                paymentStatus: dto.paymentStatus || 'pending',
+            };
+            const created = await this.payrollRunsModel.create(doc);
+            return created;
     }
 
     async getPayrollInitiation(id: string) {
@@ -237,7 +329,6 @@ export class PayrollExecutionService {
 
     async updatePayrollInitiation(id: string, dto: any, updatedBy?: string) {
         await this.ensurePayrollSpecialist(updatedBy);
-        // only allow edits when draft or rejected
         const existing: any = await this.payrollRunsModel.findById(id).lean().exec();
         if (!existing) return null;
         if (existing.status !== 'draft' && existing.status !== 'rejected') {
@@ -250,13 +341,11 @@ export class PayrollExecutionService {
         if (dto.exceptions !== undefined) update.exceptions = dto.exceptions;
         if (dto.totalnetpay !== undefined) update.totalnetpay = dto.totalnetpay;
         if (dto.rejectionReason !== undefined) update.rejectionReason = dto.rejectionReason;
-        // If the initiation was rejected and user edits it, move it back to draft so it can be re-reviewed
         if (existing.status === 'rejected') {
             update.status = 'draft';
             update.rejectionReason = null;
         }
         const updated = await this.payrollRunsModel.findByIdAndUpdate(id, { $set: update }, { new: true }).exec();
-        // Reload the document to ensure we return the latest persisted state
         try {
             let reloaded = await this.getPayrollInitiation(id);
             const db = this.db;
@@ -273,65 +362,125 @@ export class PayrollExecutionService {
             }
             return reloaded || updated;
         } catch (err) {
-            // if reload or native update fails, fall back to returning Mongoose result
             return updated;
         }
     }
 
     async approvePayrollInitiation(id: string, approvedBy?: string) {
         await this.ensurePayrollSpecialist(approvedBy);
-        // set status to 'under review' and trigger draft generation (minimal)
         const now = new Date();
-        const updated = await this.payrollRunsModel.findByIdAndUpdate(id, { $set: { status: 'under review', managerApprovalDate: now } }, { new: true }).exec();
-        // Start automatic processing pipeline (REQ-PY-23)
+        let updated = await this.payrollRunsModel.findByIdAndUpdate(id, { $set: { status: 'under review', managerApprovalDate: now } }, { new: true }).exec();
+        // If Mongoose lookup failed (possible when _id stored as string), fallback to raw DB lookup
+        if (!updated) {
+            try {
+                const db = this.db;
+                if (db) {
+                    const oid = (()=>{try{return new mongoose.Types.ObjectId(id);}catch(e){return null;}})();
+                    const filter = oid ? { _id: oid } : { _id: id };
+                    const raw = await db.collection('payrollruns').findOne(filter as any);
+                    if (raw) updated = raw as any;
+                }
+            } catch (e) { updated = null; }
+        }
+
         try {
             await this.processPayrollRun(updated);
-            // mark as pending finance approval after processing
-            const after = await this.payrollRunsModel.findByIdAndUpdate(id, { $set: { status: 'pending finance approval' } }, { new: true }).exec();
-            return after;
+            // After successful processing, try to update status to pending finance approval (persist via model or raw DB)
+            try {
+                const after = await this.payrollRunsModel.findByIdAndUpdate(id, { $set: { status: 'pending finance approval' } }, { new: true }).exec();
+                if (after) return after;
+            } catch (e) {
+                try {
+                    const db = this.db;
+                    if (db) {
+                        const oid = (()=>{try{return new mongoose.Types.ObjectId(id);}catch(e){return null;}})();
+                        const filter = oid ? { _id: oid } : { _id: id };
+                        await db.collection('payrollruns').updateOne(filter as any, { $set: { status: 'pending finance approval' } } as any);
+                        const afterRaw = await db.collection('payrollruns').findOne(filter as any);
+                        return afterRaw as any;
+                    }
+                } catch (_) { }
+            }
+            return updated;
         } catch (err) {
-            // processing errors should not leave run in inconsistent state; record exception count and bubble
             console.error('Payroll processing failed for run', id, err);
             return updated;
         }
     }
 
-    // Main processing pipeline: fetch employees, compute payroll lines, process bonuses/benefits
+    async rejectPayrollInitiation(id: string, rejectedBy?: string, reason?: string) {
+        await this.ensurePayrollSpecialist(rejectedBy);
+        const updated = await this.payrollRunsModel.findByIdAndUpdate(id, { $set: { status: 'rejected', rejectionReason: reason || null } }, { new: true }).exec();
+        return updated;
+    }
+
     private async processPayrollRun(runDoc: payrollRunsDocument | any) {
         if (!runDoc || !runDoc._id) throw new BadRequestException('Invalid payroll run');
         const db = this.db;
         if (!db) throw new BadRequestException('Database unavailable');
 
         const payrollPeriod = runDoc.payrollPeriod ? new Date(runDoc.payrollPeriod) : new Date();
+        const periodStart = new Date(payrollPeriod);
+        periodStart.setDate(1);
+        periodStart.setHours(0, 0, 0, 0);
+        const periodEnd = new Date(periodStart);
+        periodEnd.setMonth(periodStart.getMonth() + 1);
+        periodEnd.setDate(0);
+        periodEnd.setHours(23, 59, 59, 999);
 
-        // find active employee profiles whose contract covers the payrollPeriod
-        let empCursor: any = null;
+        let employeesIterable: any = null;
         if (this.employeeService && typeof (this.employeeService as any).findActive === 'function') {
-            // subsystem exposes a helper
-            const list = await (this.employeeService as any).findActive();
-            empCursor = (list && Array.isArray(list)) ? list[Symbol.iterator]() : [][Symbol.iterator]();
+            const list = await (this.employeeService as any).findActive(payrollPeriod);
+            employeesIterable = Array.isArray(list) ? list : [];
         } else {
             const employeesColl = db.collection('employee_profiles');
-            empCursor = employeesColl.find({ status: 'ACTIVE' });
+            employeesIterable = employeesColl.find({ status: 'ACTIVE' });
         }
 
         let employeesCount = 0;
         let exceptionsCount = 0;
         let totalNet = 0;
 
-        // load tax rules (take first approved rule if available)
         const taxRule = await db.collection('taxrules').findOne({ status: 'approved' }) || await db.collection('taxrules').findOne({}) || { rate: 0 };
-
-        // load insurance brackets (pick the bracket matching salary range later)
         const insuranceBrackets = await db.collection('insurancebrackets').find({ status: 'approved' }).toArray().catch(()=>[]);
 
-        while (await empCursor.hasNext()) {
-            const emp = await empCursor.next();
-            if (!emp) continue;
+        const processEmployee = async (emp: any) => {
+            if (!emp) return;
             employeesCount++;
             const employeeId = emp._id;
 
-            // Attempt to find last known payroll details for employee to infer baseSalary/allowances
+            // Auto-create payroll-execution signing bonus for new hires when offer contains a signingBonus
+            try {
+                if (emp && emp.dateOfHire) {
+                    const doh = new Date(emp.dateOfHire);
+                    if (doh >= periodStart && doh <= periodEnd) {
+                        // try to find candidate by personal email and then an offer with signingBonus
+                        try {
+                            const candidate = await db.collection('candidates').findOne({ personalEmail: emp.personalEmail });
+                            if (candidate) {
+                                const offer = await db.collection('offers').findOne({ candidateId: candidate._id, signingBonus: { $exists: true, $gt: 0 } });
+                                if (offer && offer.signingBonus && offer.signingBonus > 0) {
+                                    // create or find a signingBonus config in payroll-configuration
+                                    const sbFilter: any = { positionName: offer.role || (emp.primaryPositionId ? String(emp.primaryPositionId) : 'unknown'), amount: offer.signingBonus };
+                                    let sbDoc = await db.collection('signingbonuses').findOne(sbFilter);
+                                    if (!sbDoc) {
+                                        const insertRes = await db.collection('signingbonuses').insertOne({ positionName: sbFilter.positionName, amount: offer.signingBonus, status: 'approved', createdBy: runDoc.payrollSpecialistId || null, approvedBy: runDoc.payrollManagerId || null, approvedAt: new Date() });
+                                        sbDoc = await db.collection('signingbonuses').findOne({ _id: insertRes.insertedId });
+                                    }
+                                    if (sbDoc) {
+                                        // ensure an employeeSigningBonus exists for this employee
+                                        const exists = await db.collection('employeesigningbonuses').findOne({ employeeId: employeeId, signingBonusId: sbDoc._id });
+                                        if (!exists) {
+                                            await db.collection('employeesigningbonuses').insertOne({ employeeId: employeeId, signingBonusId: sbDoc._id, givenAmount: offer.signingBonus, status: 'pending', createdAt: new Date(), updatedAt: new Date() });
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (e) { /* ignore offer lookup errors */ }
+                    }
+                }
+            } catch (e) { }
+
             let lastPayroll: any = null;
             try { lastPayroll = await db.collection('employeepayrolldetails').findOne({ employeeId: employeeId }, { sort: { createdAt: -1 } } as any); } catch (e) { lastPayroll = null; }
 
@@ -339,7 +488,6 @@ export class PayrollExecutionService {
             let allowances = lastPayroll && (lastPayroll as any).allowances ? (lastPayroll as any).allowances : 0;
 
             if (!baseSalary || baseSalary <= 0) {
-                // cannot calculate payroll without base salary — mark exception and continue
                 exceptionsCount++;
                 const detail: any = {
                     employeeId: employeeId,
@@ -352,24 +500,37 @@ export class PayrollExecutionService {
                     exceptions: 'missing_base_salary',
                     payrollRunId: runDoc._id,
                 };
-                try { await this.employeePayrollDetailsModel.create(detail); } catch (e) { /* ignore */ }
-                continue;
+                try { await this.employeePayrollDetailsModel.create(detail); } catch (e) { }
+                return;
             }
 
-            // find applicable insurance bracket by baseSalary
             let insurance = insuranceBrackets.find((b: any) => baseSalary >= b.minSalary && baseSalary <= b.maxSalary) || null;
             const insurancePct = insurance ? (insurance.employeeRate ?? 0) : 0;
-            // try to compute daysWorked using time-management service if available
-            let daysWorked = 30;
-            if (this.timeService && typeof (this.timeService as any).findByEmployee === 'function') {
-                try {
-                    const records = await (this.timeService as any).findByEmployee(employeeId.toString());
-                    // crude heuristic: if we have attendance records, assume full month
-                    if (Array.isArray(records)) daysWorked = records.length > 0 ? 30 : 0;
-                } catch (e) { }
-            }
 
-            // prepare calculator input
+            let daysWorked = 30;
+            try {
+                if (this.timeService && typeof (this.timeService as any).findAttendanceSummary === 'function') {
+                    const summary = await (this.timeService as any).findAttendanceSummary(employeeId.toString(), periodStart, periodEnd);
+                    if (summary && typeof summary.daysWorked === 'number') daysWorked = summary.daysWorked;
+                } else if (this.timeService && typeof (this.timeService as any).findByEmployee === 'function') {
+                    const records = await (this.timeService as any).findByEmployee(employeeId.toString(), periodStart, periodEnd);
+                    if (Array.isArray(records)) daysWorked = records.length > 0 ? 30 : 0;
+                } else {
+                    const attCount = await db.collection('attendance_records').countDocuments({ employeeId: employeeId, 'punches.time': { $gte: periodStart, $lte: periodEnd } as any }).catch(()=>0);
+                    daysWorked = attCount > 0 ? 30 : 0;
+                }
+            } catch (e) { }
+
+            let unpaidLeaveDays = 0;
+            try {
+                if (this.leavesService && typeof (this.leavesService as any).getUnpaidLeaveDays === 'function') {
+                    unpaidLeaveDays = await (this.leavesService as any).getUnpaidLeaveDays(employeeId.toString(), periodStart, periodEnd);
+                }
+            } catch (e) { unpaidLeaveDays = 0; }
+
+            daysWorked = Math.max(0, (daysWorked || 0) - (unpaidLeaveDays || 0));
+            const unpaidDeduction = ((baseSalary || 0) / 30) * (unpaidLeaveDays || 0);
+
             const calcInput = {
                 baseSalary: baseSalary,
                 daysInPeriod: 30,
@@ -377,24 +538,22 @@ export class PayrollExecutionService {
                 taxRatePct: taxRule.rate ?? 0,
                 pensionPct: 0,
                 insurancePct: insurancePct,
-                penalties: 0,
+                penalties: unpaidDeduction || 0,
                 refunds: 0,
                 bonus: 0,
                 benefit: 0,
             };
+
             const result = this.payCalculator.calculate(calcInput as any);
 
-            // check for signing bonus for this employee
             try {
                 const sb = await db.collection('employeesigningbonuses').findOne({ employeeId: employeeId, status: 'pending' });
                 if (sb) {
-                    // mark approved and schedule payment (PAYROLL processing auto-approve)
                     await db.collection('employeesigningbonuses').updateOne({ _id: sb._id }, { $set: { status: 'approved', paymentDate: new Date() } });
                     result.netPay += (sb.givenAmount || 0);
                 }
             } catch (e) { }
 
-            // check for termination/resignation benefits for this employee
             try {
                 const tb = await db.collection(this.terminationCollectionName as any).findOne({ employeeId: employeeId, status: 'pending' });
                 if (tb) {
@@ -403,7 +562,6 @@ export class PayrollExecutionService {
                 }
             } catch (e) { }
 
-            // Persist payslip
             const payslip: any = {
                 employeeId: employeeId,
                 payrollRunId: runDoc._id,
@@ -424,9 +582,8 @@ export class PayrollExecutionService {
                 netPay: result.netPay,
                 paymentStatus: 'pending',
             };
-            try { await this.paySlipModel.create(payslip); } catch (e) { /* ignore */ }
+            try { await this.paySlipModel.create(payslip); } catch (e) { }
 
-            // Persist employeePayrollDetails
             const details: any = {
                 employeeId: employeeId,
                 baseSalary: baseSalary,
@@ -440,150 +597,25 @@ export class PayrollExecutionService {
                 benefit: 0,
                 payrollRunId: runDoc._id,
             };
-            try { await this.employeePayrollDetailsModel.create(details); } catch (e) { /* ignore */ }
+            try { await this.employeePayrollDetailsModel.create(details); } catch (e) { }
 
             totalNet += result.netPay;
+        };
+
+        if (Array.isArray(employeesIterable)) {
+            for (const emp of employeesIterable) {
+                await processEmployee(emp);
+            }
+        } else {
+            while (await employeesIterable.hasNext()) {
+                const emp = await employeesIterable.next();
+                await processEmployee(emp);
+            }
         }
 
-        // update payrollRuns doc with totals
         try {
             await this.payrollRunsModel.findByIdAndUpdate(runDoc._id, { $set: { employees: employeesCount, exceptions: exceptionsCount, totalnetpay: totalNet } }).exec();
-        } catch (e) { /* ignore */ }
+        } catch (e) { }
         return true;
     }
-
-    async rejectPayrollInitiation(id: string, rejectedBy?: string, reason?: string) {
-        await this.ensurePayrollSpecialist(rejectedBy);
-        const updated = await this.payrollRunsModel.findByIdAndUpdate(id, { $set: { status: 'rejected', rejectionReason: reason || null } }, { new: true }).exec();
-        return updated;
-    }
-
-    // Termination/Resignation benefits
-    // Ensure the acting user is a Payroll Specialist. Services still prefer controller-level guards,
-    // but this runtime check provides defense-in-depth when callers pass a user id.
-    private async ensurePayrollSpecialist(userId?: string) {
-        if (!userId) throw new ForbiddenException('Missing user id');
-        const db = this.db;
-        if (!db) throw new ForbiddenException('Database unavailable');
-        let oid: any = null;
-        try { oid = new mongoose.Types.ObjectId(userId); } catch (e) { oid = userId; }
-        try {
-            const roleRec: any = await db.collection('employee_system_roles').findOne({ employeeProfileId: oid } as any);
-            if (!roleRec || !Array.isArray(roleRec.roles) || !roleRec.roles.includes(SystemRole.PAYROLL_SPECIALIST)) {
-                throw new ForbiddenException('Action requires Payroll Specialist role');
-            }
-            return true;
-        } catch (err) {
-            if (err instanceof ForbiddenException) throw err;
-            throw new ForbiddenException('Unable to verify user roles');
-        }
-    }
-    async listTerminationBenefits(status?: string) {
-        const filter: any = {};
-        if (status) filter.status = status;
-        // prefer Mongoose model for EmployeeTerminationResignation
-        try {
-            return await this.employeeTerminationResignationModel.find(filter).lean().exec();
-        } catch (e) {
-            // fallback to native collection
-                const db = this.db;
-                if (!db) return [];
-                const coll = db.collection(this.terminationCollectionName as any);
-                return await coll.find(filter).limit(100).toArray();
-        }
-    }
-
-    async getTerminationBenefit(id: string) {
-        // use the EmployeeTerminationResignation model if available
-        try {
-            const model = (this as any).employeeTerminationResignationModel as any;
-            if (model) {
-                const doc = await model.findById(id).lean().exec();
-                if (doc) return doc;
-            }
-        } catch (e) {
-            // ignore
-        }
-
-        // Fallback: try native lookup in canonical collection
-        let objectId: any = null;
-        try { objectId = new mongoose.Types.ObjectId(id); } catch (e) { objectId = null; }
-        const db = this.db;
-        if (!db) return null;
-        const coll = db.collection(this.terminationCollectionName as any);
-        try {
-            if (objectId) {
-                const found = await coll.findOne({ _id: objectId } as any);
-                if (found) return found;
-            }
-            const found2 = await coll.findOne({ _id: id } as any);
-            return found2;
-        } catch (err) {
-            return null;
-        }
-    }
-
-    async updateTerminationBenefit(id: string, dto: { givenAmount?: number; status?: BenefitStatus; note?: string }, updatedBy?: string) {
-        await this.ensurePayrollSpecialist(updatedBy);
-        // try using Mongoose model if available
-        try {
-            const model = (this as any).employeeTerminationResignationModel as any;
-            if (model) {
-                const update: any = {};
-                if (dto.givenAmount !== undefined) update.givenAmount = dto.givenAmount;
-                if (dto.status !== undefined) update.status = dto.status;
-                if (dto.note !== undefined) update.note = dto.note;
-                const doc = await model.findByIdAndUpdate(id, { $set: update }, { new: true }).exec();
-                return doc;
-            }
-        } catch (e) {
-            // ignore
-        }
-
-        // Fallback native update
-        const db = this.db;
-        const coll = db.collection(this.terminationCollectionName as any);
-        const updateObj: any = {};
-        if (dto.givenAmount !== undefined) updateObj.givenAmount = dto.givenAmount;
-        if (dto.status !== undefined) updateObj.status = dto.status;
-        if (dto.note !== undefined) updateObj.note = dto.note;
-        // attempt ObjectId update first, fallback to string _id
-        try {
-            const oid = new mongoose.Types.ObjectId(id);
-            const res = await coll.updateOne({ _id: oid } as any, { $set: updateObj } as any);
-            if (res && (res.modifiedCount || res.matchedCount)) {
-                return await coll.findOne({ _id: oid } as any);
-            }
-        } catch (err) {
-            // invalid ObjectId, fall through to string-id fallback
-        }
-        await coll.updateOne({ _id: id } as any, { $set: updateObj } as any);
-        return await coll.findOne({ _id: id } as any);
-    }
-
-    async approveTerminationBenefit(id: string, approvedBy?: string) {
-        await this.ensurePayrollSpecialist(approvedBy);
-        const now = new Date();
-        try {
-            const model = (this as any).employeeTerminationResignationModel as any;
-            if (model) {
-                const doc = await model.findByIdAndUpdate(id, { $set: { status: BenefitStatus.APPROVED, approvedAt: now } }, { new: true }).exec();
-                return doc;
-            }
-        } catch (e) {}
-        const db = this.db;
-        const coll = db.collection(this.terminationCollectionName as any);
-        try {
-            const oid = new mongoose.Types.ObjectId(id);
-            const res = await coll.updateOne({ _id: oid } as any, { $set: { status: 'approved', approvedAt: now } } as any);
-            if (res && (res.modifiedCount || res.matchedCount)) {
-                return await coll.findOne({ _id: oid } as any);
-            }
-        } catch (err) {
-            // invalid ObjectId, try string-id fallback
-        }
-        await coll.updateOne({ _id: id } as any, { $set: { status: 'approved', approvedAt: now } } as any);
-        return await coll.findOne({ _id: id } as any);
-    }
-
 }

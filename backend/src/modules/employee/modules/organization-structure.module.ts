@@ -7,8 +7,8 @@ import { PositionAssignmentSchema,PositionAssignment } from '../models/Organizat
 import { StructureApproval,StructureApprovalSchema } from '../models/Organization-Structure/structure-approval.schema';
 import { StructureChangeLog,StructureChangeLogSchema } from '../models/Organization-Structure/structure-change-log.schema';
 import { StructureChangeRequest,StructureChangeRequestSchema } from '../models/Organization-Structure/structure-change-request.schema';
-import {OrganizationStructureController} from "../Controllers/Organization-Structure.Controller";
-import {OrganizationStructureService} from "../Services/Organization-Structure.Service";
+import {OrganizationStructureController} from "../controllers/organization-structure.controller";
+import {OrganizationStructureService} from "../services/organization-structure.service";
 
 
 @Module({
