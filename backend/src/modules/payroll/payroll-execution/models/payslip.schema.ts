@@ -1,19 +1,14 @@
 import { Prop, Schema, SchemaFactory, } from '@nestjs/mongoose';
 import mongoose, { HydratedDocument } from 'mongoose';
-// import schemas from payroll-configuration subsystem
 import { allowance, allowanceSchema } from '../../payroll-configuration/models/allowance.schema';
 import { signingBonus, signingBonusSchema } from '../../payroll-configuration/models/signingBonus.schema';
 import { terminationAndResignationBenefits, terminationAndResignationBenefitsSchema } from '../../payroll-configuration/models/terminationAndResignationBenefits';
 import { taxRules, taxRulesSchema } from '../../payroll-configuration/models/taxRules.schema';
 import { insuranceBrackets, insuranceBracketsSchema } from '../../payroll-configuration/models/insuranceBrackets.schema';
-// import schemas from current subsytem
 import { employeePenalties, employeePenaltiesSchema } from './employeePenalties.schema';
-import { payrollRuns } from './payrollRuns.schema';
-// import schemas from employee subsytem
 import {  EmployeeProfile as Employee} from '../../../employee/models/Employee/employee-profile.schema';
-// import schemas from payroll-tracking subsytem
 import { refundDetails, refundDetailsSchema } from '../../payroll-tracking/models/refunds.schema';
-// import enums
+import { payrollRuns } from './payrollRuns.schema';
 import { PaySlipPaymentStatus } from '../enums/payroll-execution-enum';
 
 

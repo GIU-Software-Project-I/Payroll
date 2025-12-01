@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { TimeManagementController } from './time-management.controller';
+import { TimeManagementController } from './controllers/time-management.controller';
 import { TimeManagementService } from './time-management.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { NotificationLogSchema, NotificationLog } from './models/notification-log.schema';
@@ -13,6 +13,17 @@ import { ShiftSchema, Shift } from './models/shift.schema';
 import { ShiftAssignmentSchema, ShiftAssignment } from './models/shift-assignment.schema';
 import { LatenessRule, latenessRuleSchema } from './models/lateness-rule.schema';
 import { HolidaySchema, Holiday } from './models/holiday.schema';
+import {AttendanceController} from "./controllers/AttendanceController";
+import {TimeExceptionController} from "./controllers/TimeExceptionController";
+import {AttendanceCorrectionController} from "./controllers/AttendanceCorrectionController";
+import {ShiftManagementController} from "./controllers/ShiftManagementController";
+import {AttendanceService} from "./services/AttendanceService";
+import {TimeExceptionService} from "./services/TimeExceptionService";
+import {AttendanceCorrectionService} from "./services/AttendanceCorrectionService";
+import {ShiftManagementService} from "./services/ShiftManagementService";
+import {HolidayService} from "./services/HolidayService";
+import {ShiftExpiryScheduler} from "./services/ShiftExpiryScheduler";
+import {RepeatedLatenessService} from "./services/RepeatedLatenessService";
 
 
 @Module({
@@ -29,7 +40,19 @@ import { HolidaySchema, Holiday } from './models/holiday.schema';
         { name: LatenessRule.name, schema: latenessRuleSchema },
         { name: Holiday.name, schema: HolidaySchema },
     ])],
-    controllers: [TimeManagementController],
-    providers: [TimeManagementService]
+    controllers: [TimeManagementController,
+        AttendanceController,
+        TimeExceptionController,
+        AttendanceCorrectionController,
+        ShiftManagementController],
+
+    providers: [TimeManagementService,
+        AttendanceService,
+        TimeExceptionService,
+        AttendanceCorrectionService,
+        ShiftManagementService,
+        HolidayService,
+        ShiftExpiryScheduler,
+        RepeatedLatenessService,]
 })
 export class TimeManagementModule {}

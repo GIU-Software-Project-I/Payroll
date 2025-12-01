@@ -6,7 +6,6 @@ import { PayrollInitiationCreateDto } from '../dto/payroll-initiation-create.dto
 import { PayrollInitiationUpdateDto } from '../dto/payroll-initiation-update.dto';
 import { PayrollUnfreezeDto } from '../dto/unfreeze.dto';
 import { GeneratePayslipsDto } from '../dto/generate-payslips.dto';
-import { PayrollDraftResponseDto } from '../dto/payroll-draft-response.dto';
 import { PayrollApproveDto } from '../dto/approve.dto';
 import { employeeSigningBonusSchema } from '../models/EmployeeSigningBonus.schema';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, getSchemaPath, ApiBody, ApiParam, ApiQuery, ApiConsumes } from '@nestjs/swagger';
@@ -137,26 +136,8 @@ export class PayrollExecutionController {
 	@ApiBody({ type: PayrollInitiationCreateDto })
 	@ApiConsumes('application/json')
 	async createInitiation(@Req() req: any, @Body() dto: PayrollInitiationCreateDto, @CurrentUser() user: JwtPayload) {
-		// TEMP DIAGNOSTIC: log incoming request details to debug empty DTO issue
-		try {
-			console.log('[diagnostic] createInitiation headers:', JSON.stringify(req.headers));
-		} catch (e) { console.log('[diagnostic] headers (raw)', req.headers); }
-		try {
-			console.log('[diagnostic] req.body:', JSON.stringify(req.body));
-		} catch (e) { console.log('[diagnostic] req.body (raw):', req.body); }
-		try {
-			console.log('[diagnostic] createInitiation dto:', JSON.stringify(dto));
-		} catch (e) { console.log('[diagnostic] createInitiation dto (raw):', dto); }
 		const created = await this.payrollService.createPayrollInitiation(dto as any, user?.sub);
-		// TEMP DIAGNOSTIC RESPONSE: return created doc plus the raw request for easier debugging from REST client
-		return {
-			debug: {
-				headers: req.headers,
-				rawBody: req.body,
-				dto: dto,
-			},
-			created,
-		};
+		return created;
 	}
 
 	@UseGuards(AuthenticationGuard, AuthorizationGuard)
@@ -167,14 +148,8 @@ export class PayrollExecutionController {
 	@ApiBody({ type: PayrollInitiationUpdateDto })
 	@ApiConsumes('application/json')
 	async editInitiation(@Req() req: any, @Param('id') id: string, @Body() dto: PayrollInitiationUpdateDto, @CurrentUser() user: JwtPayload) {
-		try { console.log('[diagnostic] editInitiation headers:', JSON.stringify(req.headers)); } catch (e) { console.log('[diagnostic] editInitiation headers (raw):', req.headers); }
-		try { console.log('[diagnostic] editInitiation req.body:', JSON.stringify(req.body)); } catch (e) { console.log('[diagnostic] editInitiation req.body (raw):', req.body); }
-		try { console.log('[diagnostic] editInitiation dto:', JSON.stringify(dto)); } catch (e) { console.log('[diagnostic] editInitiation dto (raw):', dto); }
 		const updated = await this.payrollService.updatePayrollInitiation(id, dto as any, user?.sub);
-		return {
-			debug: { headers: req.headers, rawBody: req.body, dto, params: { id } },
-			updated,
-		};
+		return updated;
 	}
 
 	@UseGuards(AuthenticationGuard, AuthorizationGuard)
@@ -183,9 +158,8 @@ export class PayrollExecutionController {
 	@ApiOperation({ summary: 'Approve a payroll initiation (triggers processing)' })
 	@ApiParam({ name: 'id', description: 'Payroll initiation id', type: 'string' })
 	async approveInitiation(@Req() req: any, @Param('id') id: string, @CurrentUser() user: JwtPayload) {
-		try { console.log('[diagnostic] approveInitiation headers:', JSON.stringify(req.headers)); } catch (e) { console.log('[diagnostic] approveInitiation headers (raw):', req.headers); }
 		const updated = await this.payrollService.approvePayrollInitiation(id, user?.sub);
-		return { debug: { headers: req.headers, params: { id } }, updated };
+		return updated;
 	}
 
 	@UseGuards(AuthenticationGuard, AuthorizationGuard)
@@ -194,22 +168,19 @@ export class PayrollExecutionController {
 	@ApiOperation({ summary: 'Reject a payroll initiation' })
 	@ApiParam({ name: 'id', description: 'Payroll initiation id', type: 'string' })
 	async rejectInitiation(@Req() req: any, @Param('id') id: string, @CurrentUser() user: JwtPayload, @Body() body: { reason?: string }) {
-		try { console.log('[diagnostic] rejectInitiation headers:', JSON.stringify(req.headers)); } catch (e) { console.log('[diagnostic] rejectInitiation headers (raw):', req.headers); }
-		try { console.log('[diagnostic] rejectInitiation req.body:', JSON.stringify(req.body)); } catch (e) { console.log('[diagnostic] rejectInitiation req.body (raw):', req.body); }
 		const updated = await this.payrollService.rejectPayrollInitiation(id, user?.sub, body?.reason);
-		return { debug: { headers: req.headers, rawBody: req.body, params: { id } }, updated };
+		return updated;
 	}
 
 	@UseGuards(AuthenticationGuard, AuthorizationGuard)
 	@Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.HR_MANAGER)
 	@Get('draft/:id')
 	@ApiOperation({ summary: 'Fetch payroll draft by id' })
-	@ApiResponse({ status: 200, description: 'Payroll draft', type: PayrollDraftResponseDto })
+	@ApiResponse({ status: 200, description: 'Payroll draft' })
 	@ApiParam({ name: 'id', description: 'Draft id', type: 'string' })
 	async getDraft(@Req() req: any, @Param('id') id: string, @CurrentUser() user: JwtPayload) {
-		try { console.log('[diagnostic] getDraft headers:', JSON.stringify(req.headers)); } catch (e) { console.log('[diagnostic] getDraft headers (raw):', req.headers); }
-		const draft = await this.payrollService.getDraft(id, user?.sub);
-		return { debug: { headers: req.headers, params: { id } }, draft };
+		// Payroll drafts have been removed from the system. Return informative message.
+		return { message: 'Payroll drafts feature removed; fetch not available.' };
 	}
 
 	@UseGuards(AuthenticationGuard, AuthorizationGuard)

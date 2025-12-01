@@ -8,14 +8,13 @@ import { terminationAndResignationBenefits, terminationAndResignationBenefitsSch
 import { signingBonus, signingBonusSchema } from '../payroll-configuration/models/signingBonus.schema';
 // import schemas from current subsystem
 import { employeePayrollDetails, employeePayrollDetailsSchema } from './models/employeePayrollDetails.schema';
-import { payrollDraft, payrollDraftSchema, payrollDraftItem, payrollDraftItemSchema } from './models/payrollDraft.schema';
+// payrollDraft schema removed - drafts are no longer used
 import { employeePenalties, employeePenaltiesSchema } from './models/employeePenalties.schema';
 import { employeeSigningBonus, employeeSigningBonusSchema } from './models/EmployeeSigningBonus.schema';
 import { EmployeeTerminationResignation, EmployeeTerminationResignationSchema } from './models/EmployeeTerminationResignation.schema';
 import { payrollRuns, payrollRunsSchema } from './models/payrollRuns.schema';
 import { paySlip, paySlipSchema } from './models/payslip.schema';
 import { PayCalculatorService } from './services/payCalculator.service';
-import { PayrollDraftService } from './services/payroll-draft.service';
 // import payroll-tracking module
 import { PayrollTrackingModule } from '../payroll-tracking/payroll-tracking.module';
 // import payroll-configuration module
@@ -35,8 +34,7 @@ import { AuthModule } from '../../auth/module/auth-module';
     { name: payrollRuns.name, schema: payrollRunsSchema },
     { name: paySlip.name, schema: paySlipSchema },
     { name: employeePayrollDetails.name, schema: employeePayrollDetailsSchema },
-    { name: payrollDraft.name, schema: payrollDraftSchema },
-    { name: payrollDraftItem.name, schema: payrollDraftItemSchema },
+    // payrollDraft entries removed
     { name: employeeSigningBonus.name, schema: employeeSigningBonusSchema },
     { name: EmployeeTerminationResignation.name, schema: EmployeeTerminationResignationSchema },
     { name: terminationAndResignationBenefits.name, schema: terminationAndResignationBenefitsSchema },
@@ -45,7 +43,7 @@ import { AuthModule } from '../../auth/module/auth-module';
 
   ])],
   controllers: [PayrollExecutionController],
-  providers: [PayrollExecutionService, PayCalculatorService, PayrollDraftService],
-  exports: [PayrollExecutionService, PayrollDraftService]
+  providers: [PayrollExecutionService, PayCalculatorService],
+  exports: [PayrollExecutionService]
 })
 export class PayrollExecutionModule { }

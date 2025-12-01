@@ -1,6 +1,5 @@
 import { Prop, Schema, SchemaFactory, } from '@nestjs/mongoose';
 import mongoose, { HydratedDocument } from 'mongoose';
-// import schemas from employee subsyetm
 import {  EmployeeProfile as Employee} from '../../../employee/models/Employee/employee-profile.schema';
 
 

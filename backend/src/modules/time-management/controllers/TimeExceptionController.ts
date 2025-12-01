@@ -1,35 +1,36 @@
-import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
+// src/time-management/time-exception/time-exception.controller.ts
 
-import { TimeException } from '../models/TimeException';
+import { Controller, Post, Body, Get, Param, Query, Put } from '@nestjs/common';
+
+import { CreateExceptionDto, AssignExceptionDto, UpdateExceptionStatusDto, ExceptionQueryDto } from '../dto/TimeExceptionDtos';
 import {TimeExceptionService} from "../services/TimeExceptionService";
 
 @Controller('time-exceptions')
 export class TimeExceptionController {
-    constructor(private readonly timeExceptionService: TimeExceptionService) {}
-
-    @Get()
-    async getAll() {
-        return this.timeExceptionService.findAll();
-    }
-
-    @Get(':index')
-    async getOne(@Param('index') index: number) {
-        return this.timeExceptionService.findOne(index);
-    }
+    constructor(private readonly svc: TimeExceptionService) {}
 
     @Post()
-    async create(@Body() exception: Partial<TimeException>) {
-        return this.timeExceptionService.create(exception);
+    async create(@Body() dto: CreateExceptionDto) {
+        return this.svc.createException(dto);
     }
 
-    @Put(':index')
-    async update(@Param('index') index: number, @Body() updateData: Partial<TimeException>) {
-        return this.timeExceptionService.update(index, updateData);
+    @Get(':id')
+    async getOne(@Param('id') id: string) {
+        return this.svc.getException(id);
     }
 
-    @Delete(':index')
-    async remove(@Param('index') index: number) {
-        const deleted = await this.timeExceptionService.delete(index);
-        return { deleted };
+    @Get()
+    async list(@Query() query: ExceptionQueryDto) {
+        return this.svc.listExceptions(query);
+    }
+
+    @Put('assign')
+    async assign(@Body() dto: AssignExceptionDto) {
+        return this.svc.assignException(dto);
+    }
+
+    @Put('status')
+    async updateStatus(@Body() dto: UpdateExceptionStatusDto) {
+        return this.svc.updateStatus(dto);
     }
 }

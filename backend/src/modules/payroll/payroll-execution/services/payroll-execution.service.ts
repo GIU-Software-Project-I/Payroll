@@ -1,13 +1,18 @@
-import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException, Optional } from '@nestjs/common';
 import { InjectModel, InjectConnection } from '@nestjs/mongoose';
 import { Model, Connection } from 'mongoose';
 import mongoose from 'mongoose';
 import { employeeSigningBonus, employeeSigningBonusDocument } from '../models/EmployeeSigningBonus.schema';
 import { payrollRuns, payrollRunsDocument } from '../models/payrollRuns.schema';
-import { PayrollDraftService } from './payroll-draft.service';
+import { paySlip } from '../models/payslip.schema';
+import { employeePayrollDetails } from '../models/employeePayrollDetails.schema';
 import { BonusStatus, BenefitStatus } from '../enums/payroll-execution-enum';
 import { EmployeeTerminationResignation, EmployeeTerminationResignationDocument } from '../models/EmployeeTerminationResignation.schema';
 import { SystemRole } from '../../../employee/enums/employee-profile.enums';
+import { PayCalculatorService } from '../services/payCalculator.service';
+import { TimeManagementService } from '../../../time-management/time-management.service';
+import { LeavesService } from '../../../leaves/services/leaves.service';
+import { EmployeeProfileService } from '../../../employee/Services/Employee-Profile.Service';
 @Injectable()
 export class PayrollExecutionService {
     constructor(
@@ -17,9 +22,17 @@ export class PayrollExecutionService {
         private employeeTerminationResignationModel: Model<EmployeeTerminationResignationDocument>,
         @InjectModel(payrollRuns.name)
         private payrollRunsModel: Model<payrollRunsDocument>,
+        @InjectModel(paySlip.name)
+        private paySlipModel: Model<any>,
+        @InjectModel(employeePayrollDetails.name)
+        private employeePayrollDetailsModel: Model<any>,
+        private readonly payCalculator: PayCalculatorService,
         @InjectConnection()
         private readonly connection: Connection,
-        private readonly payrollDraftService: PayrollDraftService,
+        @Optional() private readonly employeeService?: EmployeeProfileService,
+        @Optional() private readonly timeService?: TimeManagementService,
+        @Optional() private readonly leavesService?: LeavesService,
+        // Payroll drafts have been removed; no draft service injected
     ) {}
     // Centralized DB handle and collection names
     private get db() {
@@ -156,7 +169,8 @@ export class PayrollExecutionService {
     }
 
     async getDraft(id: string, requestedBy?: string) {
-        return await this.payrollDraftService.getDraft(id);
+        // Drafts were removed from the system. Return null or a notice.
+        return { message: 'Payroll drafts feature removed; no draft available.' };
     }
 
     async approvePayroll(id: string, approvedBy?: string) {
@@ -269,13 +283,173 @@ export class PayrollExecutionService {
         // set status to 'under review' and trigger draft generation (minimal)
         const now = new Date();
         const updated = await this.payrollRunsModel.findByIdAndUpdate(id, { $set: { status: 'under review', managerApprovalDate: now } }, { new: true }).exec();
-        // trigger draft generation - minimal
+        // Start automatic processing pipeline (REQ-PY-23)
         try {
-            await this.payrollDraftService.generateDraft(updated, approvedBy ?? 'system');
+            await this.processPayrollRun(updated);
+            // mark as pending finance approval after processing
+            const after = await this.payrollRunsModel.findByIdAndUpdate(id, { $set: { status: 'pending finance approval' } }, { new: true }).exec();
+            return after;
         } catch (err) {
-            // don't block approval on draft generation failure
+            // processing errors should not leave run in inconsistent state; record exception count and bubble
+            console.error('Payroll processing failed for run', id, err);
+            return updated;
         }
-        return updated;
+    }
+
+    // Main processing pipeline: fetch employees, compute payroll lines, process bonuses/benefits
+    private async processPayrollRun(runDoc: payrollRunsDocument | any) {
+        if (!runDoc || !runDoc._id) throw new BadRequestException('Invalid payroll run');
+        const db = this.db;
+        if (!db) throw new BadRequestException('Database unavailable');
+
+        const payrollPeriod = runDoc.payrollPeriod ? new Date(runDoc.payrollPeriod) : new Date();
+
+        // find active employee profiles whose contract covers the payrollPeriod
+        let empCursor: any = null;
+        if (this.employeeService && typeof (this.employeeService as any).findActive === 'function') {
+            // subsystem exposes a helper
+            const list = await (this.employeeService as any).findActive();
+            empCursor = (list && Array.isArray(list)) ? list[Symbol.iterator]() : [][Symbol.iterator]();
+        } else {
+            const employeesColl = db.collection('employee_profiles');
+            empCursor = employeesColl.find({ status: 'ACTIVE' });
+        }
+
+        let employeesCount = 0;
+        let exceptionsCount = 0;
+        let totalNet = 0;
+
+        // load tax rules (take first approved rule if available)
+        const taxRule = await db.collection('taxrules').findOne({ status: 'approved' }) || await db.collection('taxrules').findOne({}) || { rate: 0 };
+
+        // load insurance brackets (pick the bracket matching salary range later)
+        const insuranceBrackets = await db.collection('insurancebrackets').find({ status: 'approved' }).toArray().catch(()=>[]);
+
+        while (await empCursor.hasNext()) {
+            const emp = await empCursor.next();
+            if (!emp) continue;
+            employeesCount++;
+            const employeeId = emp._id;
+
+            // Attempt to find last known payroll details for employee to infer baseSalary/allowances
+            let lastPayroll: any = null;
+            try { lastPayroll = await db.collection('employeepayrolldetails').findOne({ employeeId: employeeId }, { sort: { createdAt: -1 } } as any); } catch (e) { lastPayroll = null; }
+
+            let baseSalary = lastPayroll && (lastPayroll as any).baseSalary ? (lastPayroll as any).baseSalary : null;
+            let allowances = lastPayroll && (lastPayroll as any).allowances ? (lastPayroll as any).allowances : 0;
+
+            if (!baseSalary || baseSalary <= 0) {
+                // cannot calculate payroll without base salary — mark exception and continue
+                exceptionsCount++;
+                const detail: any = {
+                    employeeId: employeeId,
+                    baseSalary: baseSalary || 0,
+                    allowances: allowances || 0,
+                    deductions: 0,
+                    netSalary: 0,
+                    netPay: 0,
+                    bankStatus: 'missing',
+                    exceptions: 'missing_base_salary',
+                    payrollRunId: runDoc._id,
+                };
+                try { await this.employeePayrollDetailsModel.create(detail); } catch (e) { /* ignore */ }
+                continue;
+            }
+
+            // find applicable insurance bracket by baseSalary
+            let insurance = insuranceBrackets.find((b: any) => baseSalary >= b.minSalary && baseSalary <= b.maxSalary) || null;
+            const insurancePct = insurance ? (insurance.employeeRate ?? 0) : 0;
+            // try to compute daysWorked using time-management service if available
+            let daysWorked = 30;
+            if (this.timeService && typeof (this.timeService as any).findByEmployee === 'function') {
+                try {
+                    const records = await (this.timeService as any).findByEmployee(employeeId.toString());
+                    // crude heuristic: if we have attendance records, assume full month
+                    if (Array.isArray(records)) daysWorked = records.length > 0 ? 30 : 0;
+                } catch (e) { }
+            }
+
+            // prepare calculator input
+            const calcInput = {
+                baseSalary: baseSalary,
+                daysInPeriod: 30,
+                daysWorked: daysWorked,
+                taxRatePct: taxRule.rate ?? 0,
+                pensionPct: 0,
+                insurancePct: insurancePct,
+                penalties: 0,
+                refunds: 0,
+                bonus: 0,
+                benefit: 0,
+            };
+            const result = this.payCalculator.calculate(calcInput as any);
+
+            // check for signing bonus for this employee
+            try {
+                const sb = await db.collection('employeesigningbonuses').findOne({ employeeId: employeeId, status: 'pending' });
+                if (sb) {
+                    // mark approved and schedule payment (PAYROLL processing auto-approve)
+                    await db.collection('employeesigningbonuses').updateOne({ _id: sb._id }, { $set: { status: 'approved', paymentDate: new Date() } });
+                    result.netPay += (sb.givenAmount || 0);
+                }
+            } catch (e) { }
+
+            // check for termination/resignation benefits for this employee
+            try {
+                const tb = await db.collection(this.terminationCollectionName as any).findOne({ employeeId: employeeId, status: 'pending' });
+                if (tb) {
+                    await db.collection(this.terminationCollectionName as any).updateOne({ _id: tb._id }, { $set: { status: 'approved', approvedAt: new Date() } });
+                    result.netPay += (tb.givenAmount || 0);
+                }
+            } catch (e) { }
+
+            // Persist payslip
+            const payslip: any = {
+                employeeId: employeeId,
+                payrollRunId: runDoc._id,
+                earningsDetails: {
+                    baseSalary: baseSalary,
+                    allowances: [],
+                    bonuses: [],
+                    benefits: [],
+                    refunds: [],
+                },
+                deductionsDetails: {
+                    taxes: [{ name: taxRule.name || 'tax', rate: taxRule.rate ?? 0 }],
+                    insurances: insurance ? [insurance] : [],
+                    penalties: null,
+                },
+                totalGrossSalary: result.proratedGross,
+                totaDeductions: result.deductions,
+                netPay: result.netPay,
+                paymentStatus: 'pending',
+            };
+            try { await this.paySlipModel.create(payslip); } catch (e) { /* ignore */ }
+
+            // Persist employeePayrollDetails
+            const details: any = {
+                employeeId: employeeId,
+                baseSalary: baseSalary,
+                allowances: allowances || 0,
+                deductions: result.deductions,
+                netSalary: result.proratedGross - result.deductions,
+                netPay: result.netPay,
+                bankStatus: 'valid',
+                exceptions: null,
+                bonus: 0,
+                benefit: 0,
+                payrollRunId: runDoc._id,
+            };
+            try { await this.employeePayrollDetailsModel.create(details); } catch (e) { /* ignore */ }
+
+            totalNet += result.netPay;
+        }
+
+        // update payrollRuns doc with totals
+        try {
+            await this.payrollRunsModel.findByIdAndUpdate(runDoc._id, { $set: { employees: employeesCount, exceptions: exceptionsCount, totalnetpay: totalNet } }).exec();
+        } catch (e) { /* ignore */ }
+        return true;
     }
 
     async rejectPayrollInitiation(id: string, rejectedBy?: string, reason?: string) {

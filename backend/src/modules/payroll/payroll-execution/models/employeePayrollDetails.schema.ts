@@ -1,10 +1,8 @@
+
 import { Prop, Schema, SchemaFactory, } from '@nestjs/mongoose';
 import mongoose, { HydratedDocument } from 'mongoose';
-// import schemas from employee subsyetm
 import {  EmployeeProfile as Employee} from '../../../employee/models/Employee/employee-profile.schema';
-// import schemas from current subsyetm
 import { payrollRuns } from './payrollRuns.schema';
-// import enums
 import { BankStatus } from '../enums/payroll-execution-enum';
 
 export type employeePayrollDetailsDocument = HydratedDocument<employeePayrollDetails>
