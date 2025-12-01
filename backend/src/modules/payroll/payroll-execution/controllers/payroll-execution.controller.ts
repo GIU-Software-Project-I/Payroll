@@ -46,7 +46,8 @@ export class PayrollExecutionController {
 	async listSigningBonuses(@Query('status') statusParam: string | undefined) {
 		//  ?status=pending
 		const status = statusParam as any;
-		const items = await this.payrollService.listSigningBonuses(status);
+		// @ts-ignore
+const items = await this.payrollService.listSigningBonuses(status);
 		return items;
 	}
 
