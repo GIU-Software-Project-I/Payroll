@@ -15,7 +15,6 @@ import { Roles } from '../../../auth/decorators/Roles-Decorator';
 import { CurrentUser } from '../../../auth/decorators/Current-User';
 import { SystemRole } from '../../../employee/enums/employee-profile.enums';
 import type { JwtPayload } from '../../../auth/token/JWT-Payload';
-import { CreateEmployeeSigningBonusDto } from '../dto/create-employee-signing-bonus.dto';
 
 @Controller('payroll-execution')
 @ApiTags('Payroll Execution')
@@ -34,17 +33,6 @@ export class PayrollExecutionController {
         return { status: 'all_signing_bonuses_approved' };
 
     }
-
-	@UseGuards(AuthenticationGuard, AuthorizationGuard)
-	@Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.HR_MANAGER)
-	@Post('signing-bonuses')
-	@ApiConsumes('application/json')
-	@ApiBody({ type: CreateEmployeeSigningBonusDto })
-	@ApiOperation({ summary: 'Create an employee signing bonus' })
-	async createSigningBonus(@Body() dto: CreateEmployeeSigningBonusDto, @CurrentUser() user: JwtPayload) {
-		const created = await this.payrollService.createSigningBonus(dto as any, user?.sub);
-		return created;
-	}
 
 	@UseGuards(AuthenticationGuard, AuthorizationGuard)
 	@Roles(SystemRole.PAYROLL_SPECIALIST)

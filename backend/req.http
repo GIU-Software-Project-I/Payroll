@@ -1,6 +1,10 @@
 ### Swagger-based REST client for local testing (Rest Client / .http)
 # Usage: install REST Client extension (VSCode), then open this file and click "Send Request" on each request.
 
+# File variables (Rest Client): set defaults here. Update `ACCESS_TOKEN` after login.
+@BONUS_ID = 692d0ca6f2b668d1ae303cdd
+@ACCESS_TOKEN = 
+
 # 1) Register Candidate (public)
 POST http://localhost:8000/auth/register-candidate
 Content-Type: application/json
