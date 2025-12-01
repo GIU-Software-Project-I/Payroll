@@ -4,6 +4,7 @@ import { Model, Connection } from 'mongoose';
 import mongoose from 'mongoose';
 import { employeeSigningBonus, employeeSigningBonusDocument } from '../models/EmployeeSigningBonus.schema';
 import { payrollRuns, payrollRunsDocument } from '../models/payrollRuns.schema';
+import { PayrollDraftService } from './payroll-draft.service';
 import { BonusStatus, BenefitStatus } from '../enums/payroll-execution-enum';
 import { EmployeeTerminationResignation, EmployeeTerminationResignationDocument } from '../models/EmployeeTerminationResignation.schema';
 import { SystemRole } from '../../../employee/enums/employee-profile.enums';
@@ -18,6 +19,7 @@ export class PayrollExecutionService {
         private payrollRunsModel: Model<payrollRunsDocument>,
         @InjectConnection()
         private readonly connection: Connection,
+        private readonly payrollDraftService: PayrollDraftService,
     ) {}
     // Centralized DB handle and collection names
     private get db() {
@@ -154,7 +156,7 @@ export class PayrollExecutionService {
     }
 
     async getDraft(id: string, requestedBy?: string) {
-        return { id, draft: true };
+        return await this.payrollDraftService.getDraft(id);
     }
 
     async approvePayroll(id: string, approvedBy?: string) {
@@ -240,7 +242,26 @@ export class PayrollExecutionService {
             update.rejectionReason = null;
         }
         const updated = await this.payrollRunsModel.findByIdAndUpdate(id, { $set: update }, { new: true }).exec();
-        return updated;
+        // Reload the document to ensure we return the latest persisted state
+        try {
+            let reloaded = await this.getPayrollInitiation(id);
+            const db = this.db;
+            if (db && reloaded && (dto.exceptions !== undefined || dto.totalnetpay !== undefined)) {
+                const needFix: any = {};
+                if (dto.exceptions !== undefined && reloaded.exceptions !== dto.exceptions) needFix.exceptions = dto.exceptions;
+                if (dto.totalnetpay !== undefined && reloaded.totalnetpay !== dto.totalnetpay) needFix.totalnetpay = dto.totalnetpay;
+                if (Object.keys(needFix).length) {
+                    const oid = (()=>{try{return new mongoose.Types.ObjectId(id);}catch(e){return null;}})();
+                    const filter = oid ? { _id: oid } : { _id: id };
+                    await db.collection('payrollruns').updateOne(filter as any, { $set: needFix } as any);
+                    reloaded = await this.getPayrollInitiation(id);
+                }
+            }
+            return reloaded || updated;
+        } catch (err) {
+            // if reload or native update fails, fall back to returning Mongoose result
+            return updated;
+        }
     }
 
     async approvePayrollInitiation(id: string, approvedBy?: string) {
@@ -248,10 +269,9 @@ export class PayrollExecutionService {
         // set status to 'under review' and trigger draft generation (minimal)
         const now = new Date();
         const updated = await this.payrollRunsModel.findByIdAndUpdate(id, { $set: { status: 'under review', managerApprovalDate: now } }, { new: true }).exec();
-        // trigger draft generation - minimal call to initiatePayroll
+        // trigger draft generation - minimal
         try {
-            const payload = updated ? updated : { payrollPeriod: new Date(), entity: 'default' };
-            await this.initiatePayroll({ runId: updated?.runId, payrollPeriod: updated?.payrollPeriod, entity: updated?.entity, employees: updated?.employees, exceptions: updated?.exceptions, totalnetpay: updated?.totalnetpay }, approvedBy);
+            await this.payrollDraftService.generateDraft(updated, approvedBy ?? 'system');
         } catch (err) {
             // don't block approval on draft generation failure
         }
