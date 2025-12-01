@@ -25,6 +25,10 @@ import { CreateAllowanceDto } from './dto/create-allowance.dto';
 import { UpdateAllowanceDto } from './dto/update-allowance.dto';
 import { QueryAllowanceDto } from './dto/query-allowance.dto';
 import { ApproveAllowanceDto } from './dto/approve-allowance.dto';
+import { CreateSigningBonusDto } from './dto/create-signing-bonus.dto';
+import { UpdateSigningBonusDto } from './dto/update-signing-bonus.dto';
+import { QuerySigningBonusDto } from './dto/query-signing-bonus.dto';
+import { ApproveSigningBonusDto } from './dto/approve-signing-bonus.dto';
 
 @Controller('payroll-configuration')
 @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
@@ -287,6 +291,91 @@ async rejectAllowance(
     statusCode: HttpStatus.OK,
     message: 'Allowance rejected successfully',
     data: allowance,
+  };
+}
+// ========== SIGNING BONUS ENDPOINTS ==========
+@Post('signing-bonuses')
+@HttpCode(HttpStatus.CREATED)
+async createSigningBonus(@Body() createDto: CreateSigningBonusDto) {
+  const signingBonus = await this.payrollConfigService.createSigningBonus(createDto);
+  return {
+    statusCode: HttpStatus.CREATED,
+    message: 'Signing bonus created successfully as DRAFT',
+    data: signingBonus,
+  };
+}
+
+@Get('signing-bonuses/all')
+@HttpCode(HttpStatus.OK)
+async findAllSigningBonuses(@Query() queryDto: QuerySigningBonusDto) {
+  const result = await this.payrollConfigService.findAllSigningBonuses(queryDto);
+  return {
+    statusCode: HttpStatus.OK,
+    message: 'Signing bonuses retrieved successfully',
+    ...result,
+  };
+}
+
+@Get('signing-bonuses/:id')
+@HttpCode(HttpStatus.OK)
+async findOneSigningBonus(@Param('id') id: string) {
+  const signingBonus = await this.payrollConfigService.findOneSigningBonus(id);
+  return {
+    statusCode: HttpStatus.OK,
+    message: 'Signing bonus retrieved successfully',
+    data: signingBonus,
+  };
+}
+
+@Patch('signing-bonuses/:id')
+@HttpCode(HttpStatus.OK)
+async updateSigningBonus(
+  @Param('id') id: string,
+  @Body() updateDto: UpdateSigningBonusDto,
+) {
+  const signingBonus = await this.payrollConfigService.updateSigningBonus(id, updateDto);
+  return {
+    statusCode: HttpStatus.OK,
+    message: 'Signing bonus updated successfully',
+    data: signingBonus,
+  };
+}
+
+@Delete('signing-bonuses/:id')
+@HttpCode(HttpStatus.OK)
+async removeSigningBonus(@Param('id') id: string) {
+  const result = await this.payrollConfigService.removeSigningBonus(id);
+  return {
+    statusCode: HttpStatus.OK,
+    ...result,
+  };
+}
+
+@Patch('signing-bonuses/:id/approve')
+@HttpCode(HttpStatus.OK)
+async approveSigningBonus(
+  @Param('id') id: string,
+  @Body() approveDto: ApproveSigningBonusDto,
+) {
+  const signingBonus = await this.payrollConfigService.approveSigningBonus(id, approveDto.approvedBy);
+  return {
+    statusCode: HttpStatus.OK,
+    message: 'Signing bonus approved successfully',
+    data: signingBonus,
+  };
+}
+
+@Patch('signing-bonuses/:id/reject')
+@HttpCode(HttpStatus.OK)
+async rejectSigningBonus(
+  @Param('id') id: string,
+  @Body() approveDto: ApproveSigningBonusDto,
+) {
+  const signingBonus = await this.payrollConfigService.rejectSigningBonus(id, approveDto.approvedBy);
+  return {
+    statusCode: HttpStatus.OK,
+    message: 'Signing bonus rejected successfully',
+    data: signingBonus,
   };
 }
 }
