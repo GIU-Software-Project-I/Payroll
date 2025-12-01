@@ -20,33 +20,17 @@ async function main() {
 
   const { Schema, Types } = mongoose;
 
-  const employeeSigningBonusSchema = new Schema({
-    employeeId: { type: Types.ObjectId, ref: 'EmployeeProfile', required: true },
-    signingBonusId: { type: Types.ObjectId, ref: 'signingBonus', required: true },
-    paymentDate: Date,
-    status: String,
-  }, { timestamps: true });
-
-  const signingBonusSchema = new Schema({
-    positionName: String,
-    amount: Number,
-    status: String,
-    createdBy: Types.ObjectId,
-    approvedBy: Types.ObjectId,
-    approvedAt: Date,
-  }, { timestamps: true });
-
-  const EmployeeSigningBonus = mongoose.model('employeeSigningBonus', employeeSigningBonusSchema);
-  const SigningBonus = mongoose.model('signingBonus', signingBonusSchema);
+  // Use native DB handle and canonical collection names to ensure we read actual documents
+  const nativeDb = mongoose.connection.db;
+  const execColl = nativeDb.collection('employeesigningbonuses');
+  const configColl = nativeDb.collection('signingbonuses');
 
   const filter = {};
   if (argv.status) filter.status = argv.status;
   if (argv.employeeId) filter.employeeId = argv.employeeId;
 
-  const [execBonuses, configBonuses] = await Promise.all([
-    EmployeeSigningBonus.find(filter).limit(argv.limit).lean().exec(),
-    SigningBonus.find().limit(100).lean().exec(),
-  ]);
+  const execBonuses = await execColl.find(filter).limit(argv.limit).toArray();
+  const configBonuses = await configColl.find({}).limit(100).toArray();
 
   console.log(`Found ${execBonuses.length} employee signing bonus records (showing up to ${argv.limit})`);
   console.log(JSON.stringify(execBonuses, null, 2));

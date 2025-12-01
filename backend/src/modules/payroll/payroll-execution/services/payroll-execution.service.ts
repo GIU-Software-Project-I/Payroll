@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import mongoose from 'mongoose';
 import { employeeSigningBonus, employeeSigningBonusDocument } from '../models/EmployeeSigningBonus.schema';
 import { BonusStatus } from '../enums/payroll-execution-enum';
 @Injectable()
@@ -18,25 +19,35 @@ export class PayrollExecutionService {
     }
 
     async getSigningBonus(id: string) {
-        return this.employeeSigningBonusModel.findById(id).lean().exec();
-    }
+        // Try standard Mongoose lookup first
+        const doc = await this.employeeSigningBonusModel.findById(id).lean().exec();
+        if (doc) return doc;
 
-    // Create an employee signing bonus record
-    async createSigningBonus(dto: { employeeId: string; signingBonusId: string; paymentDate?: string }, createdBy?: string) {
-        const doc: any = {
-            employeeId: dto.employeeId,
-            signingBonusId: dto.signingBonusId,
-            status: BonusStatus.PENDING,
-        };
-        if (dto.paymentDate) {
-            const d = new Date(dto.paymentDate);
-            if (isNaN(d.getTime())) {
-                throw new BadRequestException('Invalid paymentDate; expected ISO date string');
+        // Fallback: attempt native DB lookup across common collection names
+        const possibleExecNames = ['employeesigningbonuses', 'employee_signing_bonuses', 'employee_signingbonuses', 'employee_signing_bonus', 'employeeSigningBonuses', 'employeeSigningBonus'];
+        const objectId = (() => {
+            try { return new mongoose.Types.ObjectId(id); } catch (e) { return null; }
+        })();
+        if (!objectId) return null;
+
+        const db = (this.employeeSigningBonusModel.db && this.employeeSigningBonusModel.db.db) ? this.employeeSigningBonusModel.db.db : (mongoose.connection && mongoose.connection.db) ? mongoose.connection.db : null;
+        if (!db) return null;
+
+        for (const name of possibleExecNames) {
+            try {
+                const coll = db.collection(name);
+                // try ObjectId lookup first
+                let found: any = null;
+                try { found = await coll.findOne({ _id: objectId } as any); } catch (e) { found = null; }
+                if (found) return found;
+                // fallback to string id lookup (some scripts may have inserted string _id values)
+                found = await coll.findOne({ _id: id } as any);
+                if (found) return found;
+            } catch (err) {
+                // ignore and continue
             }
-            doc.paymentDate = d;
         }
-        const created = await this.employeeSigningBonusModel.create(doc);
-        return created;
+        return null;
     }
 
     // Edit signing bonus (amount, paymentDate (ISO string), status, note)

@@ -36,19 +36,8 @@ async function main() {
   const execColl = nativeDb.collection('employee_signingbonuses');
   // NOTE: collection name used by schema in project is likely 'employeesigningbonuses' or similar; we will detect existing names
 
-  // Try common collection names if default not present
-  const possibleExecNames = ['employee_signing_bonuses', 'employee_signingbonuses', 'employeesigningbonuses', 'employeeSigningBonus', 'employee_signing_bonus', 'employeeSigningBonuses', 'employeeSigningBonus'];
-  let execCollectionName = null;
-  for (const n of possibleExecNames) {
-    if ((await nativeDb.listCollections({ name: n }).toArray()).length) {
-      execCollectionName = n;
-      break;
-    }
-  }
-  if (!execCollectionName) {
-    // fallback: create a collection named 'employee_signing_bonuses'
-    execCollectionName = 'employee_signing_bonuses';
-  }
+  // Use canonical collection name that matches the Mongoose schema
+  const execCollectionName = 'employeesigningbonuses';
   const employeeSigningBonusColl = nativeDb.collection(execCollectionName);
 
   // signing bonus configs

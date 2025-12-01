@@ -34,7 +34,7 @@ Content-Type: application/json
 
 ###
 # 3) Example: List signing bonuses (optional status query) — requires auth
-GET http://localhost:8000/payroll-execution/signing-bonuses?status=pending
+GET http://localhost:8000/payroll-execution/signing-bonuses
 Accept: application/json
 # If needed, uncomment one of the auth methods below
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTJkMDNjZDk4NGM5Y2FkZDZjNTViNDMiLCJlbWFpbCI6InBheXJvbGwuc3BlY0BleGFtcGxlLmNvbSIsInJvbGVzIjpbIlBheXJvbGwgU3BlY2lhbGlzdCJdLCJ1c2VyVHlwZSI6ImVtcGxveWVlIiwiaWF0IjoxNzY0NTU4OTkzLCJleHAiOjE3NjUxNjM3OTN9.-KqNawlAREw3CvydZYCYBdAV6AKV-GLStfQR8nN39Po
@@ -58,7 +58,7 @@ Content-Type: application/json
 
 ###
 # 4) Get single signing bonus by id (set `{{BONUS_ID}}` using the fetch script or one of the IDs below)
-GET http://localhost:8000/payroll-execution/signing-bonuses/{{BONUS_ID}}
+GET http://localhost:8000/payroll-execution/signing-bonuses/692d0ca6f2b668d1ae303cdd
 Accept: application/json
 Authorization: Bearer {{ACCESS_TOKEN}}
 
@@ -66,7 +66,7 @@ Authorization: Bearer {{ACCESS_TOKEN}}
 
 ###
 # 5) Edit signing bonus (JSON body) — requires PAYROLL_SPECIALIST role
-POST http://localhost:8000/payroll-execution/signing-bonuses/{{BONUS_ID}}/edit
+POST http://localhost:8000/payroll-execution/signing-bonuses/692d0ca6f2b668d1ae303cdd/edit
 Content-Type: application/json
 Authorization: Bearer {{ACCESS_TOKEN}}
 
@@ -79,7 +79,7 @@ Authorization: Bearer {{ACCESS_TOKEN}}
 
 ###
 # 6) Approve single signing bonus
-POST http://localhost:8000/payroll-execution/signing-bonuses/{{BONUS_ID}}/approve
+POST http://localhost:8000/payroll-execution/signing-bonuses/692d0ca6f2b668d1ae303cdd/approve
 Content-Type: application/json
 # Authorization: Bearer {{ACCESS_TOKEN}}
 
@@ -98,7 +98,8 @@ Content-Type: application/json
 
 ###
 # 8) Fetch payroll draft by id
-GET http://localhost:8000/payroll-execution/draft/{{DRAFT_ID}}
+GET http://localhost:8000/payroll-execution/draft/  
+##{{DRAFT_ID}}
 Accept: application/json
 # Authorization: Bearer {{ACCESS_TOKEN}}
 
