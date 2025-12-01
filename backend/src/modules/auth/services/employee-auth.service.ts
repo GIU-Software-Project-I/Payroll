@@ -168,28 +168,6 @@ export class EmployeeAuthService {
     return candidate;
   }
 
-  async updateEmployeePassword(employeeId: string, newPassword: string): Promise<void> {
-    const hashedPassword = await this.hashPassword(newPassword);
-
-    const result = await this.employeeModel.updateOne({ _id: employeeId }, { password: hashedPassword }).exec();
-
-    if (result.matchedCount === 0) {
-      throw new NotFoundException('Employee not found');
-    }
-  }
-
-  async updateCandidatePassword(candidateId: string, newPassword: string): Promise<void> {
-    const hashedPassword = await this.hashPassword(newPassword);
-
-    const result = await this.candidateModel.updateOne(
-      { _id: candidateId },
-      { password: hashedPassword }
-    ).exec();
-
-    if (result.matchedCount === 0) {
-      throw new NotFoundException('Candidate not found');
-    }
-  }
 
   async getEmployeeRoles(employeeId: string): Promise<SystemRole[]> {
     const systemRole = await this.employeeSystemRoleModel.findOne({

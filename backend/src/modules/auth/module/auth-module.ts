@@ -2,7 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { MongooseModule } from '@nestjs/mongoose';
-import { MailModule } from "../email/Email-Module";
+
 import { BlacklistedToken, BlacklistedTokenSchema } from "../token/blacklisted-token.schema";
 import { EmployeeModule } from "../../employee/modules/employee.module";
 import { EmployeeProfile, EmployeeProfileSchema } from "../../employee/models/Employee/employee-profile.schema";
@@ -19,7 +19,7 @@ import {AuthenticationGuard} from "../guards/authentication-guard";
 @Module({
     imports: [
         ConfigModule,
-        MailModule,
+
         JwtModule.registerAsync({
             imports: [ConfigModule],
             inject: [ConfigService],

@@ -10,6 +10,10 @@ import {Holiday, HolidayDocument} from "../models/holiday.schema";
 import {LatenessRule, LatenessRuleDocument} from "../models/lateness-rule.schema";
 import {OvertimeRule, OvertimeRuleDocument} from "../models/overtime-rule.schema";
 import {NotificationLog, NotificationLogDocument} from "../models/notification-log.schema";
+<<<<<<< HEAD
+=======
+import { ShiftAssignmentStatus } from "../models/enums/index";
+>>>>>>> 7104891f826172d6e14a292132b878849990ef1b
 import {
     AssignShiftDto, BulkAssignShiftDto, CreateHolidayDto, CreateLatenessRuleDto, CreateOvertimeRuleDto,
     CreateScheduleRuleDto,
@@ -17,7 +21,12 @@ import {
     CreateShiftTypeDto, RenewAssignmentDto, UpdateHolidayDto, UpdateLatenessRuleDto,
     UpdateOvertimeRuleDto, UpdateScheduleRuleDto,
     UpdateShiftDto,
+<<<<<<< HEAD
     UpdateShiftTypeDto
+=======
+    UpdateShiftTypeDto,
+    UpdateShiftAssignmentStatusDto
+>>>>>>> 7104891f826172d6e14a292132b878849990ef1b
 } from "../dto/ShiftManagementDtos";
 
 
@@ -260,6 +269,68 @@ export class ShiftManagementService {
         }
     }
 
+<<<<<<< HEAD
+=======
+    /**
+     * US-021: Update shift assignment status
+     * Updates the status of a shift assignment (PENDING, APPROVED, CANCELLED, EXPIRED)
+     */
+    async updateAssignmentStatus(id: string, dto: UpdateShiftAssignmentStatusDto) {
+        // Validate status is a valid ShiftAssignmentStatus enum value
+        const validStatuses = ['PENDING', 'APPROVED', 'CANCELLED', 'EXPIRED'];
+        if (!validStatuses.includes(dto.status)) {
+            throw new BadRequestException(
+                `Invalid status. Must be one of: ${validStatuses.join(', ')}`
+            );
+        }
+
+        // Find the assignment
+        const assignment = await this.shiftAssignmentModel.findById(id);
+        if (!assignment) {
+            throw new NotFoundException(`Shift assignment with ID ${id} not found`);
+        }
+
+        // Store old status for response
+        const oldStatus = assignment.status;
+
+        // Update the status
+        assignment.status = dto.status as any;
+        await assignment.save();
+
+        // Send notification to employee about status change
+        try {
+            let notificationMessage = `Shift assignment status changed from ${oldStatus} to ${dto.status}`;
+            if (dto.reason) {
+                notificationMessage += `. Reason: ${dto.reason}`;
+            }
+
+            await this.notificationModel.create({
+                to: assignment.employeeId ? assignment.employeeId as any : null,
+                type: 'SHIFT_STATUS_UPDATED',
+                message: notificationMessage,
+            });
+        } catch (e) {
+            this.logger.warn('Failed to log status update notification: ' + (e?.message ?? e));
+        }
+
+        // Log the status change
+        this.logger.log(
+            `Shift assignment ${id} status updated from ${oldStatus} to ${dto.status}` +
+            (dto.updatedBy ? ` by user ${dto.updatedBy}` : '') +
+            (dto.reason ? `. Reason: ${dto.reason}` : '')
+        );
+
+        return {
+            message: 'Shift assignment status updated successfully',
+            assignmentId: id,
+            oldStatus,
+            newStatus: dto.status,
+            reason: dto.reason,
+            updatedAt: new Date(),
+        };
+    }
+
+>>>>>>> 7104891f826172d6e14a292132b878849990ef1b
     async validateShiftOverlap(employeeId: string | Types.ObjectId, startDate: Date, endDate?: Date): Promise<boolean> {
         const eId = typeof employeeId === 'string' ? new Types.ObjectId(employeeId) : employeeId;
         const overlapping = await this.shiftAssignmentModel.findOne({
