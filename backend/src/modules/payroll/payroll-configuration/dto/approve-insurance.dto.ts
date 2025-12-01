@@ -1,8 +1,11 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
 
 export class ApproveInsuranceDto {
-  @IsNotEmpty()
   @IsString()
+  @IsNotEmpty()
   approvedBy: string;
+
+  @IsString()
+  @IsOptional()
+  rejectionReason?: string;
 }
-//making sure

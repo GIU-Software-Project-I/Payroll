@@ -158,6 +158,59 @@ async approveTaxRule(id: string, dto: ApproveTaxRuleDto) {
     return { message: `Insurance bracket '${bracket.name}' successfully deleted` };
   }
 
+  async rejectTaxRule(id: string, dto: ApproveTaxRuleDto) {
+  const taxRule = await this.taxRulesModel.findById(id).exec();
+
+  if (!taxRule) {
+    throw new NotFoundException('Tax rule not found');
+  }
+
+  if (taxRule.status !== ConfigStatus.DRAFT) {
+    throw new BadRequestException('Only DRAFT tax rules can be rejected');
+  }
+
+  if (!dto.approvedBy || dto.approvedBy.trim() === '') {
+    throw new BadRequestException('approvedBy is required');
+  }
+
+  if (!Types.ObjectId.isValid(dto.approvedBy)) {
+    throw new BadRequestException('approvedBy must be a valid MongoDB ObjectId');
+  }
+
+  taxRule.approvedBy = new Types.ObjectId(dto.approvedBy);
+  taxRule.status = ConfigStatus.REJECTED;
+  taxRule.approvedAt = new Date();
+
+  return await taxRule.save();
+}
+
+
+async rejectInsuranceBracket(id: string, dto: ApproveInsuranceDto) {
+  const bracket = await this.insuranceModel.findById(id).exec();
+
+  if (!bracket) {
+    throw new NotFoundException('Insurance bracket not found');
+  }
+
+  if (bracket.status !== ConfigStatus.DRAFT) {
+    throw new BadRequestException('Only DRAFT brackets can be rejected');
+  }
+
+  if (!dto.approvedBy || dto.approvedBy.trim() === '') {
+    throw new BadRequestException('approvedBy is required');
+  }
+
+  if (!Types.ObjectId.isValid(dto.approvedBy)) {
+    throw new BadRequestException('approvedBy must be a valid MongoDB ObjectId');
+  }
+
+  bracket.approvedBy = new Types.ObjectId(dto.approvedBy);
+  bracket.status = ConfigStatus.REJECTED;
+  bracket.approvedAt = new Date();
+
+  return await bracket.save();
+}
+
   // ===== HELPER METHOD FOR CONTRIBUTION CALCULATION =====
 
   /**

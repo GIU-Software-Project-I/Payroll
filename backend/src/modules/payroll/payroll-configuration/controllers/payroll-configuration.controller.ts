@@ -87,6 +87,20 @@ export class PayrollConfigurationController {
     return this.payrollConfigService.deleteInsuranceBracket(id);
   }
 
+  @Patch('tax-rules/:id/reject')
+@HttpCode(HttpStatus.OK)
+rejectTaxRule(@Param('id') id: string, @Body() dto: ApproveTaxRuleDto) {
+  return this.payrollConfigService.rejectTaxRule(id, dto);
+}
+
+// ===== INSURANCE BRACKETS =====
+
+@Patch('insurance-brackets/:id/reject')
+@HttpCode(HttpStatus.OK)
+rejectInsurance(@Param('id') id: string, @Body() dto: ApproveInsuranceDto) {
+  return this.payrollConfigService.rejectInsuranceBracket(id, dto);
+}
+
   // ===== CONTRIBUTION CALCULATION =====
   /**
    * Calculate employee and employer contributions for a given insurance bracket and salary.
