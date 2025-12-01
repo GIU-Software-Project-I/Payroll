@@ -18,7 +18,10 @@ import { CreateAllowanceDto } from './dto/create-allowance.dto';
 import { UpdateAllowanceDto } from './dto/update-allowance.dto';
 import { QueryAllowanceDto } from './dto/query-allowance.dto';
 import { ConfigStatus } from '../../enums/payroll-configuration/payroll-configuration-enums';
-
+import { terminationAndResignationBenefits, terminationAndResignationBenefitsDocument } from '../../schemas/payroll-configuration/terminationAndResignationBenefits';
+import { CreateTerminationBenefitDto } from './dto/create-termination-benefit.dto';
+import { UpdateTerminationBenefitDto } from './dto/update-termination-benefit.dto';
+import { QueryTerminationBenefitDto } from './dto/query-termination-benefit.dto';
 
 @Injectable()
 export class PayrollConfigurationService {
@@ -31,6 +34,8 @@ export class PayrollConfigurationService {
     private allowanceModel: Model<allowanceDocument>,
     @InjectModel(signingBonus.name)
 private signingBonusModel: Model<signingBonusDocument>,
+@InjectModel(terminationAndResignationBenefits.name)
+private terminationBenefitsModel: Model<terminationAndResignationBenefitsDocument>,
   ) {}
  // ========== PAYROLL POLICIES METHODS ==========
   async create(createDto: CreatePayrollPolicyDto): Promise<payrollPolicies> {
@@ -586,5 +591,220 @@ async rejectSigningBonus(id: string, approvedBy: string): Promise<signingBonus> 
     )
     .exec();
   return rejectedSigningBonus as signingBonus;
+}
+// ========== TERMINATION & RESIGNATION BENEFITS METHODS ==========
+
+async createTerminationBenefit(createDto: CreateTerminationBenefitDto): Promise<terminationAndResignationBenefits> {
+  // Check if termination benefit with same name already exists
+  const existingBenefit = await this.terminationBenefitsModel.findOne({ 
+    name: createDto.name 
+  }).exec();
+  
+  if (existingBenefit) {
+    throw new BadRequestException(`Termination benefit '${createDto.name}' already exists`);
+  }
+
+  const newBenefit = new this.terminationBenefitsModel({
+    ...createDto,
+    status: ConfigStatus.DRAFT,
+  });
+  
+  return await newBenefit.save();
+}
+
+async findAllTerminationBenefits(queryDto: QueryTerminationBenefitDto): Promise<{
+  data: terminationAndResignationBenefits[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}> {
+  const { page = 1, limit = 10, search, status, createdByEmployeeId } = queryDto;
+  const query: any = {};
+
+  if (status) query.status = status;
+  if (createdByEmployeeId) query.createdByEmployeeId = createdByEmployeeId;
+
+  if (search) {
+    query.$or = [
+      { name: { $regex: search, $options: 'i' } },
+      { terms: { $regex: search, $options: 'i' } },
+    ];
+  }
+
+  const skip = (page - 1) * limit;
+  const [data, total] = await Promise.all([
+    this.terminationBenefitsModel.find(query).skip(skip).limit(limit).sort({ createdAt: -1 }).exec(),
+    this.terminationBenefitsModel.countDocuments(query).exec(),
+  ]);
+
+  return {
+    data,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
+  };
+}
+
+async findOneTerminationBenefit(id: string): Promise<terminationAndResignationBenefits> {
+  const benefit = await this.terminationBenefitsModel.findById(id).exec();
+  if (!benefit) {
+    throw new NotFoundException(`Termination benefit with ID ${id} not found`);
+  }
+  return benefit;
+}
+
+async updateTerminationBenefit(id: string, updateDto: UpdateTerminationBenefitDto): Promise<terminationAndResignationBenefits> {
+  const benefit = await this.findOneTerminationBenefit(id);
+
+  if (benefit.status !== ConfigStatus.DRAFT) {
+    // BR27: Manual adjustments require specialist approval
+    throw new ForbiddenException(
+      `Cannot update termination benefit with status '${benefit.status}'. ` +
+      `Manual adjustments require specialist approval (BR27). ` +
+      `Please contact a payroll specialist.`
+    );
+  }
+
+  if (updateDto.name && updateDto.name !== benefit.name) {
+    const existing = await this.terminationBenefitsModel.findOne({ 
+      name: updateDto.name 
+    }).exec();
+    if (existing) {
+      throw new BadRequestException(`Termination benefit '${updateDto.name}' already exists`);
+    }
+  }
+
+  const updatedBenefit = await this.terminationBenefitsModel
+    .findByIdAndUpdate(id, updateDto, { new: true })
+    .exec();
+  
+  // Log for manual adjustment tracking
+  if (updateDto.amount !== undefined && updateDto.amount !== benefit.amount) {
+    console.log(`[BR27] Manual adjustment: Benefit "${benefit.name}" amount changed from ${benefit.amount} to ${updateDto.amount}`);
+  }
+  
+  return updatedBenefit as terminationAndResignationBenefits;
+}
+
+async removeTerminationBenefit(id: string): Promise<{ message: string }> {
+  const benefit = await this.findOneTerminationBenefit(id);
+
+  if (benefit.status !== ConfigStatus.DRAFT) {
+    throw new ForbiddenException(
+      `Cannot delete termination benefit with status '${benefit.status}'. Only DRAFT benefits can be deleted.`
+    );
+  }
+
+  await this.terminationBenefitsModel.findByIdAndDelete(id).exec();
+  return { message: `Termination benefit '${benefit.name}' has been successfully deleted` };
+}
+
+async approveTerminationBenefit(id: string, approvedBy: string): Promise<terminationAndResignationBenefits> {
+  const benefit = await this.findOneTerminationBenefit(id);
+
+  if (benefit.status !== ConfigStatus.DRAFT) {
+    throw new BadRequestException(
+      `Cannot approve termination benefit with status '${benefit.status}'. Only DRAFT benefits can be approved.`
+    );
+  }
+
+  // BR26: Termination payouts require HR clearance
+  console.log(`[BR26] HR Clearance: ${approvedBy} approved termination benefit ${benefit.name}`);
+
+  const approvedBenefit = await this.terminationBenefitsModel
+    .findByIdAndUpdate(
+      id,
+      {
+        status: ConfigStatus.APPROVED,
+        approvedBy,
+        approvedAt: new Date(),
+      },
+      { new: true }
+    )
+    .exec();
+  
+  console.log(`[AUDIT] Termination benefit "${benefit.name}" approved by HR: ${approvedBy}`);
+  
+  return approvedBenefit as terminationAndResignationBenefits;
+}
+
+async rejectTerminationBenefit(id: string, approvedBy: string): Promise<terminationAndResignationBenefits> {
+  const benefit = await this.findOneTerminationBenefit(id);
+
+  if (benefit.status !== ConfigStatus.DRAFT) {
+    throw new BadRequestException(
+      `Cannot reject termination benefit with status '${benefit.status}'. Only DRAFT benefits can be rejected.`
+    );
+  }
+
+  const rejectedBenefit = await this.terminationBenefitsModel
+    .findByIdAndUpdate(
+      id,
+      {
+        status: ConfigStatus.REJECTED,
+        approvedBy,
+        approvedAt: new Date(),
+      },
+      { new: true }
+    )
+    .exec();
+  return rejectedBenefit as terminationAndResignationBenefits;
+}
+
+// BR29 & BR56: Calculate termination entitlements
+async calculateTerminationEntitlements(employeeData: any): Promise<any> {
+  // BR29: System must calculate termination entitlements automatically
+  // BR56: Upon employee resignation, system automatically calculates resignation-related entitlements
+  
+  const { employeeId, lastSalary, yearsOfService = 1, reason = 'resignation' } = employeeData;
+  
+  // Get all APPROVED termination benefits
+  const approvedBenefits = await this.terminationBenefitsModel
+    .find({ status: ConfigStatus.APPROVED })
+    .exec();
+  
+  const calculations: any[] = [];
+  let totalEntitlement = 0;
+  
+  for (const benefit of approvedBenefits) {
+    let calculatedAmount = 0;
+    let formula = '';
+    
+    // Simple calculation examples
+    if (benefit.name.toLowerCase().includes('gratuity')) {
+      calculatedAmount = lastSalary * 0.5 * yearsOfService;
+      formula = `Last Salary (${lastSalary}) × 0.5 × Years of Service (${yearsOfService})`;
+    } else if (benefit.name.toLowerCase().includes('severance')) {
+      const months = Math.min(yearsOfService, 12);
+      calculatedAmount = lastSalary * months;
+      formula = `Last Salary (${lastSalary}) × Years of Service (${yearsOfService}, max 12 months)`;
+    } else {
+      calculatedAmount = benefit.amount * yearsOfService;
+      formula = `Base Amount (${benefit.amount}) × Years of Service (${yearsOfService})`;
+    }
+    
+    calculations.push({
+      benefitName: benefit.name,
+      baseAmount: benefit.amount,
+      calculatedAmount,
+      formula,
+      reasonSpecific: reason === 'resignation' ? 'Resignation Entitlement' : 'Termination Entitlement'
+    });
+    
+    totalEntitlement += calculatedAmount;
+  }
+  
+  return {
+    employeeId,
+    reason,
+    lastSalary,
+    yearsOfService,
+    calculations,
+    totalEntitlement,
+    calculationDate: new Date(),
+    businessRulesApplied: ['BR29', 'BR56']
+  };
 }
 }

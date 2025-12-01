@@ -29,6 +29,10 @@ import { CreateSigningBonusDto } from './dto/create-signing-bonus.dto';
 import { UpdateSigningBonusDto } from './dto/update-signing-bonus.dto';
 import { QuerySigningBonusDto } from './dto/query-signing-bonus.dto';
 import { ApproveSigningBonusDto } from './dto/approve-signing-bonus.dto';
+import { CreateTerminationBenefitDto } from './dto/create-termination-benefit.dto';
+import { UpdateTerminationBenefitDto } from './dto/update-termination-benefit.dto';
+import { QueryTerminationBenefitDto } from './dto/query-termination-benefit.dto';
+import { ApproveTerminationBenefitDto } from './dto/approve-termination-benefit.dto';
 
 @Controller('payroll-configuration')
 @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
@@ -376,6 +380,103 @@ async rejectSigningBonus(
     statusCode: HttpStatus.OK,
     message: 'Signing bonus rejected successfully',
     data: signingBonus,
+  };
+}
+// ========== TERMINATION & RESIGNATION BENEFITS ENDPOINTS ==========
+@Post('termination-benefits')
+@HttpCode(HttpStatus.CREATED)
+async createTerminationBenefit(@Body() createDto: CreateTerminationBenefitDto) {
+  const benefit = await this.payrollConfigService.createTerminationBenefit(createDto);
+  return {
+    statusCode: HttpStatus.CREATED,
+    message: 'Termination benefit created successfully as DRAFT',
+    data: benefit,
+  };
+}
+
+@Get('termination-benefits/all')
+@HttpCode(HttpStatus.OK)
+async findAllTerminationBenefits(@Query() queryDto: QueryTerminationBenefitDto) {
+  const result = await this.payrollConfigService.findAllTerminationBenefits(queryDto);
+  return {
+    statusCode: HttpStatus.OK,
+    message: 'Termination benefits retrieved successfully',
+    ...result,
+  };
+}
+
+@Get('termination-benefits/:id')
+@HttpCode(HttpStatus.OK)
+async findOneTerminationBenefit(@Param('id') id: string) {
+  const benefit = await this.payrollConfigService.findOneTerminationBenefit(id);
+  return {
+    statusCode: HttpStatus.OK,
+    message: 'Termination benefit retrieved successfully',
+    data: benefit,
+  };
+}
+
+@Patch('termination-benefits/:id')
+@HttpCode(HttpStatus.OK)
+async updateTerminationBenefit(
+  @Param('id') id: string,
+  @Body() updateDto: UpdateTerminationBenefitDto,
+) {
+  const benefit = await this.payrollConfigService.updateTerminationBenefit(id, updateDto);
+  return {
+    statusCode: HttpStatus.OK,
+    message: 'Termination benefit updated successfully',
+    data: benefit,
+  };
+}
+
+@Delete('termination-benefits/:id')
+@HttpCode(HttpStatus.OK)
+async removeTerminationBenefit(@Param('id') id: string) {
+  const result = await this.payrollConfigService.removeTerminationBenefit(id);
+  return {
+    statusCode: HttpStatus.OK,
+    ...result,
+  };
+}
+
+@Patch('termination-benefits/:id/approve')
+@HttpCode(HttpStatus.OK)
+async approveTerminationBenefit(
+  @Param('id') id: string,
+  @Body() approveDto: ApproveTerminationBenefitDto,
+) {
+  const benefit = await this.payrollConfigService.approveTerminationBenefit(id, approveDto.approvedBy);
+  return {
+    statusCode: HttpStatus.OK,
+    message: 'Termination benefit approved successfully',
+    data: benefit,
+  };
+}
+
+@Patch('termination-benefits/:id/reject')
+@HttpCode(HttpStatus.OK)
+async rejectTerminationBenefit(
+  @Param('id') id: string,
+  @Body() approveDto: ApproveTerminationBenefitDto,
+) {
+  const benefit = await this.payrollConfigService.rejectTerminationBenefit(id, approveDto.approvedBy);
+  return {
+    statusCode: HttpStatus.OK,
+    message: 'Termination benefit rejected successfully',
+    data: benefit,
+  };
+}
+@Post('termination-benefits/calculate')
+@HttpCode(HttpStatus.OK)
+async calculateTerminationEntitlements(
+  @Body() employeeData: any, // Using any for simplicity - could create a DTO if needed
+) {
+  const result = await this.payrollConfigService.calculateTerminationEntitlements(employeeData);
+  return {
+    statusCode: HttpStatus.OK,
+    message: 'Termination entitlements calculated successfully',
+    data: result,
   };
 }
 }
