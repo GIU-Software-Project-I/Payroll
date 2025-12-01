@@ -4,6 +4,7 @@
 # File variables (Rest Client): set defaults here. Update `ACCESS_TOKEN` after login.
 @BONUS_ID = 692d0ca6f2b668d1ae303cdd
 @ACCESS_TOKEN = 
+@TERMINATION_BENEFIT_ID = 
 
 # 1) Register Candidate (public)
 POST http://localhost:8000/auth/register-candidate
@@ -97,14 +98,82 @@ Content-Type: application/json
 }
 
 ###
+# New initiation endpoints (persisted)
+POST http://localhost:8000/payroll-execution/initiation
+Content-Type: application/json
+Authorization: Bearer {{ACCESS_TOKEN}}
+
+{
+  "payrollPeriod": "2025-11-30",
+  "entity": "Acme Corp",
+  "employees": 120,
+  "exceptions": 3,
+  "totalnetpay": 123456.78
+}
+
+###
+# Edit initiation (only when draft or rejected)
+PATCH http://localhost:8000/payroll-execution/initiation/{{INITIATION_ID}}
+Content-Type: application/json
+Authorization: Bearer {{ACCESS_TOKEN}}
+
+{
+  "exceptions": 2,
+  "totalnetpay": 122000
+}
+
+###
+# Approve initiation (Payroll Specialist) — triggers processing
+POST http://localhost:8000/payroll-execution/initiation/{{INITIATION_ID}}/approve
+Content-Type: application/json
+Authorization: Bearer {{ACCESS_TOKEN}}
+
+
+###
+# Reject initiation (Payroll Specialist)
+POST http://localhost:8000/payroll-execution/initiation/{{INITIATION_ID}}/reject
+Content-Type: application/json
+Authorization: Bearer {{ACCESS_TOKEN}}
+
+{
+  "reason": "Period dates incorrect"
+}
+
+###
 # 8) Fetch payroll draft by id
 GET http://localhost:8000/payroll-execution/draft/  
 ##{{DRAFT_ID}}
 Accept: application/json
 # Authorization: Bearer {{ACCESS_TOKEN}}
 
+### Termination & Resignation Benefits
+# 9) List termination/resignation benefits (optional status)
+GET http://localhost:8000/payroll-execution/termination-benefits?status=pending
+Accept: application/json
+Authorization: Bearer {{ACCESS_TOKEN}}
+
 ###
-# Tips:
-# - Replace {{ACCESS_TOKEN}} with the JWT value (if Swagger login sets cookie only, extract token from Set-Cookie header).
-# - Replace {{BONUS_ID}} and {{DRAFT_ID}} with real ids from previous responses.
-# - If the server uses cookies and your REST client supports them, the cookie from /auth/login will be automatically sent. Otherwise use the Authorization header.
+# 10) Get single termination/resignation benefit by id (set `{{TERMINATION_BENEFIT_ID}}` above)
+GET http://localhost:8000/payroll-execution/termination-benefits/692d1d0c8c2d7bc7bc70262b
+Accept: application/json
+Authorization: Bearer {{ACCESS_TOKEN}}
+
+###
+# 11) Edit termination/resignation benefit (Payroll Specialist)
+POST http://localhost:8000/payroll-execution/termination-benefits/692d1d0c8c2d7bc7bc70262b/edit
+Content-Type: application/json
+Authorization: Bearer {{ACCESS_TOKEN}}
+
+{
+  "givenAmount": 1500,
+  "status": "approved",
+  "note": "Manual adjustment after review"
+}
+
+###
+# 12) Approve single termination/resignation benefit
+POST http://localhost:8000/payroll-execution/termination-benefits/692d1d0c8c2d7bc7bc70262b/approve
+Content-Type: application/json
+Authorization: Bearer {{ACCESS_TOKEN}}
+
+

@@ -1,7 +1,9 @@
-import { Controller, Post, Body, Param, UseGuards, HttpCode, HttpStatus, Get, Query } from '@nestjs/common';
+import { Controller, Post, Body, Param, UseGuards, HttpCode, HttpStatus, Get, Query, Patch } from '@nestjs/common';
 import { PayrollExecutionService } from '../services/payroll-execution.service';
 import { SigningBonusEditDto } from '../dto/signing-bonus-edit.dto';
 import { PayrollInitiationDto } from '../dto/payroll-initiation.dto';
+import { PayrollInitiationCreateDto } from '../dto/payroll-initiation-create.dto';
+import { PayrollInitiationUpdateDto } from '../dto/payroll-initiation-update.dto';
 import { PayrollUnfreezeDto } from '../dto/unfreeze.dto';
 import { GeneratePayslipsDto } from '../dto/generate-payslips.dto';
 import { PayrollDraftResponseDto } from '../dto/payroll-draft-response.dto';
@@ -9,12 +11,14 @@ import { PayrollApproveDto } from '../dto/approve.dto';
 import { employeeSigningBonusSchema } from '../models/EmployeeSigningBonus.schema';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, getSchemaPath, ApiBody, ApiParam, ApiQuery, ApiConsumes } from '@nestjs/swagger';
 import { BonusStatus } from '../enums/payroll-execution-enum';
+import { BenefitStatus } from '../enums/payroll-execution-enum';
 import { AuthenticationGuard } from '../../../auth/guards/authentication-guard';
 import { AuthorizationGuard } from '../../../auth/guards/authorization-guard';
 import { Roles } from '../../../auth/decorators/Roles-Decorator';
 import { CurrentUser } from '../../../auth/decorators/Current-User';
 import { SystemRole } from '../../../employee/enums/employee-profile.enums';
 import type { JwtPayload } from '../../../auth/token/JWT-Payload';
+import { TerminationBenefitEditDto } from '../dto/termination-benefit-edit.dto';
 
 @Controller('payroll-execution')
 @ApiTags('Payroll Execution')
@@ -47,6 +51,18 @@ export class PayrollExecutionController {
 		return items;
 	}
 
+		@UseGuards(AuthenticationGuard, AuthorizationGuard)
+		@Roles(SystemRole.PAYROLL_SPECIALIST)
+		@Get('termination-benefits')
+		@ApiOperation({ summary: 'List termination/resignation benefits (optional status filter)' })
+		@ApiQuery({ name: 'status', required: false, enum: BenefitStatus })
+		@ApiResponse({ status: 200, description: 'List of termination/resignation benefits' })
+		async listTerminationBenefits(@Query('status') statusParam: string | undefined) {
+			const status = statusParam as any;
+			const items = await this.payrollService.listTerminationBenefits(status);
+			return items;
+		}
+
 	@UseGuards(AuthenticationGuard, AuthorizationGuard)
 	@Roles(SystemRole.PAYROLL_SPECIALIST)
 	@Get('signing-bonuses/:id')
@@ -56,6 +72,39 @@ export class PayrollExecutionController {
 		const item = await this.payrollService.getSigningBonus(id);
 		return item;
 	}
+
+		@UseGuards(AuthenticationGuard, AuthorizationGuard)
+		@Roles(SystemRole.PAYROLL_SPECIALIST)
+		@Get('termination-benefits/:id')
+		@ApiOperation({ summary: 'Get a single termination/resignation benefit by id' })
+		@ApiParam({ name: 'id', description: 'Termination benefit id', type: 'string' })
+		@ApiResponse({ status: 200, description: 'Termination benefit document' })
+		async getTerminationBenefit(@Param('id') id: string) {
+			const item = await this.payrollService.getTerminationBenefit(id);
+			return item;
+		}
+
+		@UseGuards(AuthenticationGuard, AuthorizationGuard)
+		@Roles(SystemRole.PAYROLL_SPECIALIST)
+		@Post('termination-benefits/:id/edit')
+		@ApiOperation({ summary: 'Edit a termination/resignation benefit' })
+		@ApiParam({ name: 'id', description: 'Termination benefit id', type: 'string' })
+		@ApiBody({ type: TerminationBenefitEditDto })
+		@ApiConsumes('application/json')
+		async editTerminationBenefit(@Param('id') id: string, @Body() dto: TerminationBenefitEditDto, @CurrentUser() user: JwtPayload) {
+			const updated = await this.payrollService.updateTerminationBenefit(id, dto as any, user?.sub);
+			return updated;
+		}
+
+		@UseGuards(AuthenticationGuard, AuthorizationGuard)
+		@Roles(SystemRole.PAYROLL_SPECIALIST)
+		@Post('termination-benefits/:id/approve')
+		@ApiOperation({ summary: 'Approve a termination/resignation benefit' })
+		@ApiParam({ name: 'id', description: 'Termination benefit id', type: 'string' })
+		async approveTerminationBenefit(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+			const updated = await this.payrollService.approveTerminationBenefit(id, user?.sub);
+			return updated;
+		}
 
 	@UseGuards(AuthenticationGuard, AuthorizationGuard)
 	@Roles(SystemRole.PAYROLL_SPECIALIST)
@@ -81,16 +130,47 @@ export class PayrollExecutionController {
 
 	@UseGuards(AuthenticationGuard, AuthorizationGuard)
 	@Roles(SystemRole.PAYROLL_SPECIALIST)
-	@Post('initiate')
-	@HttpCode(HttpStatus.ACCEPTED)
-	@ApiOperation({ summary: 'Initiate payroll run (draft generation)' })
-	@ApiResponse({ status: 202, description: 'Payroll initiation accepted' })
-	@ApiBody({ type: PayrollInitiationDto })
+	@Post('initiation')
+	@HttpCode(HttpStatus.CREATED)
+	@ApiOperation({ summary: 'Create payroll initiation (persisted)' })
+	@ApiResponse({ status: 201, description: 'Payroll initiation created' })
+	@ApiBody({ type: PayrollInitiationCreateDto })
 	@ApiConsumes('application/json')
-	async initiatePayroll(@Body() dto: PayrollInitiationDto, @CurrentUser() user: JwtPayload) {
-		// return job/acknowledgement
-		const job = await this.payrollService.initiatePayroll(dto, user?.sub);
-		return { jobId: job?.id ?? null, status: 'queued' };
+	async createInitiation(@Body() dto: PayrollInitiationCreateDto, @CurrentUser() user: JwtPayload) {
+		const created = await this.payrollService.createPayrollInitiation(dto as any, user?.sub);
+		return created;
+	}
+
+	@UseGuards(AuthenticationGuard, AuthorizationGuard)
+	@Roles(SystemRole.PAYROLL_SPECIALIST)
+	@Patch('initiation/:id')
+	@ApiOperation({ summary: 'Edit a payroll initiation (only when draft or rejected)' })
+	@ApiParam({ name: 'id', description: 'Payroll initiation id', type: 'string' })
+	@ApiBody({ type: PayrollInitiationUpdateDto })
+	@ApiConsumes('application/json')
+	async editInitiation(@Param('id') id: string, @Body() dto: PayrollInitiationUpdateDto, @CurrentUser() user: JwtPayload) {
+		const updated = await this.payrollService.updatePayrollInitiation(id, dto as any, user?.sub);
+		return updated;
+	}
+
+	@UseGuards(AuthenticationGuard, AuthorizationGuard)
+	@Roles(SystemRole.PAYROLL_SPECIALIST)
+	@Post('initiation/:id/approve')
+	@ApiOperation({ summary: 'Approve a payroll initiation (triggers processing)' })
+	@ApiParam({ name: 'id', description: 'Payroll initiation id', type: 'string' })
+	async approveInitiation(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+		const updated = await this.payrollService.approvePayrollInitiation(id, user?.sub);
+		return updated;
+	}
+
+	@UseGuards(AuthenticationGuard, AuthorizationGuard)
+	@Roles(SystemRole.PAYROLL_SPECIALIST)
+	@Post('initiation/:id/reject')
+	@ApiOperation({ summary: 'Reject a payroll initiation' })
+	@ApiParam({ name: 'id', description: 'Payroll initiation id', type: 'string' })
+	async rejectInitiation(@Param('id') id: string, @CurrentUser() user: JwtPayload, @Body() body: { reason?: string }) {
+		const updated = await this.payrollService.rejectPayrollInitiation(id, user?.sub, body?.reason);
+		return updated;
 	}
 
 	@UseGuards(AuthenticationGuard, AuthorizationGuard)
