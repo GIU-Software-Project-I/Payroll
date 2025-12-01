@@ -14,7 +14,11 @@ async function bootstrap() {
 
     app.use(cookieParser());
 
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    // Note: `whitelist:true` removes properties that don't have class-validator decorators.
+    // Many DTOs in this codebase rely on plain objects, so disable whitelist to avoid
+    // unintentionally stripping incoming JSON. Consider adding class-validator
+    // decorators to DTOs and re-enabling whitelist for stricter validation.
+    app.useGlobalPipes(new ValidationPipe({ whitelist: false, transform: true }));
 
     app.enableCors({
         origin: ['http://localhost:3999', 'http://localhost:3000', 'http://localhost:5000'],

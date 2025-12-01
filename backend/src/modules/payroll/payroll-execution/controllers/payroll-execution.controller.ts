@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Param, UseGuards, HttpCode, HttpStatus, Get, Query, Patch } from '@nestjs/common';
+import { Controller, Post, Body, Param, UseGuards, HttpCode, HttpStatus, Get, Query, Patch, Req } from '@nestjs/common';
 import { PayrollExecutionService } from '../services/payroll-execution.service';
 import { SigningBonusEditDto } from '../dto/signing-bonus-edit.dto';
 import { PayrollInitiationDto } from '../dto/payroll-initiation.dto';
@@ -136,9 +136,27 @@ export class PayrollExecutionController {
 	@ApiResponse({ status: 201, description: 'Payroll initiation created' })
 	@ApiBody({ type: PayrollInitiationCreateDto })
 	@ApiConsumes('application/json')
-	async createInitiation(@Body() dto: PayrollInitiationCreateDto, @CurrentUser() user: JwtPayload) {
+	async createInitiation(@Req() req: any, @Body() dto: PayrollInitiationCreateDto, @CurrentUser() user: JwtPayload) {
+		// TEMP DIAGNOSTIC: log incoming request details to debug empty DTO issue
+		try {
+			console.log('[diagnostic] createInitiation headers:', JSON.stringify(req.headers));
+		} catch (e) { console.log('[diagnostic] headers (raw)', req.headers); }
+		try {
+			console.log('[diagnostic] req.body:', JSON.stringify(req.body));
+		} catch (e) { console.log('[diagnostic] req.body (raw):', req.body); }
+		try {
+			console.log('[diagnostic] createInitiation dto:', JSON.stringify(dto));
+		} catch (e) { console.log('[diagnostic] createInitiation dto (raw):', dto); }
 		const created = await this.payrollService.createPayrollInitiation(dto as any, user?.sub);
-		return created;
+		// TEMP DIAGNOSTIC RESPONSE: return created doc plus the raw request for easier debugging from REST client
+		return {
+			debug: {
+				headers: req.headers,
+				rawBody: req.body,
+				dto: dto,
+			},
+			created,
+		};
 	}
 
 	@UseGuards(AuthenticationGuard, AuthorizationGuard)
@@ -148,9 +166,15 @@ export class PayrollExecutionController {
 	@ApiParam({ name: 'id', description: 'Payroll initiation id', type: 'string' })
 	@ApiBody({ type: PayrollInitiationUpdateDto })
 	@ApiConsumes('application/json')
-	async editInitiation(@Param('id') id: string, @Body() dto: PayrollInitiationUpdateDto, @CurrentUser() user: JwtPayload) {
+	async editInitiation(@Req() req: any, @Param('id') id: string, @Body() dto: PayrollInitiationUpdateDto, @CurrentUser() user: JwtPayload) {
+		try { console.log('[diagnostic] editInitiation headers:', JSON.stringify(req.headers)); } catch (e) { console.log('[diagnostic] editInitiation headers (raw):', req.headers); }
+		try { console.log('[diagnostic] editInitiation req.body:', JSON.stringify(req.body)); } catch (e) { console.log('[diagnostic] editInitiation req.body (raw):', req.body); }
+		try { console.log('[diagnostic] editInitiation dto:', JSON.stringify(dto)); } catch (e) { console.log('[diagnostic] editInitiation dto (raw):', dto); }
 		const updated = await this.payrollService.updatePayrollInitiation(id, dto as any, user?.sub);
-		return updated;
+		return {
+			debug: { headers: req.headers, rawBody: req.body, dto, params: { id } },
+			updated,
+		};
 	}
 
 	@UseGuards(AuthenticationGuard, AuthorizationGuard)
@@ -158,9 +182,10 @@ export class PayrollExecutionController {
 	@Post('initiation/:id/approve')
 	@ApiOperation({ summary: 'Approve a payroll initiation (triggers processing)' })
 	@ApiParam({ name: 'id', description: 'Payroll initiation id', type: 'string' })
-	async approveInitiation(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+	async approveInitiation(@Req() req: any, @Param('id') id: string, @CurrentUser() user: JwtPayload) {
+		try { console.log('[diagnostic] approveInitiation headers:', JSON.stringify(req.headers)); } catch (e) { console.log('[diagnostic] approveInitiation headers (raw):', req.headers); }
 		const updated = await this.payrollService.approvePayrollInitiation(id, user?.sub);
-		return updated;
+		return { debug: { headers: req.headers, params: { id } }, updated };
 	}
 
 	@UseGuards(AuthenticationGuard, AuthorizationGuard)
@@ -168,9 +193,11 @@ export class PayrollExecutionController {
 	@Post('initiation/:id/reject')
 	@ApiOperation({ summary: 'Reject a payroll initiation' })
 	@ApiParam({ name: 'id', description: 'Payroll initiation id', type: 'string' })
-	async rejectInitiation(@Param('id') id: string, @CurrentUser() user: JwtPayload, @Body() body: { reason?: string }) {
+	async rejectInitiation(@Req() req: any, @Param('id') id: string, @CurrentUser() user: JwtPayload, @Body() body: { reason?: string }) {
+		try { console.log('[diagnostic] rejectInitiation headers:', JSON.stringify(req.headers)); } catch (e) { console.log('[diagnostic] rejectInitiation headers (raw):', req.headers); }
+		try { console.log('[diagnostic] rejectInitiation req.body:', JSON.stringify(req.body)); } catch (e) { console.log('[diagnostic] rejectInitiation req.body (raw):', req.body); }
 		const updated = await this.payrollService.rejectPayrollInitiation(id, user?.sub, body?.reason);
-		return updated;
+		return { debug: { headers: req.headers, rawBody: req.body, params: { id } }, updated };
 	}
 
 	@UseGuards(AuthenticationGuard, AuthorizationGuard)
@@ -179,9 +206,10 @@ export class PayrollExecutionController {
 	@ApiOperation({ summary: 'Fetch payroll draft by id' })
 	@ApiResponse({ status: 200, description: 'Payroll draft', type: PayrollDraftResponseDto })
 	@ApiParam({ name: 'id', description: 'Draft id', type: 'string' })
-	async getDraft(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+	async getDraft(@Req() req: any, @Param('id') id: string, @CurrentUser() user: JwtPayload) {
+		try { console.log('[diagnostic] getDraft headers:', JSON.stringify(req.headers)); } catch (e) { console.log('[diagnostic] getDraft headers (raw):', req.headers); }
 		const draft = await this.payrollService.getDraft(id, user?.sub);
-		return draft;
+		return { debug: { headers: req.headers, params: { id } }, draft };
 	}
 
 	@UseGuards(AuthenticationGuard, AuthorizationGuard)
