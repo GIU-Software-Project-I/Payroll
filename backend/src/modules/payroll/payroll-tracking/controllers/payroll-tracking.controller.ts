@@ -1,14 +1,12 @@
 import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { PayrollTrackingService } from '../services/payroll-tracking.service';
-import {
-  CreateClaimDto,
-  CreateDisputeDto,
-  DecideClaimDto,
-  DecideDisputeDto,
-  PayslipQueryDto,
-  TaxDocumentQueryDto,
-  UpdateRefundStatusDto,
-} from '../dto/test.dto';
+import { CreateClaimDTO } from '../dto/create-claim.dto';
+import { CreateDisputeDTO } from '../dto/create-dispute.dto';
+import { ApproveRejectClaimDTO } from '../dto/approve-reject-claim.dto';
+import { ApproveRejectDisputeDTO } from '../dto/approve-reject-dispute.dto';
+import { PayslipQueryDto } from '../dto/payslip-query.dto';
+import { TaxDocumentQueryDto } from '../dto/tax-document-query.dto';
+import { UpdateRefundStatusDto } from '../dto/update-refund-status.dto';
 import { CurrentUser } from '../../../auth/decorators/Current-User';
 import { Public } from '../../../auth/decorators/Public-Decorator';
 import type { JwtPayload } from '../../../auth/token/JWT-Payload';
@@ -56,7 +54,7 @@ export class PayrollTrackingController {
 
   @Public()
   @Post('disputes')
-  createDispute(@CurrentUser() user: JwtPayload | undefined, @Body() body: CreateDisputeDto & { employeeId?: string }) {
+  createDispute(@CurrentUser() user: JwtPayload | undefined, @Body() body: CreateDisputeDTO & { employeeId?: string }) {
     const empId = body.employeeId || user?.sub;
     if (!empId) throw new Error('employeeId required (pass in body for testing)');
     const { employeeId: _, ...dto } = body;
@@ -83,7 +81,7 @@ export class PayrollTrackingController {
 
   @Public()
   @Post('claims')
-  createClaim(@CurrentUser() user: JwtPayload | undefined, @Body() body: CreateClaimDto & { employeeId?: string }) {
+  createClaim(@CurrentUser() user: JwtPayload | undefined, @Body() body: CreateClaimDTO & { employeeId?: string }) {
     const empId = body.employeeId || user?.sub;
     if (!empId) throw new Error('employeeId required (pass in body for testing)');
     const { employeeId: _, ...dto } = body;
@@ -127,7 +125,7 @@ export class PayrollTrackingController {
   decideDispute(
     @CurrentUser() user: JwtPayload | undefined,
     @Param('id') id: string,
-    @Body() body: DecideDisputeDto & { financeStaffId?: string },
+    @Body() body: ApproveRejectDisputeDTO & { financeStaffId?: string },
   ) {
     const financeId = body.financeStaffId || user?.sub;
     if (!financeId) throw new Error('financeStaffId required (pass in body for testing)');
@@ -146,7 +144,7 @@ export class PayrollTrackingController {
   decideClaim(
     @CurrentUser() user: JwtPayload | undefined,
     @Param('id') id: string,
-    @Body() body: DecideClaimDto & { financeStaffId?: string },
+    @Body() body: ApproveRejectClaimDTO & { financeStaffId?: string },
   ) {
     const financeId = body.financeStaffId || user?.sub;
     if (!financeId) throw new Error('financeStaffId required (pass in body for testing)');
