@@ -1,8 +1,3 @@
-
-
-// ========== End of Lama's Work ==========
-
-// ========== Mano's Work ==========
 import {
   Controller,
   Get,
@@ -15,6 +10,7 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  BadRequestException,
 } from '@nestjs/common';
 import { PayrollConfigurationService } from '../services/payroll-configuration.service';
 import { UpdateCompanyWideSettingsDto } from '../dto/update-company-settings.dto';
@@ -27,10 +23,22 @@ import { UpdateTaxRuleDto } from '../dto/update-taxrule.dto';
 import { UpdatePayrollPolicyDto } from '../dto/update-payrollpolicy.dto';
 import { UpdateSigningBonusDto } from '../dto/update-signingbonus.dto';
 import { UpdateTerminationBenefitDto } from '../dto/update-terminationbenefit.dto';
-
-import { BadRequestException } from '@nestjs/common';
+import { CreatePayrollPolicyDto } from '../dto/create-payrollpolicy.dto';
+import { QueryPayrollPolicyDto } from '../dto/query-payroll-policy.dto';
+import { ApprovePayrollPolicyDto } from '../dto/approve-payroll-policy.dto';
+import { CreatePayTypeDto } from '../dto/create-paytype.dto';
+import { QueryPayTypeDto } from '../dto/query-pay-type.dto';
+import { ApprovePayTypeDto } from '../dto/approve-pay-type.dto';
+import { CreateAllowanceDto } from '../dto/create-allowance.dto';
+import { QueryAllowanceDto } from '../dto/query-allowance.dto';
+import { ApproveAllowanceDto } from '../dto/approve-allowance.dto';
+import { CreateSigningBonusDto } from '../dto/create-signingbonus.dto';
+import { QuerySigningBonusDto } from '../dto/query-signing-bonus.dto';
+import { ApproveSigningBonusDto } from '../dto/approve-signing-bonus.dto';
+import { CreateTerminationBenefitDto } from '../dto/create-terminationbenefit.dto';
+import { QueryTerminationBenefitDto } from '../dto/query-termination-benefit.dto';
+import { ApproveTerminationBenefitDto } from '../dto/approve-termination-benefit.dto';
 import { CreateTaxRuleDto } from '../dto/create-tax-rule.dto';
-
 import { ApproveTaxRuleDto } from '../dto/approve-tax-rule.dto';
 import { CreateInsuranceDto } from '../dto/create-insurance.dto';
 import { UpdateInsuranceDto } from '../dto/update-insurance.dto';
@@ -42,6 +50,8 @@ export class PayrollConfigurationController {
     private readonly payrollConfigurationService: PayrollConfigurationService,
   ) {}
   
+
+
   // ===== TAX RULES =====
   @Post('tax-rules')
   @HttpCode(HttpStatus.CREATED)
@@ -66,6 +76,14 @@ export class PayrollConfigurationController {
   updateLegalRule(@Param('id') id: string, @Body() dto: UpdateTaxRuleDto) {
     return this.payrollConfigurationService.updateLegalRule(id, dto);
   }
+
+  
+
+
+
+
+
+
 
 
 
@@ -94,26 +112,25 @@ export class PayrollConfigurationController {
     return this.payrollConfigurationService.updateInsuranceBracket(id, dto);
   }
 
-  @Patch('insurance-brackets/:id/approve')
-  @HttpCode(HttpStatus.OK)
-  approveInsurance(@Param('id') id: string, @Body() dto: ApproveInsuranceDto) {
-    return this.payrollConfigurationService.approveInsuranceBracket(id, dto);
-  }
-
-  @Delete('insurance-brackets/:id')
-  @HttpCode(HttpStatus.OK)
-  deleteInsurance(@Param('id') id: string) {
-    return this.payrollConfigurationService.deleteInsuranceBracket(id);
-  }
 
 
-// ===== INSURANCE BRACKETS =====
 
-@Patch('insurance-brackets/:id/reject')
-@HttpCode(HttpStatus.OK)
-rejectInsurance(@Param('id') id: string, @Body() dto: ApproveInsuranceDto) {
-  return this.payrollConfigurationService.rejectInsuranceBracket(id, dto);
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   // ===== CONTRIBUTION CALCULATION =====
   /**
@@ -140,18 +157,100 @@ rejectInsurance(@Param('id') id: string, @Body() dto: ApproveInsuranceDto) {
     });
   }
 
+
+
+
+
+
+
+
+
+
   // ==================== ALLOWANCE ENDPOINTS ====================
 
-  /**
-   * PHASE 4 - REQ-PY-18: Update allowance configuration
-   * Cannot edit approved configurations - must delete and create new one
-   */
-  @Put('allowances/:id')
-  updateAllowance(
+  @Post('allowances')
+  @HttpCode(HttpStatus.CREATED)
+  async createAllowance(@Body() createDto: CreateAllowanceDto) {
+    const allowance = await this.payrollConfigurationService.createAllowance(createDto);
+    return {
+      statusCode: HttpStatus.CREATED,
+      message: 'Allowance created successfully as DRAFT',
+      data: allowance,
+    };
+  }
+  
+  @Get('allowances/all')
+  @HttpCode(HttpStatus.OK)
+  async findAllAllowances(@Query() queryDto: QueryAllowanceDto) {
+    const result = await this.payrollConfigurationService.findAllAllowances(queryDto);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Allowances retrieved successfully',
+      ...result,
+    };
+  }
+  
+  @Get('allowances/:id')
+  @HttpCode(HttpStatus.OK)
+  async findOneAllowance(@Param('id') id: string) {
+    const allowance = await this.payrollConfigurationService.findOneAllowance(id);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Allowance retrieved successfully',
+      data: allowance,
+    };
+  }
+  
+  @Patch('allowances/:id')
+  @HttpCode(HttpStatus.OK)
+  async updateAllowance(
     @Param('id') id: string,
     @Body() updateDto: UpdateAllowanceDto,
   ) {
-    return this.payrollConfigurationService.updateAllowance(id, updateDto);
+    const allowance = await this.payrollConfigurationService.updateAllowance(id, updateDto);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Allowance updated successfully',
+      data: allowance,
+    };
+  }
+  
+  @Delete('allowances/:id')
+  @HttpCode(HttpStatus.OK)
+  async removeAllowance(@Param('id') id: string) {
+    const result = await this.payrollConfigurationService.removeAllowance(id);
+    return {
+      statusCode: HttpStatus.OK,
+      ...result,
+    };
+  }
+  
+  @Patch('allowances/:id/approve')
+  @HttpCode(HttpStatus.OK)
+  async approveAllowance(
+    @Param('id') id: string,
+    @Body() approveDto: ApproveAllowanceDto,
+  ) {
+    const allowance = await this.payrollConfigurationService.approveAllowance(id, approveDto.approvedBy);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Allowance approved successfully',
+      data: allowance,
+    };
+  }
+  
+  @Patch('allowances/:id/reject')
+  @HttpCode(HttpStatus.OK)
+  async rejectAllowance(
+    @Param('id') id: string,
+    @Body() approveDto: ApproveAllowanceDto,
+  ) {
+    const allowance = await this.payrollConfigurationService.rejectAllowance(id, approveDto.approvedBy);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Allowance rejected successfully',
+      data: allowance,
+    };
   }
 
   /**
@@ -164,77 +263,128 @@ rejectInsurance(@Param('id') id: string, @Body() dto: ApproveInsuranceDto) {
     return this.payrollConfigurationService.deleteAllowance(id);
   }
 
-  /**
-   * PHASE 4 - REQ-PY-18: Payroll Manager Approval (Except Insurance)
-   * Publishing requires Payroll Manager approval
-   */
-  @Patch('allowances/:id/approve')
-  approveAllowance(
-    @Param('id') id: string,
-    @Body() approveDto: ApproveConfigDto,
-  ) {
-    return this.payrollConfigurationService.approveAllowance(id, approveDto);
-  }
 
-  /**
-   * PHASE 4 - REQ-PY-18: Payroll Manager Approval (Except Insurance)
-   * Reject configuration changes
-   */
-  @Patch('allowances/:id/reject')
-  rejectAllowance(
-    @Param('id') id: string,
-    @Body() approveDto: ApproveConfigDto,
-  ) {
-    return this.payrollConfigurationService.rejectAllowance(id, approveDto);
-  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   // ==================== PAY TYPE ENDPOINTS ====================
+  @Post('pay-types')
+  @HttpCode(HttpStatus.CREATED)
+  async createPayType(@Body() createDto: CreatePayTypeDto) {
+    const payType = await this.payrollConfigurationService.createPayType(createDto);
+    return {
+      statusCode: HttpStatus.CREATED,
+      message: 'Pay type created successfully as DRAFT',
+      data: payType,
+    };
+  }
+  @Get('pay-types/all')
+  @HttpCode(HttpStatus.OK)
+  async findAllPayTypes(@Query() queryDto: QueryPayTypeDto) {
+    const result = await this.payrollConfigurationService.findAllPayTypes(queryDto);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Pay types retrieved successfully',
+      ...result,
+    };
+  }
 
-  /**
-   * PHASE 4 - REQ-PY-18: Update pay type configuration
-   * Cannot edit approved configurations - must delete and create new one
-   */
-  @Put('pay-types/:id')
-  updatePayType(
+  @Get('pay-types/:id')
+  @HttpCode(HttpStatus.OK)
+  async findOnePayType(@Param('id') id: string) {
+    const payType = await this.payrollConfigurationService.findOnePayType(id);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Pay type retrieved successfully',
+      data: payType,
+    };
+  }
+
+  @Patch('pay-types/:id')
+  @HttpCode(HttpStatus.OK)
+  async updatePayType(
     @Param('id') id: string,
     @Body() updateDto: UpdatePayTypeDto,
   ) {
-    return this.payrollConfigurationService.updatePayType(id, updateDto);
+    const payType = await this.payrollConfigurationService.updatePayType(id, updateDto);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Pay type updated successfully',
+      data: payType,
+    };
   }
 
-  /**
+  @Delete('pay-types/:id')
+  @HttpCode(HttpStatus.OK)
+  async removePayType(@Param('id') id: string) {
+    const result = await this.payrollConfigurationService.removePayType(id);
+    return {
+      statusCode: HttpStatus.OK,
+      ...result,
+    };
+  }
+
+  @Patch('pay-types/:id/approve')
+  @HttpCode(HttpStatus.OK)
+  async approvePayType(
+    @Param('id') id: string,
+    @Body() approveDto: ApprovePayTypeDto,
+  ) {
+    const payType = await this.payrollConfigurationService.approvePayType(id, approveDto.approvedBy);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Pay type approved successfully',
+      data: payType,
+    };
+  }
+
+  @Patch('pay-types/:id/reject')
+  @HttpCode(HttpStatus.OK)
+  async rejectPayType(
+    @Param('id') id: string,
+    @Body() approveDto: ApprovePayTypeDto,
+  ) {
+    const payType = await this.payrollConfigurationService.rejectPayType(id, approveDto.approvedBy);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Pay type rejected successfully',
+      data: payType,
+    };
+  }
+    /**
    * PHASE 4 - REQ-PY-18: Delete pay type configuration
    * Delete is allowed for approved configurations (except Insurance)
    */
-  @Delete('pay-types/:id')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  deletePayType(@Param('id') id: string) {
-    return this.payrollConfigurationService.deletePayType(id);
-  }
+    @Delete('pay-types/:id')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    deletePayType(@Param('id') id: string) {
+      return this.payrollConfigurationService.deletePayType(id);
+    }
+  
 
-  /**
-   * PHASE 4 - REQ-PY-18: Payroll Manager Approval (Except Insurance)
-   * Publishing requires Payroll Manager approval
-   */
-  @Patch('pay-types/:id/approve')
-  approvePayType(
-    @Param('id') id: string,
-    @Body() approveDto: ApproveConfigDto,
-  ) {
-    return this.payrollConfigurationService.approvePayType(id, approveDto);
-  }
 
-  /**
-   * PHASE 4 - REQ-PY-18: Payroll Manager Approval (Except Insurance)
-   * Reject configuration changes
-   */
-  @Patch('pay-types/:id/reject')
-  rejectPayType(
-    @Param('id') id: string,
-    @Body() approveDto: ApproveConfigDto,
-  ) {
-    return this.payrollConfigurationService.rejectPayType(id, approveDto);
-  }
+
+
+
+
+
+
+
+
+
 
   // ==================== PAY GRADE ENDPOINTS ====================
 
@@ -311,6 +461,20 @@ rejectInsurance(@Param('id') id: string, @Body() dto: ApproveInsuranceDto) {
     return this.payrollConfigurationService.rejectPayGrade(id, approveDto);
   }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   // ==================== TAX RULES ENDPOINTS ====================
 
   /**
@@ -359,6 +523,19 @@ rejectInsurance(@Param('id') id: string, @Body() dto: ApproveInsuranceDto) {
     return this.payrollConfigurationService.rejectTaxRule(id, approveDto);
   }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
   // ==================== INSURANCE BRACKETS ENDPOINTS ====================
 
   /**
@@ -391,20 +568,104 @@ rejectInsurance(@Param('id') id: string, @Body() dto: ApproveInsuranceDto) {
     );
   }
 
-  // ==================== PAYROLL POLICIES ENDPOINTS ====================
 
-  /**
-   * PHASE 4 - REQ-PY-18: Update payroll policy configuration
-   * Cannot edit approved configurations - must delete and create new one
-   */
-  @Put('policies/:id')
-  updatePayrollPolicy(
+
+
+
+
+
+
+
+
+
+
+
+
+  // ==================== PAYROLL POLICIES ENDPOINTS ====================
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  async createPayrollPolicy(@Body() createDto: CreatePayrollPolicyDto) {
+    const policy = await this.payrollConfigurationService.createPayrollPolicy(createDto);
+    return {
+      statusCode: HttpStatus.CREATED,
+      message: 'Payroll policy created successfully as DRAFT',
+      data: policy,
+    };
+  }
+
+  @Get()
+  @HttpCode(HttpStatus.OK)
+  async findAllPayrollPolicy(@Query() queryDto: QueryPayrollPolicyDto) {
+    const result = await this.payrollConfigurationService.findAllPayrollPolicy(queryDto);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Payroll policies retrieved successfully',
+      ...result,
+    };
+  }
+
+  @Get(':id')
+  @HttpCode(HttpStatus.OK)
+  async findOnePayrollPolicy(@Param('id') id: string) {
+    const policy = await this.payrollConfigurationService.findOnePayrollPolicy(id);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Payroll policy retrieved successfully',
+      data: policy,
+    };
+  }
+
+  @Patch(':id')
+  @HttpCode(HttpStatus.OK)
+  async updatePayrollPolicy(
     @Param('id') id: string,
     @Body() updateDto: UpdatePayrollPolicyDto,
   ) {
-    return this.payrollConfigurationService.updatePayrollPolicy(id, updateDto);
+    const policy = await this.payrollConfigurationService.updatePayrollPolicy(id, updateDto);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Payroll policy updated successfully',
+      data: policy,
+    };
   }
 
+  @Delete(':id')
+  @HttpCode(HttpStatus.OK)
+  async removePayrollPolicy(@Param('id') id: string) {
+    const result = await this.payrollConfigurationService.removePayrollPolicy(id);
+    return {
+      statusCode: HttpStatus.OK,
+      ...result,
+    };
+  }
+
+  @Patch(':id/approve')
+  @HttpCode(HttpStatus.OK)
+  async approvePayrollPolicy(
+    @Param('id') id: string,
+    @Body() approveDto: ApprovePayrollPolicyDto,
+  ) {
+    const policy = await this.payrollConfigurationService.approvePayrollPolicy(id, approveDto.approvedBy);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Payroll policy approved successfully',
+      data: policy,
+    };
+  }
+
+  @Patch(':id/reject')
+  @HttpCode(HttpStatus.OK)
+  async rejectPayrollPolicy(
+    @Param('id') id: string,
+    @Body() approveDto: ApprovePayrollPolicyDto,
+  ) {
+    const policy = await this.payrollConfigurationService.rejectPayrollPolicy(id, approveDto.approvedBy);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Payroll policy rejected successfully',
+      data: policy,
+    };
+  }
   /**
    * PHASE 4 - REQ-PY-18: Delete payroll policy configuration
    * Delete is allowed for approved configurations (except Insurance)
@@ -415,102 +676,218 @@ rejectInsurance(@Param('id') id: string, @Body() dto: ApproveInsuranceDto) {
     return this.payrollConfigurationService.deletePayrollPolicy(id);
   }
 
-  /**
-   * PHASE 4 - REQ-PY-18: Payroll Manager Approval (Except Insurance)
-   * Publishing requires Payroll Manager approval
-   */
-  @Patch('policies/:id/approve')
-  approvePayrollPolicy(
-    @Param('id') id: string,
-    @Body() approveDto: ApproveConfigDto,
-  ) {
-    return this.payrollConfigurationService.approvePayrollPolicy(
-      id,
-      approveDto,
-    );
-  }
 
-  /**
-   * PHASE 4 - REQ-PY-18: Payroll Manager Approval (Except Insurance)
-   * Reject configuration changes
-   */
-  @Patch('policies/:id/reject')
-  rejectPayrollPolicy(
-    @Param('id') id: string,
-    @Body() approveDto: ApproveConfigDto,
-  ) {
-    return this.payrollConfigurationService.rejectPayrollPolicy(id, approveDto);
-  }
+
+
+
+
+
+
+
+
 
   // ==================== SIGNING BONUS ENDPOINTS ====================
+@Post('signing-bonuses')
+@HttpCode(HttpStatus.CREATED)
+async createSigningBonus(@Body() createDto: CreateSigningBonusDto) {
+  const signingBonus = await this.payrollConfigurationService.createSigningBonus(createDto);
+  return {
+    statusCode: HttpStatus.CREATED,
+    message: 'Signing bonus created successfully as DRAFT',
+    data: signingBonus,
+  };
+}
 
-  /**
-   * PHASE 4 - REQ-PY-18: Update signing bonus configuration
-   * Cannot edit approved configurations - must delete and create new one
-   */
-  @Put('signing-bonuses/:id')
-  updateSigningBonus(
-    @Param('id') id: string,
-    @Body() updateDto: UpdateSigningBonusDto,
-  ) {
-    return this.payrollConfigurationService.updateSigningBonus(id, updateDto);
-  }
+@Get('signing-bonuses/all')
+@HttpCode(HttpStatus.OK)
+async findAllSigningBonuses(@Query() queryDto: QuerySigningBonusDto) {
+  const result = await this.payrollConfigurationService.findAllSigningBonuses(queryDto);
+  return {
+    statusCode: HttpStatus.OK,
+    message: 'Signing bonuses retrieved successfully',
+    ...result,
+  };
+}
 
-  /**
+@Get('signing-bonuses/:id')
+@HttpCode(HttpStatus.OK)
+async findOneSigningBonus(@Param('id') id: string) {
+  const signingBonus = await this.payrollConfigurationService.findOneSigningBonus(id);
+  return {
+    statusCode: HttpStatus.OK,
+    message: 'Signing bonus retrieved successfully',
+    data: signingBonus,
+  };
+}
+
+@Patch('signing-bonuses/:id')
+@HttpCode(HttpStatus.OK)
+async updateSigningBonus(
+  @Param('id') id: string,
+  @Body() updateDto: UpdateSigningBonusDto,
+) {
+  const signingBonus = await this.payrollConfigurationService.updateSigningBonus(id, updateDto);
+  return {
+    statusCode: HttpStatus.OK,
+    message: 'Signing bonus updated successfully',
+    data: signingBonus,
+  };
+}
+
+@Delete('signing-bonuses/:id')
+@HttpCode(HttpStatus.OK)
+async removeSigningBonus(@Param('id') id: string) {
+  const result = await this.payrollConfigurationService.removeSigningBonus(id);
+  return {
+    statusCode: HttpStatus.OK,
+    ...result,
+  };
+}
+
+@Patch('signing-bonuses/:id/approve')
+@HttpCode(HttpStatus.OK)
+async approveSigningBonus(
+  @Param('id') id: string,
+  @Body() approveDto: ApproveSigningBonusDto,
+) {
+  const signingBonus = await this.payrollConfigurationService.approveSigningBonus(id, approveDto.approvedBy);
+  return {
+    statusCode: HttpStatus.OK,
+    message: 'Signing bonus approved successfully',
+    data: signingBonus,
+  };
+}
+
+@Patch('signing-bonuses/:id/reject')
+@HttpCode(HttpStatus.OK)
+async rejectSigningBonus(
+  @Param('id') id: string,
+  @Body() approveDto: ApproveSigningBonusDto,
+) {
+  const signingBonus = await this.payrollConfigurationService.rejectSigningBonus(id, approveDto.approvedBy);
+  return {
+    statusCode: HttpStatus.OK,
+    message: 'Signing bonus rejected successfully',
+    data: signingBonus,
+  };
+}
+/**
    * PHASE 4 - REQ-PY-18: Delete signing bonus configuration
    * Delete is allowed for approved configurations (except Insurance)
    */
-  @Delete('signing-bonuses/:id')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  deleteSigningBonus(@Param('id') id: string) {
-    return this.payrollConfigurationService.deleteSigningBonus(id);
-  }
+@Delete('signing-bonuses/:id')
+@HttpCode(HttpStatus.NO_CONTENT)
+deleteSigningBonus(@Param('id') id: string) {
+  return this.payrollConfigurationService.deleteSigningBonus(id);
+}
 
-  /**
-   * PHASE 4 - REQ-PY-18: Payroll Manager Approval (Except Insurance)
-   * Publishing requires Payroll Manager approval
-   */
-  @Patch('signing-bonuses/:id/approve')
-  approveSigningBonus(
-    @Param('id') id: string,
-    @Body() approveDto: ApproveConfigDto,
-  ) {
-    return this.payrollConfigurationService.approveSigningBonus(
-      id,
-      approveDto,
-    );
-  }
 
-  /**
-   * PHASE 4 - REQ-PY-18: Payroll Manager Approval (Except Insurance)
-   * Reject configuration changes
-   */
-  @Patch('signing-bonuses/:id/reject')
-  rejectSigningBonus(
-    @Param('id') id: string,
-    @Body() approveDto: ApproveConfigDto,
-  ) {
-    return this.payrollConfigurationService.rejectSigningBonus(id, approveDto);
-  }
+
+
+
+
+
+
+
 
   // ==================== TERMINATION BENEFITS ENDPOINTS ====================
+@Post('termination-benefits')
+@HttpCode(HttpStatus.CREATED)
+async createTerminationBenefit(@Body() createDto: CreateTerminationBenefitDto) {
+  const benefit = await this.payrollConfigurationService.createTerminationBenefit(createDto);
+  return {
+    statusCode: HttpStatus.CREATED,
+    message: 'Termination benefit created successfully as DRAFT',
+    data: benefit,
+  };
+}
 
-  /**
-   * PHASE 4 - REQ-PY-18: Update termination benefit configuration
-   * Cannot edit approved configurations - must delete and create new one
-   */
-  @Put('termination-benefits/:id')
-  updateTerminationBenefit(
-    @Param('id') id: string,
-    @Body() updateDto: UpdateTerminationBenefitDto,
-  ) {
-    return this.payrollConfigurationService.updateTerminationBenefit(
-      id,
-      updateDto,
-    );
-  }
+@Get('termination-benefits/all')
+@HttpCode(HttpStatus.OK)
+async findAllTerminationBenefits(@Query() queryDto: QueryTerminationBenefitDto) {
+  const result = await this.payrollConfigurationService.findAllTerminationBenefits(queryDto);
+  return {
+    statusCode: HttpStatus.OK,
+    message: 'Termination benefits retrieved successfully',
+    ...result,
+  };
+}
 
-  /**
+@Get('termination-benefits/:id')
+@HttpCode(HttpStatus.OK)
+async findOneTerminationBenefit(@Param('id') id: string) {
+  const benefit = await this.payrollConfigurationService.findOneTerminationBenefit(id);
+  return {
+    statusCode: HttpStatus.OK,
+    message: 'Termination benefit retrieved successfully',
+    data: benefit,
+  };
+}
+
+@Patch('termination-benefits/:id')
+@HttpCode(HttpStatus.OK)
+async updateTerminationBenefit(
+  @Param('id') id: string,
+  @Body() updateDto: UpdateTerminationBenefitDto,
+) {
+  const benefit = await this.payrollConfigurationService.updateTerminationBenefit(id, updateDto);
+  return {
+    statusCode: HttpStatus.OK,
+    message: 'Termination benefit updated successfully',
+    data: benefit,
+  };
+}
+
+@Delete('termination-benefits/:id')
+@HttpCode(HttpStatus.OK)
+async removeTerminationBenefit(@Param('id') id: string) {
+  const result = await this.payrollConfigurationService.removeTerminationBenefit(id);
+  return {
+    statusCode: HttpStatus.OK,
+    ...result,
+  };
+}
+
+@Patch('termination-benefits/:id/approve')
+@HttpCode(HttpStatus.OK)
+async approveTerminationBenefit(
+  @Param('id') id: string,
+  @Body() approveDto: ApproveTerminationBenefitDto,
+) {
+  const benefit = await this.payrollConfigurationService.approveTerminationBenefit(id, approveDto.approvedBy);
+  return {
+    statusCode: HttpStatus.OK,
+    message: 'Termination benefit approved successfully',
+    data: benefit,
+  };
+}
+
+@Patch('termination-benefits/:id/reject')
+@HttpCode(HttpStatus.OK)
+async rejectTerminationBenefit(
+  @Param('id') id: string,
+  @Body() approveDto: ApproveTerminationBenefitDto,
+) {
+  const benefit = await this.payrollConfigurationService.rejectTerminationBenefit(id, approveDto.approvedBy);
+  return {
+    statusCode: HttpStatus.OK,
+    message: 'Termination benefit rejected successfully',
+    data: benefit,
+  };
+}
+@Post('termination-benefits/calculate')
+@HttpCode(HttpStatus.OK)
+async calculateTerminationEntitlements(
+  @Body() employeeData: any, // Using any for simplicity - could create a DTO if needed
+) {
+  const result = await this.payrollConfigurationService.calculateTerminationEntitlements(employeeData);
+  return {
+    statusCode: HttpStatus.OK,
+    message: 'Termination entitlements calculated successfully',
+    data: result,
+  };
+}
+/**
    * PHASE 4 - REQ-PY-18: Delete termination benefit configuration
    * Delete is allowed for approved configurations (except Insurance)
    */
@@ -520,35 +897,15 @@ rejectInsurance(@Param('id') id: string, @Body() dto: ApproveInsuranceDto) {
     return this.payrollConfigurationService.deleteTerminationBenefit(id);
   }
 
-  /**
-   * PHASE 4 - REQ-PY-18: Payroll Manager Approval (Except Insurance)
-   * Publishing requires Payroll Manager approval
-   */
-  @Patch('termination-benefits/:id/approve')
-  approveTerminationBenefit(
-    @Param('id') id: string,
-    @Body() approveDto: ApproveConfigDto,
-  ) {
-    return this.payrollConfigurationService.approveTerminationBenefit(
-      id,
-      approveDto,
-    );
-  }
 
-  /**
-   * PHASE 4 - REQ-PY-18: Payroll Manager Approval (Except Insurance)
-   * Reject configuration changes
-   */
-  @Patch('termination-benefits/:id/reject')
-  rejectTerminationBenefit(
-    @Param('id') id: string,
-    @Body() approveDto: ApproveConfigDto,
-  ) {
-    return this.payrollConfigurationService.rejectTerminationBenefit(
-      id,
-      approveDto,
-    );
-  }
+
+
+
+
+
+
+
+
 
   // ==================== COMPANY WIDE SETTINGS ENDPOINTS ====================
   /**
@@ -570,6 +927,22 @@ rejectInsurance(@Param('id') id: string, @Body() dto: ApproveInsuranceDto) {
       updateDto,
     );
   }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   // ==================== BACKUP ENDPOINTS ====================
   /**
