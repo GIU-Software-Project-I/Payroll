@@ -4,18 +4,8 @@ import { promises as fs } from 'fs';
 import { join, resolve } from 'path';
 import { promisify } from 'util';
 
-// Note: AuditLogService removed for standalone operation
-// When integrating with main system, uncomment:
-// import { AuditLogService } from '../../Audit-Log/Module/Audit-Log.Service';
-// import { Logs } from '../../Audit-Log/Model/Logs';
 
-// Placeholder types for standalone operation
-type AuditLogService = any;
-enum Logs {
-  DATA_BACKUP_STARTED = 'DATA_BACKUP_STARTED',
-  DATA_BACKUP_COMPLETED = 'DATA_BACKUP_COMPLETED',
-  DATA_BACKUP_FAILED = 'DATA_BACKUP_FAILED',
-}
+
 
 const execAsync = promisify(exec);
 
@@ -42,7 +32,7 @@ export class BackupService {
     private readonly mongodbUri: string;
     private readonly maxBackups: number;
 
-    constructor(private readonly audit?: AuditLogService) {
+    constructor() {
         this.backupDir = resolve(
             process.cwd(),
             process.env.BACKUP_DIR ?? './backups'
@@ -64,7 +54,6 @@ export class BackupService {
         const backupPath = join(this.backupDir, filename);
 
         this.logger.log(`Starting database backup: ${filename}`);
-        await this.audit?.log(Logs.DATA_BACKUP_STARTED, undefined, { filename, options }).catch(() => {});
 
         try {
             // Build mongodump command
@@ -123,22 +112,12 @@ export class BackupService {
             // Clean up old backups if necessary
             await this.cleanupOldBackups();
 
-            await this.audit?.log(Logs.DATA_BACKUP_COMPLETED, undefined, {
-                filename,
-                path: backupPath,
-                size,
-                collectionCount: collections.length,
-            }).catch(() => {});
 
             return metadata;
         } catch (error) {
             this.logger.error(
                 `Backup failed: ${error instanceof Error ? error.message : String(error)}`
             );
-            await this.audit?.log(Logs.DATA_BACKUP_FAILED, undefined, {
-                filename,
-                error: error instanceof Error ? error.message : String(error),
-            }).catch(() => {});
             throw error;
         }
     }

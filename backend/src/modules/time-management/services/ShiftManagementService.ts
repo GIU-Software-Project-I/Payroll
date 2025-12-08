@@ -1,8 +1,7 @@
-// src/time-management/shift-management/shift-management.service.ts
-import { Injectable, BadRequestException, NotFoundException, ConflictException, Logger } from '@nestjs/common';
-import { Model, Types } from 'mongoose';
-import { InjectModel } from '@nestjs/mongoose';
+import {InjectModel} from "@nestjs/mongoose";
+import {BadRequestException, ConflictException, Injectable, Logger, NotFoundException} from "@nestjs/common";
 import {ShiftType, ShiftTypeDocument} from "../models/shift-type.schema";
+import {Model, Types} from "mongoose";
 import {Shift, ShiftDocument} from "../models/shift.schema";
 import {ScheduleRule, ScheduleRuleDocument} from "../models/schedule-rule.schema";
 import {ShiftAssignment, ShiftAssignmentDocument} from "../models/shift-assignment.schema";
@@ -10,23 +9,16 @@ import {Holiday, HolidayDocument} from "../models/holiday.schema";
 import {LatenessRule, LatenessRuleDocument} from "../models/lateness-rule.schema";
 import {OvertimeRule, OvertimeRuleDocument} from "../models/overtime-rule.schema";
 import {NotificationLog, NotificationLogDocument} from "../models/notification-log.schema";
-<<<<<<< HEAD
-=======
-import { ShiftAssignmentStatus } from "../models/enums/index";
->>>>>>> 7104891f826172d6e14a292132b878849990ef1b
 import {
-    AssignShiftDto, BulkAssignShiftDto, CreateHolidayDto, CreateLatenessRuleDto, CreateOvertimeRuleDto,
+    AssignShiftDto,
+    BulkAssignShiftDto, CreateHolidayDto, CreateLatenessRuleDto, CreateOvertimeRuleDto,
     CreateScheduleRuleDto,
     CreateShiftDto,
-    CreateShiftTypeDto, RenewAssignmentDto, UpdateHolidayDto, UpdateLatenessRuleDto,
-    UpdateOvertimeRuleDto, UpdateScheduleRuleDto,
+    CreateShiftTypeDto, RenewAssignmentDto, UpdateHolidayDto, UpdateLatenessRuleDto, UpdateOvertimeRuleDto,
+    UpdateScheduleRuleDto,
+    UpdateShiftAssignmentStatusDto,
     UpdateShiftDto,
-<<<<<<< HEAD
     UpdateShiftTypeDto
-=======
-    UpdateShiftTypeDto,
-    UpdateShiftAssignmentStatusDto
->>>>>>> 7104891f826172d6e14a292132b878849990ef1b
 } from "../dto/ShiftManagementDtos";
 
 
@@ -269,8 +261,6 @@ export class ShiftManagementService {
         }
     }
 
-<<<<<<< HEAD
-=======
     /**
      * US-021: Update shift assignment status
      * Updates the status of a shift assignment (PENDING, APPROVED, CANCELLED, EXPIRED)
@@ -330,7 +320,6 @@ export class ShiftManagementService {
         };
     }
 
->>>>>>> 7104891f826172d6e14a292132b878849990ef1b
     async validateShiftOverlap(employeeId: string | Types.ObjectId, startDate: Date, endDate?: Date): Promise<boolean> {
         const eId = typeof employeeId === 'string' ? new Types.ObjectId(employeeId) : employeeId;
         const overlapping = await this.shiftAssignmentModel.findOne({

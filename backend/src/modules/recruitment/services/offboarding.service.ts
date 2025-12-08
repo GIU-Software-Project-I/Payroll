@@ -1,496 +1,666 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+
+// Models
 import { TerminationRequest, TerminationRequestDocument } from '../models/termination-request.schema';
 import { ClearanceChecklist, ClearanceChecklistDocument } from '../models/clearance-checklist.schema';
+import { Contract, ContractDocument } from '../models/contract.schema';
+
+// DTOs
+import {
+    CreateTerminationRequestDto,
+    CreateResignationRequestDto,
+    UpdateTerminationStatusDto,
+    CreateClearanceChecklistDto,
+    UpdateClearanceItemDto,
+    UpdateEquipmentItemDto,
+    RevokeAccessDto,
+    TriggerFinalSettlementDto,
+} from '../dto/offboarding';
+
+// Enums
 import { TerminationInitiation } from '../enums/termination-initiation.enum';
 import { TerminationStatus } from '../enums/termination-status.enum';
 import { ApprovalStatus } from '../enums/approval-status.enum';
-import { SubmitResignationDto } from '../dto/submit-resignation.dto';
-import { TrackResignationStatusDto } from '../dto/track-resignation-status.dto';
-import { InitiateTerminationDto } from '../dto/initiate-termination.dto';
-import { CreateOffboardingChecklistDto } from '../dto/create-offboarding-checklist.dto';
-import { CreateClearanceChecklistDto } from '../dto/create-clearance-checklist.dto';
-import { UpdateClearanceSignOffDto } from '../dto/update-clearance-signoff.dto';
-import { GetClearanceStatusDto } from '../dto/get-clearance-status.dto';
-import { RevokeSystemAccessDto } from '../dto/revoke-system-access.dto';
-import { TriggerFinalSettlementDto } from '../dto/trigger-final-settlement.dto';
-import { UpdateTerminationStatusDto } from '../dto/update-termination-status.dto';
-import { UpdateEquipmentReturnDto } from '../dto/update-equipment-return.dto';
-import { UpdateAccessCardReturnDto } from '../dto/update-access-card-return.dto';
 
 @Injectable()
 export class OffboardingService {
-  constructor(
-    @InjectModel(TerminationRequest.name) private terminationRequestModel: Model<TerminationRequestDocument>,
-    @InjectModel(ClearanceChecklist.name) private clearanceChecklistModel: Model<ClearanceChecklistDocument>,
-  ) {}
+    constructor(
+        @InjectModel(TerminationRequest.name) private terminationRequestModel: Model<TerminationRequestDocument>,
+        @InjectModel(ClearanceChecklist.name) private clearanceChecklistModel: Model<ClearanceChecklistDocument>,
+        @InjectModel(Contract.name) private contractModel: Model<ContractDocument>,
+    ) {}
 
-  // ============================================
-  // OFF-018: Employee Submits Resignation Request
-  // User Story: As Employee, I want to request resignation with reasoning
-  // BR: 6 - Employee separation can be triggered by resignation
-  // Output: Offboarding Approval Workflow
-  // ============================================
-  async submitResignation(dto: SubmitResignationDto) {
-    const terminationRequest = new this.terminationRequestModel({
-      employeeId: dto.employeeId,
-      initiator: TerminationInitiation.EMPLOYEE,
-      reason: dto.reason,
-      employeeComments: dto.employeeComments,
-      status: TerminationStatus.PENDING,
-      contractId: dto.contractId,
-    });
+    // ============================================================
+    // Requirement: Termination & Resignation Initiation
+    // OFF-001: HR Manager initiates termination reviews
+    // ============================================================
 
-    const saved = await terminationRequest.save();
+    /**
+     * OFF-001: As an HR Manager, I want to initiate termination reviews based on
+     * warnings and performance data / manager requests, so that exits are justified.
+     *
+     * BR 4: Employee separation needs an effective date and a clearly stated
+     * and identified reason for exit. Termination reviews based on performance
+     * must follow due process.
+     *
+     * TODO: Integration with Performance Management (PM) module for warnings/low scores
+     */
+    async createTerminationRequest(dto: CreateTerminationRequestDto): Promise<TerminationRequest> {
+        // Validate contract exists
+        const contract = await this.contractModel.findById(dto.contractId).exec();
+        if (!contract) {
+            throw new NotFoundException(`Contract with ID ${dto.contractId} not found`);
+        }
 
-    // TODO: Trigger Offboarding Approval Workflow
-    // Workflow: Employee resigning > Line Manager > Financial approval > HR processing/approval
-    // TODO: Send notification to Line Manager for approval
+        // Check for existing active termination request
+        const existingRequest = await this.terminationRequestModel.findOne({
+            employeeId: new Types.ObjectId(dto.employeeId),
+            status: { $in: [TerminationStatus.PENDING, TerminationStatus.UNDER_REVIEW] }}).exec();
 
-    return {
-      terminationId: saved._id,
-      employeeId: saved.employeeId,
-      initiator: saved.initiator,
-      status: saved.status,
-      submittedAt: (saved as any).createdAt,
-      message: 'Resignation request submitted successfully. Awaiting Line Manager approval.',
-    };
-  }
+        if (existingRequest) {
+            throw new ConflictException('An active termination request already exists for this employee');
+        }
 
-  // ============================================
-  // OFF-019: Track Resignation Request Status
-  // User Story: As Employee, I want to track my resignation request status
-  // ============================================
-  async trackResignationStatus(dto: TrackResignationStatusDto) {
-    const terminationRequest = await this.terminationRequestModel
-      .findOne({
-        employeeId: dto.employeeId,
-        initiator: TerminationInitiation.EMPLOYEE,
-      })
-      .sort({ createdAt: -1 })
-      .exec();
+        // TODO: Validate employee exists in Employee Profile module
+        // TODO: Fetch performance warnings/low scores from Performance Management module
 
-    if (!terminationRequest) {
-      return {
-        employeeId: dto.employeeId,
-        message: 'No resignation request found',
-      };
+        const terminationRequest = new this.terminationRequestModel({
+            employeeId: new Types.ObjectId(dto.employeeId),
+            initiator: dto.initiator,
+            reason: dto.reason,
+            employeeComments: dto.employeeComments,
+            hrComments: dto.hrComments,
+            status: TerminationStatus.PENDING,
+            terminationDate: dto.terminationDate ? new Date(dto.terminationDate) : undefined,
+            contractId: new Types.ObjectId(dto.contractId),
+        });
+
+        const saved = await terminationRequest.save();
+
+        // TODO: Trigger workflow approval notifications
+
+        return saved;
     }
 
-    return {
-      terminationId: terminationRequest._id,
-      employeeId: terminationRequest.employeeId,
-      status: terminationRequest.status,
-      reason: terminationRequest.reason,
-      submittedAt: (terminationRequest as any).createdAt,
-      terminationDate: terminationRequest.terminationDate,
-      hrComments: terminationRequest.hrComments,
-    };
-  }
+    /**
+     * Get all termination requests with optional filtering
+     * Supports filtering by employeeId, status, and initiator
+     */
+    async getAllTerminationRequests(
+        employeeId?: string,
+        status?: TerminationStatus,
+        initiator?: TerminationInitiation
+    ): Promise<TerminationRequest[]> {
+        const filter: any = {};
 
-  // ============================================
-  // OFF-001: HR Initiates Termination Review
-  // User Story: As HR Manager, I want to initiate termination based on warnings/performance data
-  // BR: 4 - Separation needs effective date and reason; follow due process
-  // Input: Performance Management (PM) - Warnings/Low Scores
-  // Output: Offboarding Approval Workflow
-  // ============================================
-  async initiateTermination(dto: InitiateTerminationDto) {
-    const terminationRequest = new this.terminationRequestModel({
-      employeeId: dto.employeeId,
-      initiator: TerminationInitiation.HR,
-      reason: dto.reason,
-      hrComments: dto.hrComments,
-      status: TerminationStatus.PENDING,
-      contractId: dto.contractId,
-    });
+        if (employeeId) {
+            filter.employeeId = new Types.ObjectId(employeeId);
+        }
 
-    const saved = await terminationRequest.save();
+        if (status) {
+            filter.status = status;
+        }
 
-    // TODO: Interface with Performance Management (PM) to retrieve warnings/scores
-    // TODO: Validate due process followed as per BR 4
-    // TODO: Trigger Offboarding Approval Workflow
-    // TODO: Send notifications to relevant approvers
+        if (initiator) {
+            filter.initiator = initiator;
+        }
 
-    return {
-      terminationId: saved._id,
-      employeeId: saved.employeeId,
-      initiator: saved.initiator,
-      reason: saved.reason,
-      status: saved.status,
-      initiatedAt: (saved as any).createdAt,
-      message: 'Termination review initiated. Following due process for approval.',
-      note: 'Performance data should be reviewed and attached to justify termination.',
-    };
-  }
-
-  // ============================================
-  // OFF-006: Create Offboarding Checklist (Asset Recovery)
-  // User Story: As HR Manager, I want offboarding checklist so no company property is lost
-  // BR: 13(a) - Clearance checklist required
-  // Output: Clearance Workflow (OFF-010)
-  // ============================================
-  async createOffboardingChecklist(dto: CreateOffboardingChecklistDto) {
-    const clearanceChecklist = new this.clearanceChecklistModel({
-      terminationId: dto.terminationId,
-      equipmentList: dto.equipmentList.map((item) => ({
-        equipmentId: item.equipmentId,
-        name: item.name,
-        returned: item.returned || false,
-        condition: item.condition,
-      })),
-      cardReturned: false,
-      items: [], // Will be populated in OFF-010
-    });
-
-    const saved = await clearanceChecklist.save();
-
-    // TODO: Trigger Clearance Workflow (OFF-010)
-    // TODO: Send notifications to employee about items to return
-
-    return {
-      clearanceChecklistId: saved._id,
-      terminationId: saved.terminationId,
-      equipmentCount: saved.equipmentList.length,
-      message: 'Offboarding checklist created successfully',
-    };
-  }
-
-  // ============================================
-  // OFF-010: Multi-Department Exit Clearance Sign-offs
-  // User Story: As HR Manager, I want multi-department clearance with statuses
-  // BR: 13(b, c) - Clearance required across IT, HR, Admin, Finance
-  // BR: 14 - Final approvals form filed to HR to complete offboarding
-  // Input: Clearance Status Updates (from Depts)
-  // Output: Payroll (Final Settlement)
-  // ============================================
-  async createClearanceSignOffs(dto: CreateClearanceChecklistDto) {
-    const clearance = await this.clearanceChecklistModel.findOne({ terminationId: dto.terminationId }).exec();
-
-    if (!clearance) {
-      throw new Error('Clearance checklist not found. Create offboarding checklist first (OFF-006).');
+        return this.terminationRequestModel
+            .find(filter)
+            .populate('contractId')
+            .sort({ createdAt: -1 })
+            .exec();
     }
 
-    // Add department clearance items
-    clearance.items = dto.departments.map((dept) => ({
-      department: dept,
-      status: ApprovalStatus.PENDING,
-      comments: '',
-      updatedAt: new Date(),
-    }));
+    /**
+     * Get all termination/resignation requests by initiator
+     * Returns all requests (resignations if EMPLOYEE, terminations if HR/MANAGER)
+     */
+    async getTerminationRequestsByInitiator(
+        initiator: TerminationInitiation,
+        status?: TerminationStatus
+    ): Promise<TerminationRequest[]> {
+        const filter: any = { initiator };
 
-    await clearance.save();
+        if (status) {
+            filter.status = status;
+        }
 
-    // TODO: Send notifications to each department for clearance
-    // Departments: IT, Finance, Facilities, Line Manager, HR
-
-    return {
-      clearanceChecklistId: clearance._id,
-      terminationId: clearance.terminationId,
-      departments: dto.departments,
-      message: 'Clearance sign-offs initiated for all departments',
-      note: 'Each department must approve before final settlement can proceed.',
-    };
-  }
-
-  async updateClearanceSignOff(dto: UpdateClearanceSignOffDto) {
-    const clearance = await this.clearanceChecklistModel.findOne({ terminationId: dto.terminationId }).exec();
-
-    if (!clearance) {
-      throw new Error('Clearance checklist not found');
+        return this.terminationRequestModel
+            .find(filter)
+            .populate('contractId')
+            .sort({ createdAt: -1 })
+            .exec();
     }
 
-    const itemIndex = clearance.items.findIndex((item) => item.department === dto.department);
-
-    if (itemIndex === -1) {
-      throw new Error('Department not found in clearance checklist');
+    /**
+     * Get all resignation requests (employee-initiated only)
+     * Convenience method for getting all resignations
+     */
+    async getAllResignationRequests(status?: TerminationStatus): Promise<TerminationRequest[]> {
+        return this.getTerminationRequestsByInitiator(TerminationInitiation.EMPLOYEE, status);
     }
 
-    clearance.items[itemIndex].status = dto.status;
-    clearance.items[itemIndex].comments = dto.comments || clearance.items[itemIndex].comments;
-    clearance.items[itemIndex].updatedBy = dto.updatedBy;
-    clearance.items[itemIndex].updatedAt = new Date();
-
-    await clearance.save();
-
-    // Check if all departments approved
-    const allApproved = clearance.items.every((item) => item.status === ApprovalStatus.APPROVED);
-
-    if (allApproved) {
-      // TODO: Trigger Final Settlement (OFF-013)
-      // TODO: Update termination status to APPROVED
-      await this.terminationRequestModel
-        .findByIdAndUpdate(dto.terminationId, {
-          status: TerminationStatus.APPROVED,
-        })
-        .exec();
+    /**
+     * Get all termination requests by status
+     * Returns all terminations/resignations with the given status across all initiators
+     */
+    async getTerminationRequestsByStatus(status: TerminationStatus): Promise<TerminationRequest[]> {
+        return this.terminationRequestModel
+            .find({ status })
+            .populate('contractId')
+            .sort({ createdAt: -1 })
+            .exec();
     }
 
-    return {
-      clearanceChecklistId: clearance._id,
-      department: dto.department,
-      status: dto.status,
-      allDepartmentsCleared: allApproved,
-      message: 'Clearance sign-off updated successfully',
-      note: allApproved ? 'All departments cleared. Ready for final settlement.' : 'Awaiting other departments.',
-    };
-  }
+    /**
+     * Get termination request by ID
+     */
+    async getTerminationRequestById(id: string): Promise<TerminationRequest> {
+        const request = await this.terminationRequestModel
+            .findById(id)
+            .populate('contractId')
+            .exec();
 
-  async getClearanceStatus(dto: GetClearanceStatusDto) {
-    const clearance = await this.clearanceChecklistModel.findOne({ terminationId: dto.terminationId }).exec();
+        if (!request) {
+            throw new NotFoundException(`Termination request with ID ${id} not found`);
+        }
 
-    if (!clearance) {
-      return {
-        terminationId: dto.terminationId,
-        message: 'No clearance checklist found',
-      };
+        return request;
     }
 
-    const pending = clearance.items.filter((item) => item.status === ApprovalStatus.PENDING);
-    const approved = clearance.items.filter((item) => item.status === ApprovalStatus.APPROVED);
-    const rejected = clearance.items.filter((item) => item.status === ApprovalStatus.REJECTED);
+    /**
+     * Update termination request status
+     * Supports workflow approval process
+     */
+    async updateTerminationStatus(id: string, dto: UpdateTerminationStatusDto): Promise<TerminationRequest> {
+        const request = await this.terminationRequestModel.findById(id).exec();
 
-    return {
-      clearanceChecklistId: clearance._id,
-      terminationId: clearance.terminationId,
-      items: clearance.items,
-      equipmentList: clearance.equipmentList,
-      cardReturned: clearance.cardReturned,
-      summary: {
-        total: clearance.items.length,
-        pending: pending.length,
-        approved: approved.length,
-        rejected: rejected.length,
-      },
-      allCleared: pending.length === 0 && rejected.length === 0,
-    };
-  }
+        if (!request) {
+            throw new NotFoundException(`Termination request with ID ${id} not found`);
+        }
 
-  // ============================================
-  // OFF-007: System & Account Access Revocation
-  // User Story: As System Admin, I want to revoke access upon termination for security
-  // BR: 3(c), 19 - Access revocation required for security
-  // Input: Employee Profile (Inactive Status)
-  // Output: Notifications (N), IT/Access Systems
-  // ============================================
-  async revokeSystemAccess(dto: RevokeSystemAccessDto) {
-    const terminationRequest = await this.terminationRequestModel.findById(dto.terminationId).exec();
+        // Validate status transition
+        if (request.status === TerminationStatus.APPROVED || request.status === TerminationStatus.REJECTED) {
+            throw new BadRequestException('Cannot update status of an already finalized termination request');
+        }
 
-    if (!terminationRequest) {
-      throw new Error('Termination request not found');
+        request.status = dto.status;
+
+        if (dto.hrComments) {
+            request.hrComments = dto.hrComments;
+        }
+
+        const updated = await request.save();
+
+        // TODO: Trigger notifications based on status change
+        // TODO: If APPROVED, trigger clearance checklist creation
+
+        return updated;
     }
 
-    const revocationLog = {
-      employeeId: dto.employeeId,
-      terminationId: dto.terminationId,
-      systems: dto.systems,
-      revokedAt: new Date(),
-      status: 'revoked',
-    };
+    // ============================================================
+    // Requirement: Termination & Resignation Initiation
+    // OFF-018, OFF-019: Employee resignation requests
+    // ============================================================
 
-    // TODO: Interface with IT/Access Systems to revoke accounts
-    // TODO: Update Employee Profile status to Inactive
-    // TODO: Create audit trail log for security compliance (BR 19)
-    // TODO: Link to ONB-013 scheduled revocation
+    /**
+     * OFF-018: As an Employee, I want to be able to request a Resignation
+     * request with reasoning.
+     *
+     * OFF-019: As an Employee, I want to be able to track my resignation
+     * request status.
+     *
+     * BR 6: Employee separation can be triggered by resignation.
+     * A clearly identified offboarding approval workflow should be identified
+     * (e.g., Employee resigning > Line Manager > Financial approval > HR processing/approval).
+     */
+    async createResignationRequest(dto: CreateResignationRequestDto): Promise<TerminationRequest> {
+        // Validate contract exists
+        const contract = await this.contractModel.findById(dto.contractId).exec();
+        if (!contract) {
+            throw new NotFoundException(`Contract with ID ${dto.contractId} not found`);
+        }
 
-    // Update clearance checklist IT department status
-    await this.clearanceChecklistModel
-      .findOneAndUpdate(
-        { terminationId: dto.terminationId, 'items.department': 'IT' },
-        {
-          $set: {
-            'items.$.status': ApprovalStatus.APPROVED,
-            'items.$.comments': 'All system access revoked',
-            'items.$.updatedAt': new Date(),
-          },
-        },
-      )
-      .exec();
+        // Check for existing active resignation/termination request
+        const existingRequest = await this.terminationRequestModel.findOne({
+            employeeId: new Types.ObjectId(dto.employeeId),
+            status: { $in: [TerminationStatus.PENDING, TerminationStatus.UNDER_REVIEW] }
+        }).exec();
 
-    return {
-      ...revocationLog,
-      message: 'System access revoked successfully',
-      note: 'Access revocation logged for audit trail. IT clearance marked as approved.',
-    };
-  }
+        if (existingRequest) {
+            throw new ConflictException('An active resignation/termination request already exists');
+        }
 
-  // ============================================
-  // OFF-013: Final Settlement & Benefits Termination
-  // User Story: As HR Manager, I want to trigger final pay calc and benefits termination
-  // BR: 9, 11 - Leave balance settled (encashed), Benefits auto-terminated
-  // Input: Leaves Module (Balance), Employee Profile (Benefits)
-  // Output: Payroll Module (PY)
-  // ============================================
-  async triggerFinalSettlement(dto: TriggerFinalSettlementDto) {
-    const terminationRequest = await this.terminationRequestModel.findById(dto.terminationId).exec();
+        // TODO: Validate employee exists in Employee Profile module
 
-    if (!terminationRequest) {
-      throw new Error('Termination request not found');
+        const resignationRequest = new this.terminationRequestModel({
+            employeeId: new Types.ObjectId(dto.employeeId),
+            initiator: TerminationInitiation.EMPLOYEE,
+            reason: dto.reason,
+            employeeComments: dto.employeeComments,
+            status: TerminationStatus.PENDING,
+            terminationDate: dto.terminationDate ? new Date(dto.terminationDate) : undefined,
+            contractId: new Types.ObjectId(dto.contractId),
+        });
+
+        const saved = await resignationRequest.save();
+
+        // TODO: Trigger offboarding approval workflow
+        // Employee resigning > Line Manager > Financial approval > HR processing/approval
+
+        return saved;
     }
 
-    if (terminationRequest.status !== TerminationStatus.APPROVED) {
-      return {
-        terminationId: dto.terminationId,
-        message: 'Cannot trigger final settlement. Clearance not completed.',
-        note: 'All departments must complete clearance sign-offs first.',
-      };
+    /**
+     * OFF-019: Track resignation request status
+     * Allows employee to view their resignation request status
+     */
+    async getResignationRequestByEmployeeId(employeeId: string): Promise<TerminationRequest[]> {
+        return this.terminationRequestModel.find({employeeId: new Types.ObjectId(employeeId), initiator: TerminationInitiation.EMPLOYEE}).sort({ createdAt: -1 }).exec();
     }
 
-    const settlementData = {
-      employeeId: dto.employeeId,
-      terminationId: dto.terminationId,
-      lastWorkingDay: dto.lastWorkingDay,
-      triggeredAt: new Date(),
-    };
+    // ============================================================
+    // Requirement: Clearance, Handover & Access Revocation
+    // OFF-006: Offboarding checklist for asset recovery
+    // ============================================================
 
-    // TODO: Interface with Leaves Module to get unused leave balance
-    // TODO: Calculate leave encashment as per BR 9
-    // TODO: Interface with Employee Profile to get benefits details
-    // TODO: Terminate benefits as of end of notice period (BR 11)
-    // TODO: Send data to Payroll Module (PY) for final pay calculation
-    // Include: unused leave encashment, deductions, loans, severance
+    /**
+     * OFF-006: As an HR Manager, I want an offboarding checklist
+     * (IT assets, ID cards, equipment), so no company property is lost.
+     *
+     * BR 13(a): Clearance checklist required
+     */
+    async createClearanceChecklist(dto: CreateClearanceChecklistDto): Promise<ClearanceChecklist> {
+        // Validate termination request exists
+        const termination = await this.terminationRequestModel.findById(dto.terminationId).exec();
+        if (!termination) {
+            throw new NotFoundException(`Termination request with ID ${dto.terminationId} not found`);
+        }
 
-    // Update termination status
-    await this.terminationRequestModel
-      .findByIdAndUpdate(dto.terminationId, {
-        status: TerminationStatus.APPROVED,
-        terminationDate: dto.lastWorkingDay,
-      })
-      .exec();
+        // Check for existing checklist
+        const existingChecklist = await this.clearanceChecklistModel
+            .findOne({ terminationId: new Types.ObjectId(dto.terminationId) })
+            .exec();
 
-    return {
-      ...settlementData,
-      status: TerminationStatus.APPROVED,
-      message: 'Final settlement triggered successfully',
-      note: 'Leave balance encashed, benefits terminated, final pay calculation sent to Payroll Module.',
-    };
-  }
+        if (existingChecklist) {
+            throw new ConflictException('Clearance checklist already exists for this termination request');
+        }
 
-  // ============================================
-  // Update Termination Status
-  // ============================================
-  async updateTerminationStatus(dto: UpdateTerminationStatusDto) {
-    const termination = await this.terminationRequestModel.findById(dto.terminationId).exec();
+        // Initialize default departments if not provided
+        const defaultDepartments = ['IT', 'Finance', 'Facilities', 'HR', 'Admin'];
+        const items = dto.items && dto.items.length > 0
+            ? dto.items.map(item => ({
+                department: item.department,
+                status: ApprovalStatus.PENDING,
+                comments: item.comments || '',
+                updatedBy: item.updatedBy ? new Types.ObjectId(item.updatedBy) : undefined,
+                updatedAt: new Date(),
+            }))
+            : defaultDepartments.map(dept => ({
+                department: dept,
+                status: ApprovalStatus.PENDING,
+                comments: '',
+                updatedAt: new Date(),
+            }));
 
-    if (!termination) {
-      throw new Error('Termination request not found');
+        const equipmentList = dto.equipmentList?.map(equip => ({
+            equipmentId: equip.equipmentId ? new Types.ObjectId(equip.equipmentId) : undefined,
+            name: equip.name,
+            returned: equip.returned,
+            condition: equip.condition || '',
+        })) || [];
+
+        const checklist = new this.clearanceChecklistModel({
+            terminationId: new Types.ObjectId(dto.terminationId),
+            items,
+            equipmentList,
+            cardReturned: dto.cardReturned || false,
+        });
+
+        return checklist.save();
+    }// RAGE3 EL METHOD DEH
+
+    /**
+     * Get clearance checklist by termination ID
+     */
+    async getClearanceChecklistByTerminationId(terminationId: string): Promise<ClearanceChecklist> {
+        const checklist = await this.clearanceChecklistModel
+            .findOne({ terminationId: new Types.ObjectId(terminationId) })
+            .populate('terminationId')
+            .exec();
+
+        if (!checklist) {
+            throw new NotFoundException(`Clearance checklist not found for termination request ${terminationId}`);
+        }
+
+        return checklist;
+    } // TAMAM
+
+    /**
+     * Get clearance checklist by ID
+     */
+    async getClearanceChecklistById(id: string): Promise<ClearanceChecklist> {
+        const checklist = await this.clearanceChecklistModel
+            .findById(id)
+            .populate('terminationId')
+            .exec();
+
+        if (!checklist) {
+            throw new NotFoundException(`Clearance checklist with ID ${id} not found`);
+        }
+
+        return checklist;
+    } // TAMAM
+
+    // ============================================================
+    // Requirement: Clearance, Handover & Access Revocation
+    // OFF-010: Multi-department exit clearance sign-offs
+    // ============================================================
+
+    /**
+     * OFF-010: As HR Manager, I want multi-department exit clearance sign-offs
+     * (IT, Finance, Facilities, Line Manager), with statuses, so the employee
+     * is fully cleared.
+     *
+     * BR 13(b, c): Clearance checklist required across departments
+     * (IT, HR, Admin, Finance).
+     * BR 14: Final approvals/signature form should be filed to HR to complete
+     * the offboarding process.
+     */
+    async updateClearanceItem(checklistId: string, dto: UpdateClearanceItemDto): Promise<ClearanceChecklist> {
+        const checklist = await this.clearanceChecklistModel.findById(checklistId).exec();
+
+        if (!checklist) {
+            throw new NotFoundException(`Clearance checklist with ID ${checklistId} not found`);
+        }
+
+        // Find the department item
+        const itemIndex = checklist.items.findIndex(item => item.department === dto.department);
+
+        if (itemIndex === -1) {
+            throw new NotFoundException(`Department ${dto.department} not found in clearance checklist`);
+        }
+
+        // Update the item
+        checklist.items[itemIndex] = {
+            department: dto.department,
+            status: dto.status,
+            comments: dto.comments || checklist.items[itemIndex].comments,
+            updatedBy: new Types.ObjectId(dto.updatedBy),
+            updatedAt: dto.updatedAt ? new Date(dto.updatedAt) : new Date(),
+        };
+
+        const updated = await checklist.save();
+
+        // Check if all departments have approved
+        const allApproved = checklist.items.every(item => item.status === ApprovalStatus.APPROVED);
+
+        // TODO: If all approved and all equipment returned, trigger final settlement notification
+        if (allApproved) {
+            // TODO: Notify HR that clearance is complete
+            // TODO: Enable final settlement processing
+        }
+
+        return updated;
     }
 
-    termination.status = dto.status;
-    if (dto.terminationDate) {
-      termination.terminationDate = dto.terminationDate;
-    }
-    if (dto.hrComments) {
-      termination.hrComments = dto.hrComments;
-    }
+    /**
+     * Update equipment return status
+     */
+    async updateEquipmentItem(checklistId: string, equipmentName: string, dto: UpdateEquipmentItemDto): Promise<ClearanceChecklist> {
+        const checklist = await this.clearanceChecklistModel.findById(checklistId).exec();
 
-    await termination.save();
+        if (!checklist) {
+            throw new NotFoundException(`Clearance checklist with ID ${checklistId} not found`);
+        }
 
-    return {
-      terminationId: termination._id,
-      employeeId: termination.employeeId,
-      newStatus: dto.status,
-      terminationDate: termination.terminationDate,
-      message: 'Termination status updated successfully',
-    };
-  }
+        // Find the equipment item
+        const equipmentIndex = checklist.equipmentList.findIndex(item => item.name === equipmentName);
 
-  // ============================================
-  // Update Equipment Return Status
-  // ============================================
-  async updateEquipmentReturn(dto: UpdateEquipmentReturnDto) {
-    const clearance = await this.clearanceChecklistModel.findOne({ terminationId: dto.terminationId }).exec();
+        if (equipmentIndex === -1) {
+            throw new NotFoundException(`Equipment ${equipmentName} not found in clearance checklist`);
+        }
 
-    if (!clearance) {
-      throw new Error('Clearance checklist not found');
-    }
+        // Update the equipment
+        checklist.equipmentList[equipmentIndex] = {
+            equipmentId: dto.equipmentId ? new Types.ObjectId(dto.equipmentId) : checklist.equipmentList[equipmentIndex].equipmentId,
+            name: dto.name,
+            returned: dto.returned,
+            condition: dto.condition || checklist.equipmentList[equipmentIndex].condition,
+        };
 
-    const equipmentIndex = clearance.equipmentList.findIndex(
-      (item) => item.equipmentId.toString() === dto.equipmentId.toString(),
-    );
-
-    if (equipmentIndex === -1) {
-      throw new Error('Equipment not found in checklist');
+        return checklist.save();
     }
 
-    clearance.equipmentList[equipmentIndex].returned = dto.returned;
-    clearance.equipmentList[equipmentIndex].condition = dto.condition || clearance.equipmentList[equipmentIndex].condition;
+    /**
+     * Add equipment to clearance checklist
+     */
+    async addEquipmentToChecklist(checklistId: string, dto: UpdateEquipmentItemDto): Promise<ClearanceChecklist> {
+        const checklist = await this.clearanceChecklistModel.findById(checklistId).exec();
 
-    await clearance.save();
+        if (!checklist) {
+            throw new NotFoundException(`Clearance checklist with ID ${checklistId} not found`);
+        }
 
-    return {
-      terminationId: dto.terminationId,
-      equipmentId: dto.equipmentId,
-      returned: dto.returned,
-      condition: dto.condition,
-      message: 'Equipment return status updated',
-    };
-  }
+        checklist.equipmentList.push({
+            equipmentId: dto.equipmentId ? new Types.ObjectId(dto.equipmentId) : undefined,
+            name: dto.name,
+            returned: dto.returned,
+            condition: dto.condition || '',
+        });
 
-  // ============================================
-  // Update Access Card Return Status
-  // ============================================
-  async updateAccessCardReturn(dto: UpdateAccessCardReturnDto) {
-    const clearance = await this.clearanceChecklistModel.findOne({ terminationId: dto.terminationId }).exec();
-
-    if (!clearance) {
-      throw new Error('Clearance checklist not found');
+        return checklist.save();
     }
 
-    clearance.cardReturned = dto.returned;
-    await clearance.save();
+    /**
+     * Update access card return status
+     */
+    async updateCardReturn(checklistId: string, cardReturned: boolean): Promise<ClearanceChecklist> {
+        const checklist = await this.clearanceChecklistModel.findById(checklistId).exec();
 
-    return {
-      terminationId: dto.terminationId,
-      cardReturned: dto.returned,
-      message: 'Access card return status updated',
-    };
-  }
+        if (!checklist) {
+            throw new NotFoundException(`Clearance checklist with ID ${checklistId} not found`);
+        }
 
-  // ============================================
-  // Get All Termination Requests (for HR Dashboard)
-  // ============================================
-  async getAllTerminationRequests() {
-    const terminations = await this.terminationRequestModel.find().sort({ createdAt: -1 }).exec();
+        checklist.cardReturned = cardReturned;
 
-    return {
-      total: terminations.length,
-      terminations: terminations.map((t) => ({
-        terminationId: t._id,
-        employeeId: t.employeeId,
-        initiator: t.initiator,
-        reason: t.reason,
-        status: t.status,
-        terminationDate: t.terminationDate,
-        createdAt: (t as any).createdAt,
-      })),
-    };
-  }
-
-  // ============================================
-  // Get Termination Request by ID
-  // ============================================
-  async getTerminationRequestById(terminationId: Types.ObjectId) {
-    const termination = await this.terminationRequestModel.findById(terminationId).exec();
-
-    if (!termination) {
-      throw new Error('Termination request not found');
+        return checklist.save();
     }
 
-    return {
-      terminationId: termination._id,
-      employeeId: termination.employeeId,
-      initiator: termination.initiator,
-      reason: termination.reason,
-      employeeComments: termination.employeeComments,
-      hrComments: termination.hrComments,
-      status: termination.status,
-      terminationDate: termination.terminationDate,
-      contractId: termination.contractId,
-      createdAt: (termination as any).createdAt,
-      updatedAt: (termination as any).updatedAt,
-    };
-  }
+    /**
+     * Get clearance completion status
+     */
+    async getClearanceCompletionStatus(checklistId: string): Promise<{
+        checklistId: string;
+        allDepartmentsCleared: boolean;
+        allEquipmentReturned: boolean;
+        cardReturned: boolean;
+        fullyCleared: boolean;
+        pendingDepartments: string[];
+        pendingEquipment: string[];
+    }> {
+        const checklist = await this.clearanceChecklistModel.findById(checklistId).exec();
+
+        if (!checklist) {
+            throw new NotFoundException(`Clearance checklist with ID ${checklistId} not found`);
+        }
+
+        const allDepartmentsCleared = checklist.items.every(item => item.status === ApprovalStatus.APPROVED);
+        const allEquipmentReturned = checklist.equipmentList.every(item => item.returned);
+        const cardReturned = checklist.cardReturned;
+
+        const pendingDepartments = checklist.items
+            .filter(item => item.status !== ApprovalStatus.APPROVED)
+            .map(item => item.department);
+
+        const pendingEquipment = checklist.equipmentList
+            .filter(item => !item.returned)
+            .map(item => item.name);
+
+        const fullyCleared = allDepartmentsCleared && allEquipmentReturned && cardReturned;
+
+        return {checklistId, allDepartmentsCleared, allEquipmentReturned, cardReturned, fullyCleared, pendingDepartments, pendingEquipment,};
+    }// HELW, MANTEQY
+
+    // ============================================================
+    // Requirement: Clearance, Handover & Access Revocation
+    // OFF-007: System and account access revocation
+    // ============================================================
+
+    /**
+     * OFF-007: As a System Admin, I want to revoke system and account access
+     * upon termination, so security is maintained.
+     *
+     * BR 3(c), 19: Access revocation required for security
+     *
+     * This connects to ONB-013 (scheduled revocation)
+     */
+    async revokeSystemAccess(dto: RevokeAccessDto): Promise<{
+        success: boolean;
+        employeeId: string;
+        message: string;
+        revokedAt: Date;
+    }> {
+        // Validate employee exists
+        // TODO: Validate employee exists in Employee Profile module
+
+        // TODO: Verify termination request exists and is approved
+        const terminationRequest = await this.terminationRequestModel
+            .findOne({
+                employeeId: new Types.ObjectId(dto.employeeId),
+                status: TerminationStatus.APPROVED
+            })
+            .exec();
+
+        if (!terminationRequest) {
+            throw new BadRequestException(
+                'No approved termination request found for this employee. Access revocation requires approved termination.'
+            );
+        }
+
+        // TODO: Integration with IT/Access Systems
+        // TODO: Disable SSO/email/tools access
+        // TODO: Revoke payroll system access
+        // TODO: Disable time management clock access
+        // TODO: Set employee profile status to INACTIVE
+
+        // TODO: Store access revocation log in audit trail
+        // TODO: Send notifications to IT/System Admin
+
+        return {
+            success: true,
+            employeeId: dto.employeeId,
+            message: 'System access revoked successfully. All accounts disabled.',
+            revokedAt: new Date(),
+        };
+    }
+
+    // ============================================================
+    // Requirement: Exit Settlements & Benefits
+    // OFF-013: Final settlement and benefits termination
+    // ============================================================
+
+    /**
+     * OFF-013: As HR Manager, I want to send offboarding notification to trigger
+     * benefits termination and final pay calc (unused leave, deductions),
+     * so settlements are accurate.
+     *
+     * BR 9, 11: Leaves' Balance must be reviewed and settled (unused annuals
+     * to be encashed). Benefits plans are set to be auto-terminated as of
+     * the end of the notice period.
+     */
+    async triggerFinalSettlement(dto: TriggerFinalSettlementDto): Promise<{
+        success: boolean;
+        terminationId: string;
+        message: string;
+        triggeredAt: Date;
+    }> {
+        // Validate termination request exists and is approved
+        const terminationRequest = await this.terminationRequestModel
+            .findById(dto.terminationId)
+            .exec();
+
+        if (!terminationRequest) {
+            throw new NotFoundException(`Termination request with ID ${dto.terminationId} not found`);
+        }
+
+        if (terminationRequest.status !== TerminationStatus.APPROVED) {
+            throw new BadRequestException('Final settlement can only be triggered for approved termination requests');
+        }
+
+        // Verify clearance is complete
+        const clearanceChecklist = await this.clearanceChecklistModel
+            .findOne({ terminationId: new Types.ObjectId(dto.terminationId) })
+            .exec();
+
+        if (clearanceChecklist) {
+            const completionStatus = await this.getClearanceCompletionStatus(clearanceChecklist._id.toString());
+
+            if (!completionStatus.fullyCleared) {
+                throw new BadRequestException(
+                    `Clearance checklist is not fully complete. Pending: ${completionStatus.pendingDepartments.join(', ')}`
+                );
+            }
+        }
+
+        // TODO: Integration with Leaves Module
+        // TODO: Fetch employee leave balance
+        // TODO: Calculate unused annual leave encashment
+
+        // TODO: Integration with Employee Profile
+        // TODO: Fetch employee benefits information
+
+        // TODO: Integration with Payroll Module
+        // TODO: Trigger service that fills collection relating user to benefit in payroll execution module
+        // TODO: Create final pay calculation entry (unused leave, deductions, loans, severance)
+        // TODO: Schedule benefits auto-termination as of end of notice period
+        // TODO: Process any signing bonus clawbacks if applicable
+
+        // TODO: Send notifications to Payroll department
+        // TODO: Send notifications to employee about final settlement timeline
+
+        return {
+            success: true,
+            terminationId: dto.terminationId,
+            message: 'Final settlement triggered. Benefits termination scheduled and final pay calculation initiated.',
+            triggeredAt: new Date(),
+        };
+    }
+
+    /**
+     * Get all clearance checklists with optional filtering
+     */
+    async getAllClearanceChecklists(): Promise<ClearanceChecklist[]> {
+        return this.clearanceChecklistModel
+            .find()
+            .populate('terminationId')
+            .sort({ createdAt: -1 })
+            .exec();
+    }
+
+    /**
+     * Delete termination request (only if not approved/rejected)
+     */
+    async deleteTerminationRequest(id: string): Promise<{ message: string; deletedId: string }> {
+        const request = await this.terminationRequestModel.findById(id).exec();
+
+        if (!request) {
+            throw new NotFoundException(`Termination request with ID ${id} not found`);
+        }
+
+        if (request.status === TerminationStatus.APPROVED) {
+            throw new BadRequestException('Cannot delete an approved termination request');
+        }
+
+        await this.terminationRequestModel.findByIdAndDelete(id).exec();
+
+        // Also delete associated clearance checklist if exists
+        await this.clearanceChecklistModel.deleteOne({ terminationId: new Types.ObjectId(id) }).exec();
+
+        return {message: 'Termination request deleted successfully', deletedId: id,};
+    }
 }
 

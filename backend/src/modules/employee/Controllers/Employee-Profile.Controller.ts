@@ -6,7 +6,8 @@ import { CreateCorrectionRequestDto } from '../dto/employee-profile/create-corre
 import { AdminUpdateProfileDto } from '../dto/employee-profile/admin-update-profile.dto';
 import { AdminAssignRoleDto } from '../dto/employee-profile/admin-assign-role.dto';
 import { ProfileChangeStatus, EmployeeStatus } from '../enums/employee-profile.enums';
-import {EmployeeProfileService} from "../services/employee-profile.service";
+import {EmployeeProfileService} from "../Services/Employee-Profile.Service";
+
 
 // Mock AuthGuard - Replace with actual AuthGuard from your auth module
 // import { AuthGuard } from '../guards/auth.guard';

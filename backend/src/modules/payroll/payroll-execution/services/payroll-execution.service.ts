@@ -10,10 +10,11 @@ import { BonusStatus } from '../enums/payroll-execution-enum';
 import { EmployeeTerminationResignation, EmployeeTerminationResignationDocument } from '../models/EmployeeTerminationResignation.schema';
 import { SystemRole } from '../../../employee/enums/employee-profile.enums';
 import { PayCalculatorService } from '../services/payCalculator.service';
-import { TimeManagementService } from '../../../time-management/time-management.service';
+import { TimeManagementService } from '../../../time-management/services/time-management.service';
 import { LeavesService } from '../../../leaves/services/leaves.service';
-import { EmployeeProfileService } from '../../../employee/Services/employee-profile.service';
+
 import { EmployeeSystemRole, EmployeeSystemRoleDocument } from '../../../employee/models/Employee/employee-system-role.schema';
+import {EmployeeProfileService} from "../../../employee/Services/Employee-Profile.Service";
 
 @Injectable()
 export class PayrollExecutionService {

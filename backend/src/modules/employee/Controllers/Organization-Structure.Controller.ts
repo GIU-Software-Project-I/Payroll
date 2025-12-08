@@ -20,7 +20,8 @@ import {
   UpdatePositionDto,
   UpdateStructureRequestDto,
 } from '../dto/organization-structure';
-import { OrganizationStructureService } from '../services/organization-structure.service';
+import {OrganizationStructureService} from "../Services/Organization-Structure.Service";
+
 
 @Controller('organization-structure')
 //@UsePipes(new ValidationPipe({whitelist: true, transform: true,}),)

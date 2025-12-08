@@ -1,22 +1,30 @@
-import { Controller, Get, Post, Patch, Body, Param, Delete, Query } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
+import { AttendanceService } from "../services/AttendanceService";
+import {
+    BadRequestException,
+    Body,
+    Controller,
+    Delete,
+    Get,
+    Logger,
+    Param,
+    Patch,
+    Post,
+    Put,
+    Query
+} from "@nestjs/common";
+import {ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags} from "@nestjs/swagger";
+
+import {ShiftManagementService} from "../services/ShiftManagementService";
 import {
     AssignShiftDto, BulkAssignShiftDto, CreateHolidayDto, CreateLatenessRuleDto, CreateOvertimeRuleDto,
-    CreateScheduleRuleDto,
-    CreateShiftDto,
+    CreateScheduleRuleDto, CreateShiftDto,
     CreateShiftTypeDto, RenewAssignmentDto, UpdateHolidayDto, UpdateLatenessRuleDto,
-    UpdateOvertimeRuleDto, UpdateScheduleRuleDto,
+    UpdateOvertimeRuleDto, UpdateScheduleRuleDto, UpdateShiftAssignmentStatusDto,
     UpdateShiftDto,
-<<<<<<< HEAD
     UpdateShiftTypeDto
-=======
-    UpdateShiftTypeDto,
-    UpdateShiftAssignmentStatusDto
->>>>>>> 7104891f826172d6e14a292132b878849990ef1b
 } from "../dto/ShiftManagementDtos";
-import {ShiftManagementService} from "../services/ShiftManagementService";
-//import {SystemRole} from "../../Employee-Profile-Organization-Structure-and-Performance/backend/src/enums/employee-profile.enums";
-//import {Roles} from "../auth/decorators/Roles-Decorator";
+
+
 
 @ApiTags('Shift Management')
 @Controller('shift-management')
@@ -80,8 +88,6 @@ export class ShiftManagementController {
 
     // Shifts
     @Post('shifts')
-<<<<<<< HEAD
-=======
     @ApiOperation({
         summary: 'Create Shift',
         description: 'Create a new shift with specific time range, punch policy, and grace periods. Default example shows a standard morning shift with FIRST_LAST policy.'
@@ -203,7 +209,6 @@ export class ShiftManagementController {
     })
     @ApiResponse({ status: 400, description: 'Invalid shift configuration' })
     @ApiResponse({ status: 404, description: 'Shift type not found' })
->>>>>>> 7104891f826172d6e14a292132b878849990ef1b
     createShift(@Body() dto: CreateShiftDto) {
         return this.service.createShift(dto);
     }
@@ -225,8 +230,7 @@ export class ShiftManagementController {
 
     // Schedule Rules
     @Post('schedule-rules')
-<<<<<<< HEAD
-=======
+
     @ApiOperation({
         summary: 'Create Schedule Rule',
         description: 'HR Manager/Admin creates a scheduling rule with a specific pattern (e.g., weekly, daily, or custom patterns)'
@@ -267,27 +271,22 @@ export class ShiftManagementController {
     @ApiResponse({ status: 201, description: 'Schedule rule created successfully' })
     @ApiResponse({ status: 400, description: 'Invalid request data' })
     @ApiResponse({ status: 409, description: 'Schedule rule already exists' })
->>>>>>> 7104891f826172d6e14a292132b878849990ef1b
     createScheduleRule(@Body() dto: CreateScheduleRuleDto) {
         return this.service.createScheduleRule(dto);
     }
 
     @Get('schedule-rules')
-<<<<<<< HEAD
-=======
+
     @ApiOperation({
         summary: 'Get All Schedule Rules',
         description: 'Retrieve all schedule rules in the system'
     })
     @ApiResponse({ status: 200, description: 'List of schedule rules' })
->>>>>>> 7104891f826172d6e14a292132b878849990ef1b
     getScheduleRules() {
         return this.service.getScheduleRules();
     }
 
     @Patch('schedule-rules/:id')
-<<<<<<< HEAD
-=======
     @ApiOperation({
         summary: 'Update Schedule Rule',
         description: 'Update an existing schedule rule by ID'
@@ -296,15 +295,14 @@ export class ShiftManagementController {
     @ApiBody({ type: UpdateScheduleRuleDto })
     @ApiResponse({ status: 200, description: 'Schedule rule updated successfully' })
     @ApiResponse({ status: 404, description: 'Schedule rule not found' })
->>>>>>> 7104891f826172d6e14a292132b878849990ef1b
+
     updateScheduleRule(@Param('id') id: string, @Body() dto: UpdateScheduleRuleDto) {
         return this.service.updateScheduleRule(id, dto);
     }
 
     // Shift Assignments
     @Post('assignments')
-<<<<<<< HEAD
-=======
+
     @ApiOperation({
         summary: 'Assign Shift (Individual, Department, or Position)',
         description: 'HR Manager/Admin assigns a shift to an employee, all employees in a department, or all employees in a position. At least one target (employeeId, departmentId, or positionId) must be provided.'
@@ -410,14 +408,11 @@ export class ShiftManagementController {
             }
         }
     })
->>>>>>> 7104891f826172d6e14a292132b878849990ef1b
     assignShift(@Body() dto: AssignShiftDto) {
         return this.service.assignShiftToEmployee(dto);
     }
 
     @Post('assignments/bulk')
-<<<<<<< HEAD
-=======
     @ApiOperation({
         summary: 'Bulk Assign Shift',
         description: 'HR Manager/Admin assigns shifts to multiple employees at once. Can target specific employees, entire departments, or all employees in specific positions.'
@@ -570,7 +565,6 @@ export class ShiftManagementController {
             }
         }
     })
->>>>>>> 7104891f826172d6e14a292132b878849990ef1b
     bulkAssignShift(@Body() dto: BulkAssignShiftDto) {
         return this.service.bulkAssignShift(dto);
     }
@@ -590,97 +584,95 @@ export class ShiftManagementController {
         return this.service.expireAssignment(id);
     }
 
-<<<<<<< HEAD
-=======
-    @Patch('assignments/:id/status')
-    @ApiOperation({
-        summary: 'Update Shift Assignment Status',
-        description: 'HR Manager/Admin updates the status of a shift assignment. Status can be PENDING, APPROVED, CANCELLED, or EXPIRED.'
-    })
-    @ApiParam({
-        name: 'id',
-        description: 'Shift Assignment ID (MongoDB ObjectId)',
-        example: '674c1a1b2c3d4e5f6a7b8d10'
-    })
-    @ApiBody({
-        type: UpdateShiftAssignmentStatusDto,
-        description: 'Status update data',
-        examples: {
-            'Approve Assignment': {
-                summary: 'Approve a pending shift assignment',
-                value: {
-                    status: 'APPROVED',
-                    reason: 'Approved by HR Manager after verification',
-                    updatedBy: '674c1a1b2c3d4e5f6a7b8d03'
-                }
-            },
-            'Cancel Assignment': {
-                summary: 'Cancel a shift assignment',
-                value: {
-                    status: 'CANCELLED',
-                    reason: 'Employee requested shift change',
-                    updatedBy: '674c1a1b2c3d4e5f6a7b8d03'
-                }
-            },
-            'Mark as Expired': {
-                summary: 'Mark assignment as expired',
-                value: {
-                    status: 'EXPIRED',
-                    reason: 'Assignment period has ended'
-                }
-            },
-            'Set to Pending': {
-                summary: 'Set status back to pending for review',
-                value: {
-                    status: 'PENDING',
-                    reason: 'Requires additional approval'
-                }
-            }
-        }
-    })
-    @ApiResponse({
-        status: 200,
-        description: 'Shift assignment status updated successfully',
-        schema: {
-            example: {
-                message: 'Shift assignment status updated successfully',
-                assignmentId: '674c1a1b2c3d4e5f6a7b8d10',
-                oldStatus: 'PENDING',
-                newStatus: 'APPROVED',
-                updatedAt: '2025-12-01T10:30:00.000Z'
-            }
-        }
-    })
-    @ApiResponse({
-        status: 400,
-        description: 'Bad request - Invalid status value',
-        schema: {
-            example: {
-                statusCode: 400,
-                message: 'Invalid status. Must be one of: PENDING, APPROVED, CANCELLED, EXPIRED',
-                error: 'Bad Request'
-            }
-        }
-    })
-    @ApiResponse({
-        status: 404,
-        description: 'Shift assignment not found',
-        schema: {
-            example: {
-                statusCode: 404,
-                message: 'Shift assignment with ID 674c1a1b2c3d4e5f6a7b8d10 not found',
-                error: 'Not Found'
-            }
-        }
-    })
-    updateAssignmentStatus(
-        @Param('id') id: string,
-        @Body() dto: UpdateShiftAssignmentStatusDto
-    ) {
-        return this.service.updateAssignmentStatus(id, dto);
-    }
+    // @Patch('assignments/:id/status')
+    // @ApiOperation({
+    //     summary: 'Update Shift Assignment Status',
+    //     description: 'HR Manager/Admin updates the status of a shift assignment. Status can be PENDING, APPROVED, CANCELLED, or EXPIRED.'
+    // })
+    // @ApiParam({
+    //     name: 'id',
+    //     description: 'Shift Assignment ID (MongoDB ObjectId)',
+    //     example: '674c1a1b2c3d4e5f6a7b8d10'
+    // })
+    // @ApiBody({
+    //     type: UpdateShiftAssignmentStatusDto,
+    //     description: 'Status update data',
+    //     examples: {
+    //         'Approve Assignment': {
+    //             summary: 'Approve a pending shift assignment',
+    //             value: {
+    //                 status: 'APPROVED',
+    //                 reason: 'Approved by HR Manager after verification',
+    //                 updatedBy: '674c1a1b2c3d4e5f6a7b8d03'
+    //             }
+    //         },
+    //         'Cancel Assignment': {
+    //             summary: 'Cancel a shift assignment',
+    //             value: {
+    //                 status: 'CANCELLED',
+    //                 reason: 'Employee requested shift change',
+    //                 updatedBy: '674c1a1b2c3d4e5f6a7b8d03'
+    //             }
+    //         },
+    //         'Mark as Expired': {
+    //             summary: 'Mark assignment as expired',
+    //             value: {
+    //                 status: 'EXPIRED',
+    //                 reason: 'Assignment period has ended'
+    //             }
+    //         },
+    //         'Set to Pending': {
+    //             summary: 'Set status back to pending for review',
+    //             value: {
+    //                 status: 'PENDING',
+    //                 reason: 'Requires additional approval'
+    //             }
+    //         }
+    //     }
+    // })
+    // @ApiResponse({
+    //     status: 200,
+    //     description: 'Shift assignment status updated successfully',
+    //     schema: {
+    //         example: {
+    //             message: 'Shift assignment status updated successfully',
+    //             assignmentId: '674c1a1b2c3d4e5f6a7b8d10',
+    //             oldStatus: 'PENDING',
+    //             newStatus: 'APPROVED',
+    //             updatedAt: '2025-12-01T10:30:00.000Z'
+    //         }
+    //     }
+    // })
+    // @ApiResponse({
+    //     status: 400,
+    //     description: 'Bad request - Invalid status value',
+    //     schema: {
+    //         example: {
+    //             statusCode: 400,
+    //             message: 'Invalid status. Must be one of: PENDING, APPROVED, CANCELLED, EXPIRED',
+    //             error: 'Bad Request'
+    //         }
+    //     }
+    // })
+    // @ApiResponse({
+    //     status: 404,
+    //     description: 'Shift assignment not found',
+    //     schema: {
+    //         example: {
+    //             statusCode: 404,
+    //             message: 'Shift assignment with ID 674c1a1b2c3d4e5f6a7b8d10 not found',
+    //             error: 'Not Found'
+    //         }
+    //     }
+    // })
+    // updateAssignmentStatus(
+    //     @Param('id') id: string,
+    //     @Body() dto: UpdateShiftAssignmentStatusDto
+    // ) {
+    //     return this.service.updateAssignmentStatus(id, dto);
+    // }
 
->>>>>>> 7104891f826172d6e14a292132b878849990ef1b
+
     // Holidays
     @Post('holidays')
     createHoliday(@Body() dto: CreateHolidayDto) {

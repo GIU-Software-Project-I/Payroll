@@ -30,17 +30,8 @@ export class UpdateShiftTypeDto {
 }
 
 export class CreateShiftDto {
-<<<<<<< HEAD
-    name: string;
-    shiftType: string; // ObjectId string
-    startTime: string; // 'HH:mm'
-    endTime: string;   // 'HH:mm'
-    punchPolicy?: PunchPolicy;
-    graceInMinutes?: number;
-    graceOutMinutes?: number;
-    requiresApprovalForOvertime?: boolean;
-    active?: boolean;
-=======
+
+
     @ApiProperty({
         description: 'Name of the shift',
         example: 'Morning Shift 9-5',
@@ -104,7 +95,7 @@ export class CreateShiftDto {
         default: true
     })
     active?: boolean = true;
->>>>>>> 7104891f826172d6e14a292132b878849990ef1b
+
 }
 
 export class UpdateShiftDto {
@@ -120,10 +111,9 @@ export class UpdateShiftDto {
 }
 
 export class CreateScheduleRuleDto {
-<<<<<<< HEAD
-    name: string;
-    pattern: string; // simple pattern string, e.g. "WEEKLY:Mon,Tue,Wed" or cron-like
-=======
+
+
+
     @ApiProperty({
         description: 'Name of the schedule rule',
         example: 'Weekly Office Hours'
@@ -140,15 +130,13 @@ export class CreateScheduleRuleDto {
         description: 'Whether the schedule rule is active',
         default: true
     })
->>>>>>> 7104891f826172d6e14a292132b878849990ef1b
+
     active?: boolean;
 }
 
 export class UpdateScheduleRuleDto {
-<<<<<<< HEAD
-    name?: string;
-    pattern?: string;
-=======
+
+
     @ApiPropertyOptional({
         description: 'Name of the schedule rule',
         example: 'Updated Weekly Schedule'
@@ -164,22 +152,14 @@ export class UpdateScheduleRuleDto {
     @ApiPropertyOptional({
         description: 'Whether the schedule rule is active'
     })
->>>>>>> 7104891f826172d6e14a292132b878849990ef1b
+
     active?: boolean;
 }
 
 // src/time-management/shift-management/dtos/shift-assignment.dtos.ts
 export class AssignShiftDto {
-<<<<<<< HEAD
-    employeeId?: string;
-    departmentId?: string;
-    positionId?: string;
-    shiftId: string;
-    scheduleRuleId?: string;
-    startDate: Date;
-    endDate?: Date;
-    status?: string; // PENDING/APPROVED/CANCELLED/EXPIRED
-=======
+
+
     @ApiPropertyOptional({
         description: 'Target specific employee by their ID (MongoDB ObjectId). Use this for individual assignment.',
         example: '674c1a1b2c3d4e5f6a7b8c9d'
@@ -234,7 +214,7 @@ export class AssignShiftDto {
         description: 'User ID who created this assignment (MongoDB ObjectId)',
         example: '674c1a1b2c3d4e5f6a7b8d03'
     })
->>>>>>> 7104891f826172d6e14a292132b878849990ef1b
+
     createdBy?: string; // userId who created
 }
 
@@ -245,14 +225,7 @@ export class BulkAssignTarget {
 }
 
 export class BulkAssignShiftDto {
-<<<<<<< HEAD
-    shiftId: string;
-    targets: BulkAssignTarget[]; // list of targets
-    scheduleRuleId?: string;
-    startDate: Date;
-    endDate?: Date;
-    status?: string;
-=======
+
     @ApiProperty({
         description: 'The shift to assign (MongoDB ObjectId)',
         example: '507f1f77bcf86cd799439011'
@@ -298,7 +271,7 @@ export class BulkAssignShiftDto {
         description: 'User ID who created this assignment (MongoDB ObjectId)',
         example: '507f1f77bcf86cd799439050'
     })
->>>>>>> 7104891f826172d6e14a292132b878849990ef1b
+
     createdBy?: string;
 }
 
@@ -309,8 +282,7 @@ export class RenewAssignmentDto {
     status?: string;
 }
 
-<<<<<<< HEAD
-=======
+
 export class UpdateShiftAssignmentStatusDto {
     @ApiProperty({
         description: 'New status for the shift assignment',
@@ -332,7 +304,6 @@ export class UpdateShiftAssignmentStatusDto {
     updatedBy?: string;
 }
 
->>>>>>> 7104891f826172d6e14a292132b878849990ef1b
 export class CreateHolidayDto {
     type: HolidayType;
     startDate: Date;

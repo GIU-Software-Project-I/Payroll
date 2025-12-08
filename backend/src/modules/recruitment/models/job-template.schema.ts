@@ -3,20 +3,20 @@ import { HydratedDocument } from 'mongoose';
 
 @Schema({ timestamps: true })
 export class JobTemplate {
-  @Prop({ required: true })
-  title: string;
+    @Prop({ required: true })
+    title: string;
 
-  @Prop({ required: true })
-  department: string;
+    @Prop({ required: true })
+    department: string;
 
-  @Prop([String])
-  qualifications: string[];
+    @Prop([String])
+    qualifications: string[];
 
-  @Prop([String])
-  skills: string[];
+    @Prop([String])
+    skills: string[];
 
-  @Prop()
-  description?: string;
+    @Prop()
+    description?: string;
 }
 
 export type JobTemplateDocument = HydratedDocument<JobTemplate>;

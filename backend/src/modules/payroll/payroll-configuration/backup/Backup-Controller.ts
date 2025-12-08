@@ -11,10 +11,7 @@ import {
 } from '@nestjs/common';
 import { BackupService, BackupMetadata } from './Backup-Service';
 
-// Note: Authentication guards removed for standalone operation
-// When integrating with main system, add back:
-// @UseGuards(JwtAuthGuard, RolesGuard)
-// @Roles(UserRole.ADMIN)
+
 
 @Controller('api/backups')
 export class BackupController {

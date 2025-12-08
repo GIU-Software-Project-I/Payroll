@@ -203,8 +203,7 @@ export class AttendanceService {
         return ex.toObject() as TimeException;
     }
 
-<<<<<<< HEAD
-=======
+
     /**
      * Validate if punch time is within assigned shift time range
      * @param employeeId - Employee ID
@@ -310,9 +309,6 @@ export class AttendanceService {
         };
     }
 
->>>>>>> 7104891f826172d6e14a292132b878849990ef1b
-    // replace your existing findOrCreateRecord with this implementation
-    // inside AttendanceService class
     private async findOrCreateRecord(employeeId: string, date: Date) {
         // canonical day-range for the provided date (use the passed 'date' as authoritative)
         const start = new Date(date);
@@ -408,8 +404,7 @@ export class AttendanceService {
             now = new Date();
         }
 
-<<<<<<< HEAD
-=======
+
         // 1.5) VALIDATE PUNCH AGAINST SHIFT TIME RANGE
         const validation = await this.validatePunchAgainstShift(dto.employeeId, now);
         if (!validation.isValid) {
@@ -419,7 +414,6 @@ export class AttendanceService {
 
         this.logger.debug(`Punch IN validated for employee ${dto.employeeId} at ${now.toISOString()} - Shift: ${validation.shift?.name}`);
 
->>>>>>> 7104891f826172d6e14a292132b878849990ef1b
         // 2) find or create the attendance record for this employee/day (findOrCreateRecord should accept Date)
         const rec = await this.findOrCreateRecord(dto.employeeId, now);
         if (!rec) {
@@ -492,7 +486,7 @@ export class AttendanceService {
         }
         if (!punchPolicy) punchPolicy = 'FIRST_LAST';
 
-<<<<<<< HEAD
+
         // 9) Enforce policy rules for IN
         if (punchPolicy === 'ONLY_FIRST') {
             if (punches.length > 0) {
@@ -513,7 +507,7 @@ export class AttendanceService {
 
         // 11) Recompute totals / exceptions and return updated doc
         await this.recompute(attendance._id);
-=======
+
         // 9) Enforce policy rules for IN based on punch policy
         let shouldRecordPunch = true;
 
@@ -550,203 +544,194 @@ export class AttendanceService {
             await this.recompute(attendance._id);
         }
 
->>>>>>> 7104891f826172d6e14a292132b878849990ef1b
 
         return (await this.attendanceModel.findById(attendance._id))!.toObject();
     }
 
 
-    async punchOut(dto: PunchOutDto) {
-        if (!dto.employeeId) throw new BadRequestException('employeeId required');
-
-        // 1) canonicalize timestamp - parse custom format if provided
-        let now: Date;
-        if (dto.time) {
-            const parsed = this.parseCustomDateFormat(dto.time as any);
-            if (!parsed) {
-                throw new BadRequestException('Invalid time format. Expected format: dd/mm/yyyy hh:mm (e.g., 01/12/2025 18:30)');
-            }
-            now = parsed;
-        } else {
-            now = new Date();
-        }
-
-<<<<<<< HEAD
-=======
-        // 1.5) VALIDATE PUNCH AGAINST SHIFT TIME RANGE
-        const validation = await this.validatePunchAgainstShift(dto.employeeId, now);
-        if (!validation.isValid) {
-            this.logger.warn(`Punch OUT denied for employee ${dto.employeeId}: ${validation.error}`);
-            throw new BadRequestException(validation.error);
-        }
-
-        this.logger.debug(`Punch OUT validated for employee ${dto.employeeId} at ${now.toISOString()} - Shift: ${validation.shift?.name}`);
-
->>>>>>> 7104891f826172d6e14a292132b878849990ef1b
-        // 2) find or create the attendance record for this employee/day
-        const rec = await this.findOrCreateRecord(dto.employeeId, now);
-        if (!rec) {
-            throw new NotFoundException('Unable to create or find attendance record');
-        }
-
-        // 3) load authoritative doc
-        const attendance = await this.attendanceModel.findById(rec._id);
-        if (!attendance) throw new NotFoundException('Attendance record not found');
-
-        this.logger.debug(`punchOut: using attendance record ${attendance._id} for employee ${String(attendance.employeeId)} at ${now.toISOString()}`);
-
-        // 4) Validate that the punch time is on the same calendar day as existing punches
-        if (attendance.punches && attendance.punches.length > 0) {
-            const firstPunchDate = new Date(attendance.punches[0].time);
-            const firstPunchDayStart = new Date(firstPunchDate);
-            firstPunchDayStart.setHours(0, 0, 0, 0);
-            const firstPunchDayEnd = new Date(firstPunchDate);
-            firstPunchDayEnd.setHours(23, 59, 59, 999);
-
-            if (now < firstPunchDayStart || now > firstPunchDayEnd) {
-                this.logger.error(`punchOut: Attempted to add punch on different day! Record ${attendance._id} has punches from ${firstPunchDate.toISOString()}, but trying to add punch at ${now.toISOString()}`);
-                throw new BadRequestException('Cannot add punch to a different day. Please contact support if you see this error.');
-            }
-        }
-
-        // 5) prepare punches list & lastPunch
-        const punches = (attendance.punches || []).slice().sort((a, b) => +new Date(a.time) - +new Date(b.time));
-        const lastPunch = punches.length ? punches[punches.length - 1] : null;
-
-        // 6) Chronological validation
-        if (lastPunch && now.getTime() < new Date(lastPunch.time).getTime()) {
-            throw new BadRequestException('Punch time cannot be earlier than last recorded punch');
-        }
-
-        // 7) Prevent duplicate exact timestamp OUT
-        if (punches.some(p => +new Date(p.time) === +now.getTime() && p.type === PunchType.OUT)) {
-            throw new BadRequestException('Duplicate OUT punch at same timestamp');
-        }
-
-<<<<<<< HEAD
-        // 7.5) NATURAL SEQUENCE VALIDATION: You can only punch OUT if:
-        //      - The last punch was an IN
-        //      - You cannot punch OUT as the first punch (must IN first)
-        if (!lastPunch) {
-            throw new BadRequestException('Cannot punch OUT. You must punch IN first.');
-        }
-        if (lastPunch.type === PunchType.OUT) {
-            throw new BadRequestException('Cannot punch OUT again. You must punch IN first before punching OUT again.');
-        }
-
-        // 8) Determine punch policy (use canonical 'now')
-=======
-        // 8) Determine punch policy FIRST (use canonical 'now')
->>>>>>> 7104891f826172d6e14a292132b878849990ef1b
-        let punchPolicy: string | null = null;
-        try {
-            const recDate = new Date(now);
-            const start = new Date(recDate); start.setHours(0, 0, 0, 0);
-            const end = new Date(recDate); end.setHours(23, 59, 59, 999);
-
-            const assignment = await this.shiftAssignmentModel.findOne({
-                employeeId: attendance.employeeId,
-                startDate: { $lte: end },
-                $or: [{ endDate: { $exists: false } }, { endDate: { $gte: start } }],
-            });
-
-            if (assignment) {
-                const shift = await this.shiftModel.findById(assignment.shiftId);
-                if (shift && (shift as any).punchPolicy) punchPolicy = (shift as any).punchPolicy;
-            }
-        } catch (e) {
-            this.logger.debug('Failed to determine punch policy for punchOut; defaulting to FIRST_LAST', e);
-        }
-        if (!punchPolicy) punchPolicy = 'FIRST_LAST';
-
-<<<<<<< HEAD
-        // 9) Enforce policy rules for OUT
-        if (punchPolicy === 'ONLY_FIRST') {
-            if (punches.length > 0) {
-                throw new BadRequestException('Punch policy forbids additional punches after the first punch of the day');
-            }
-        } else if (punchPolicy === 'FIRST_LAST') {
-            const inCount = punches.filter(p => p.type === PunchType.IN).length;
-            const outCount = punches.filter(p => p.type === PunchType.OUT).length;
-
-            if (outCount >= 1) {
-                throw new BadRequestException('Punch policy allows only first IN and last OUT — OUT already recorded for the day');
-            }
-            // Note: OUT without IN is now prevented by sequence validation above
-        } // MULTIPLE -> allowed
-
-
-        // 11) Append OUT punch (store a Date object)
-=======
-        // 7.5) NATURAL SEQUENCE VALIDATION (only for MULTIPLE policy)
-        // For FIRST_LAST, we allow multiple OUT attempts to keep the latest
-        if (punchPolicy === 'MULTIPLE') {
-            // MULTIPLE policy: strict sequence validation
-            if (!lastPunch) {
-                throw new BadRequestException('Cannot punch OUT. You must punch IN first.');
-            }
-            if (lastPunch.type === PunchType.OUT) {
-                throw new BadRequestException('Cannot punch OUT again. You must punch IN first before punching OUT again.');
-            }
-        } else {
-            // FIRST_LAST policy: only check that there's at least one IN punch
-            if (!lastPunch || !punches.some(p => p.type === PunchType.IN)) {
-                throw new BadRequestException('Cannot punch OUT. You must punch IN first.');
-            }
-            // Allow multiple OUT punches for FIRST_LAST (will be handled in policy logic below)
-        }
-
-        // 9) Enforce policy rules for OUT based on punch policy
-        if (punchPolicy === 'FIRST_LAST') {
-            const existingOutPunches = punches.filter(p => p.type === PunchType.OUT);
-
-            if (existingOutPunches.length >= 1) {
-                const lastOutTime = new Date(existingOutPunches[existingOutPunches.length - 1].time);
-
-                // Only replace if new OUT time is later than existing OUT
-                if (now.getTime() > lastOutTime.getTime()) {
-                    this.logger.debug(`FIRST_LAST policy: New OUT time ${now.toISOString()} is later than existing ${lastOutTime.toISOString()}, replacing`);
-
-                    // Remove all existing OUT punches
-                    await this.attendanceModel.updateOne(
-                        { _id: attendance._id },
-                        { $pull: { punches: { type: PunchType.OUT } } }
-                    );
-                } else {
-                    // New OUT is earlier or same time, acknowledge but don't record
-                    this.logger.log(`FIRST_LAST policy: Punch OUT acknowledged but not recorded for employee ${dto.employeeId} - existing OUT ${lastOutTime.toISOString()} is later than or equal to new OUT ${now.toISOString()}`);
-
-                    // Return success response without recording
-                    const currentRecord = await this.attendanceModel.findById(attendance._id);
-                    return currentRecord!.toObject();
-                }
-            } else {
-                this.logger.debug(`FIRST_LAST policy: Recording first punch OUT for employee ${dto.employeeId}`);
-            }
-        } else if (punchPolicy === 'MULTIPLE') {
-            // MULTIPLE: Allow all punches, already validated sequence above
-            this.logger.debug(`MULTIPLE policy: Accepting punch OUT for employee ${dto.employeeId}`);
-        }
-        // For any other policy, default to MULTIPLE behavior
-
-        // 10) Append OUT punch (store a Date object)
->>>>>>> 7104891f826172d6e14a292132b878849990ef1b
-        await this.attendanceModel.updateOne(
-            { _id: attendance._id },
-            { $push: { punches: { type: PunchType.OUT, time: new Date(now) } } },
-        );
-
-<<<<<<< HEAD
-        // 12) Recompute totals and side effects
-=======
-        this.logger.log(`Punch OUT recorded: Employee ${dto.employeeId}, Time: ${now.toISOString()}, Policy: ${punchPolicy}`);
-
-        // 11) Recompute totals and side effects
->>>>>>> 7104891f826172d6e14a292132b878849990ef1b
-        await this.recompute(attendance._id);
-
-        return (await this.attendanceModel.findById(attendance._id))!.toObject();
-    }
+    // async punchOut(dto: PunchOutDto) {
+    //     if (!dto.employeeId) throw new BadRequestException('employeeId required');
+    //
+    //     // 1) canonicalize timestamp - parse custom format if provided
+    //     let now: Date;
+    //     if (dto.time) {
+    //         const parsed = this.parseCustomDateFormat(dto.time as any);
+    //         if (!parsed) {
+    //             throw new BadRequestException('Invalid time format. Expected format: dd/mm/yyyy hh:mm (e.g., 01/12/2025 18:30)');
+    //         }
+    //         now = parsed;
+    //     } else {
+    //         now = new Date();
+    //     }
+    //
+    //
+    //     // 1.5) VALIDATE PUNCH AGAINST SHIFT TIME RANGE
+    //     const validation = await this.validatePunchAgainstShift(dto.employeeId, now);
+    //     if (!validation.isValid) {
+    //         this.logger.warn(`Punch OUT denied for employee ${dto.employeeId}: ${validation.error}`);
+    //         throw new BadRequestException(validation.error);
+    //     }
+    //
+    //     this.logger.debug(`Punch OUT validated for employee ${dto.employeeId} at ${now.toISOString()} - Shift: ${validation.shift?.name}`);
+    //
+    //
+    //     // 2) find or create the attendance record for this employee/day
+    //     const rec = await this.findOrCreateRecord(dto.employeeId, now);
+    //     if (!rec) {
+    //         throw new NotFoundException('Unable to create or find attendance record');
+    //     }
+    //
+    //     // 3) load authoritative doc
+    //     const attendance = await this.attendanceModel.findById(rec._id);
+    //     if (!attendance) throw new NotFoundException('Attendance record not found');
+    //
+    //     this.logger.debug(`punchOut: using attendance record ${attendance._id} for employee ${String(attendance.employeeId)} at ${now.toISOString()}`);
+    //
+    //     // 4) Validate that the punch time is on the same calendar day as existing punches
+    //     if (attendance.punches && attendance.punches.length > 0) {
+    //         const firstPunchDate = new Date(attendance.punches[0].time);
+    //         const firstPunchDayStart = new Date(firstPunchDate);
+    //         firstPunchDayStart.setHours(0, 0, 0, 0);
+    //         const firstPunchDayEnd = new Date(firstPunchDate);
+    //         firstPunchDayEnd.setHours(23, 59, 59, 999);
+    //
+    //         if (now < firstPunchDayStart || now > firstPunchDayEnd) {
+    //             this.logger.error(`punchOut: Attempted to add punch on different day! Record ${attendance._id} has punches from ${firstPunchDate.toISOString()}, but trying to add punch at ${now.toISOString()}`);
+    //             throw new BadRequestException('Cannot add punch to a different day. Please contact support if you see this error.');
+    //         }
+    //     }
+    //
+    //
+    //     const punches = (attendance.punches || []).slice().sort((a, b) => +new Date(a.time) - +new Date(b.time));
+    //     const lastPunch = punches.length ? punches[punches.length - 1] : null;
+    //
+    //     // 6) Chronological validation
+    //     if (lastPunch && now.getTime() < new Date(lastPunch.time).getTime()) {
+    //         throw new BadRequestException('Punch time cannot be earlier than last recorded punch');
+    //     }
+    //
+    //     // 7) Prevent duplicate exact timestamp OUT
+    //     if (punches.some(p => +new Date(p.time) === +now.getTime() && p.type === PunchType.OUT)) {
+    //         throw new BadRequestException('Duplicate OUT punch at same timestamp');
+    //     }
+    //
+    //     // 7.5) NATURAL SEQUENCE VALIDATION: You can only punch OUT if:
+    //     //      - The last punch was an IN
+    //     //      - You cannot punch OUT as the first punch (must IN first)
+    //     if (!lastPunch) {
+    //         throw new BadRequestException('Cannot punch OUT. You must punch IN first.');
+    //     }
+    //     if (lastPunch.type === PunchType.OUT) {
+    //         throw new BadRequestException('Cannot punch OUT again. You must punch IN first before punching OUT again.');
+    //     }
+    //
+    //
+    //     let punchPolicy: string | null = null;
+    //     try {
+    //         const recDate = new Date(now);
+    //         const start = new Date(recDate); start.setHours(0, 0, 0, 0);
+    //         const end = new Date(recDate); end.setHours(23, 59, 59, 999);
+    //
+    //         const assignment = await this.shiftAssignmentModel.findOne({
+    //             employeeId: attendance.employeeId,
+    //             startDate: { $lte: end },
+    //             $or: [{ endDate: { $exists: false } }, { endDate: { $gte: start } }],
+    //         });
+    //
+    //         if (assignment) {
+    //             const shift = await this.shiftModel.findById(assignment.shiftId);
+    //             if (shift && (shift as any).punchPolicy) punchPolicy = (shift as any).punchPolicy;
+    //         }
+    //     } catch (e) {
+    //         this.logger.debug('Failed to determine punch policy for punchOut; defaulting to FIRST_LAST', e);
+    //     }
+    //     if (!punchPolicy) punchPolicy = 'FIRST_LAST';
+    //
+    //
+    //     // 9) Enforce policy rules for OUT
+    //     if (punchPolicy === 'ONLY_FIRST') {
+    //         if (punches.length > 0) {
+    //             throw new BadRequestException('Punch policy forbids additional punches after the first punch of the day');
+    //         }
+    //     } else if (punchPolicy === 'FIRST_LAST') {
+    //         const inCount = punches.filter(p => p.type === PunchType.IN).length;
+    //         const outCount = punches.filter(p => p.type === PunchType.OUT).length;
+    //
+    //         if (outCount >= 1) {
+    //             throw new BadRequestException('Punch policy allows only first IN and last OUT — OUT already recorded for the day');
+    //         }
+    //         // Note: OUT without IN is now prevented by sequence validation above
+    //     } // MULTIPLE -> allowed
+    //
+    //
+    //     // 11) Append OUT punch (store a Date object)
+    //
+    //     // 7.5) NATURAL SEQUENCE VALIDATION (only for MULTIPLE policy)
+    //     // For FIRST_LAST, we allow multiple OUT attempts to keep the latest
+    //     if (punchPolicy === 'MULTIPLE') {
+    //         // MULTIPLE policy: strict sequence validation
+    //         if (!lastPunch) {
+    //             throw new BadRequestException('Cannot punch OUT. You must punch IN first.');
+    //         }
+    //         if (lastPunch.type === PunchType.OUT) {
+    //             throw new BadRequestException('Cannot punch OUT again. You must punch IN first before punching OUT again.');
+    //         }
+    //     } else {
+    //         // FIRST_LAST policy: only check that there's at least one IN punch
+    //         if (!lastPunch || !punches.some(p => p.type === PunchType.IN)) {
+    //             throw new BadRequestException('Cannot punch OUT. You must punch IN first.');
+    //         }
+    //         // Allow multiple OUT punches for FIRST_LAST (will be handled in policy logic below)
+    //     }
+    //
+    //     // 9) Enforce policy rules for OUT based on punch policy
+    //     if (punchPolicy === 'FIRST_LAST') {
+    //         const existingOutPunches = punches.filter(p => p.type === PunchType.OUT);
+    //
+    //         if (existingOutPunches.length >= 1) {
+    //             const lastOutTime = new Date(existingOutPunches[existingOutPunches.length - 1].time);
+    //
+    //             // Only replace if new OUT time is later than existing OUT
+    //             if (now.getTime() > lastOutTime.getTime()) {
+    //                 this.logger.debug(`FIRST_LAST policy: New OUT time ${now.toISOString()} is later than existing ${lastOutTime.toISOString()}, replacing`);
+    //
+    //                 // Remove all existing OUT punches
+    //                 await this.attendanceModel.updateOne(
+    //                     { _id: attendance._id },
+    //                     { $pull: { punches: { type: PunchType.OUT } } }
+    //                 );
+    //             } else {
+    //                 // New OUT is earlier or same time, acknowledge but don't record
+    //                 this.logger.log(`FIRST_LAST policy: Punch OUT acknowledged but not recorded for employee ${dto.employeeId} - existing OUT ${lastOutTime.toISOString()} is later than or equal to new OUT ${now.toISOString()}`);
+    //
+    //                 // Return success response without recording
+    //                 const currentRecord = await this.attendanceModel.findById(attendance._id);
+    //                 return currentRecord!.toObject();
+    //             }
+    //         } else {
+    //             this.logger.debug(`FIRST_LAST policy: Recording first punch OUT for employee ${dto.employeeId}`);
+    //         }
+    //     } else if (punchPolicy === 'MULTIPLE') {
+    //         // MULTIPLE: Allow all punches, already validated sequence above
+    //         this.logger.debug(`MULTIPLE policy: Accepting punch OUT for employee ${dto.employeeId}`);
+    //     }
+    //     // For any other policy, default to MULTIPLE behavior
+    //
+    //     // 10) Append OUT punch (store a Date object)
+    //
+    //     await this.attendanceModel.updateOne(
+    //         { _id: attendance._id },
+    //         { $push: { punches: { type: PunchType.OUT, time: new Date(now) } } },
+    //     );
+    //
+    //
+    //     this.logger.log(`Punch OUT recorded: Employee ${dto.employeeId}, Time: ${now.toISOString()}, Policy: ${punchPolicy}`);
+    //
+    //
+    //     await this.recompute(attendance._id);
+    //
+    //     return (await this.attendanceModel.findById(attendance._id))!.toObject();
+    // }
 
 
     // ============================================================
@@ -1152,8 +1137,6 @@ export class AttendanceService {
             exceptionIds: rec.exceptionIds,
         }));
     }
-<<<<<<< HEAD
-=======
 
     // ============================================================
     // ATTENDANCE REVIEW & CORRECTION
@@ -1466,5 +1449,5 @@ export class AttendanceService {
 
         return results;
     }
->>>>>>> 7104891f826172d6e14a292132b878849990ef1b
+
 }

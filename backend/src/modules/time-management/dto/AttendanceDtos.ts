@@ -84,8 +84,6 @@ export class GetMonthlyAttendanceDto {
     month: number;
     year: number;
 }
-<<<<<<< HEAD
-=======
 
 // Attendance Review and Correction DTOs
 export class ReviewAttendanceDto {
@@ -182,4 +180,4 @@ export class BulkReviewAttendanceDto {
     filterByIssue?: string = 'ALL';
 }
 
->>>>>>> 7104891f826172d6e14a292132b878849990ef1b
+
