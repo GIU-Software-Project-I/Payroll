@@ -6,7 +6,7 @@ import { PayrollConfigurationController } from './controllers/payroll-configurat
 import { PayrollConfigurationService } from './services/payroll-configuration.service';
 import { EmployeeModule } from '../../employee/modules/employee.module';
 import { OrganizationStructureModule } from '../../employee/modules/organization-structure.module';
-import { RecruitmentModule } from '../../recruitment/module/Recruitment.module';
+
 
 import { CompanyWideSettings, CompanyWideSettingsSchema } from './models/CompanyWideSettings.schema';
 import { allowance, allowanceSchema } from './models/allowance.schema';
@@ -17,6 +17,8 @@ import { signingBonus, signingBonusSchema } from './models/signingBonus.schema';
 import { taxRules, taxRulesSchema } from './models/taxRules.schema';
 import { terminationAndResignationBenefits, terminationAndResignationBenefitsSchema } from './models/terminationAndResignationBenefits';
 import { payGrade, payGradeSchema } from './models/payGrades.schema';
+import {RecruitmentModule} from "../../recruitment/module/recruitment.module";
+
 
 
 

@@ -19,7 +19,8 @@ import {
 } from "../dto/performance/appraisal-assignment.dto";
 import {SubmitAppraisalRecordDto} from "../dto/performance/appraisal-record.dto";
 import {FileAppraisalDisputeDto, ResolveAppraisalDisputeDto} from "../dto/performance/appraisal-dispute.dto";
-import {PerformanceService} from "../services/performance.service";
+import {PerformanceService} from "../Services/Performance.Service";
+
 
 
 @Controller('performance')

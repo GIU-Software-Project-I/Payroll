@@ -1,16 +1,21 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-// Schemas
+
+// Models
 import { JobTemplate, JobTemplateDocument } from '../models/job-template.schema';
 import { JobRequisition, JobRequisitionDocument } from '../models/job-requisition.schema';
 import { Application, ApplicationDocument } from '../models/application.schema';
 import { ApplicationStatusHistory, ApplicationStatusHistoryDocument } from '../models/application-history.schema';
 import { Referral, ReferralDocument } from '../models/referral.schema';
-import { Interview, InterviewDocument } from '../models/intervies.schema';
+import { Interview, InterviewDocument } from '../models/interview.schema';
 import { AssessmentResult, AssessmentResultDocument } from '../models/assessment-result.schema';
 import { Offer, OfferDocument } from '../models/offer.schema';
 import { Contract, ContractDocument } from '../models/contract.schema';
+
+// DTOs
+import {CreateJobTemplateDto, UpdateJobTemplateDto, CreateJobRequisitionDto, PublishJobRequisitionDto, UpdateJobRequisitionDto, CreateApplicationDto, UpdateApplicationStageDto, UpdateApplicationStatusDto, AssignHrDto, CreateReferralDto, ScheduleInterviewDto, UpdateInterviewDto, SubmitFeedbackDto, CreateOfferDto, ApproveOfferDto, CandidateOfferResponseDto, SendNotificationDto, SendRejectionDto,} from '../dto/recruitment';
+
 // Enums
 import { ApplicationStage } from '../enums/application-stage.enum';
 import { ApplicationStatus } from '../enums/application-status.enum';
@@ -18,26 +23,6 @@ import { InterviewStatus } from '../enums/interview-status.enum';
 import { OfferFinalStatus } from '../enums/offer-final-status.enum';
 import { OfferResponseStatus } from '../enums/offer-response-status.enum';
 import { ApprovalStatus } from '../enums/approval-status.enum';
-// DTOs
-import { CreateJobTemplateDto } from '../dto/create-job-template.dto';
-import { UpdateJobTemplateDto } from '../dto/update-job-template.dto';
-import { CreateJobRequisitionDto } from '../dto/create-job-requisition.dto';
-import { PublishJobRequisitionDto } from '../dto/publish-job-requisition.dto';
-import { UpdateJobRequisitionDto } from '../dto/update-job-requisition.dto';
-import { CreateApplicationDto } from '../dto/create-application.dto';
-import { UpdateApplicationStageDto } from '../dto/update-application-stage.dto';
-import { UpdateApplicationStatusDto } from '../dto/update-application-status.dto';
-import { AssignHrDto } from '../dto/assign-hr.dto';
-import { CreateReferralDto } from '../dto/create-referral.dto';
-import { ScheduleInterviewDto } from '../dto/schedule-interview.dto';
-import { UpdateInterviewDto } from '../dto/update-interview.dto';
-import { SubmitFeedbackDto } from '../dto/submit-feedback.dto';
-import { CreateOfferDto } from '../dto/create-offer.dto';
-import { ApproveOfferDto } from '../dto/approve-offer.dto';
-import { CandidateOfferResponseDto } from '../dto/candidate-offer-response.dto';
-import { SendNotificationDto } from '../dto/send-notification.dto';
-import { SendRejectionDto } from '../dto/send-rejection.dto';
-
 
 @Injectable()
 export class RecruitmentService {
@@ -306,65 +291,65 @@ export class RecruitmentService {
     // Track candidates through each stage of the hiring process
     // ============================================================
 
-    // async updateApplicationStage(id: string, dto: UpdateApplicationStageDto): Promise<Application> {
-    //     const application = await this.applicationModel.findById(id).exec();
-    //     if (!application) {
-    //         throw new NotFoundException(`Application with ID ${id} not found`);
-    //     }
-    //
-    //     const oldStage = application.currentStage;
-    //     const oldStatus = application.status;
-    //
-    //     application.currentStage = dto.stage;
-    //     if (dto.stage === ApplicationStage.OFFER) {
-    //         application.status = ApplicationStatus.OFFER;
-    //     }
-    //
-    //     const updated = await application.save();
-    //
-    //     // Log stage change
-    //     await this.logStatusChange(id, {
-    //         stage: dto.stage,
-    //         status: application.status,
-    //         notes: dto.notes,
-    //         changedBy: dto.changedBy,
-    //         oldStage: oldStage,
-    //         oldStatus: oldStatus,
-    //     });
-    //
-    //     return updated;
-    // }
+    async updateApplicationStage(id: string, dto: UpdateApplicationStageDto): Promise<Application> {
+        const application = await this.applicationModel.findById(id).exec();
+        if (!application) {
+            throw new NotFoundException(`Application with ID ${id} not found`);
+        }
 
-    // async updateApplicationStatus(id: string, dto: UpdateApplicationStatusDto): Promise<Application> {
-    //     const application = await this.applicationModel.findById(id).exec();
-    //     if (!application) {
-    //         throw new NotFoundException(`Application with ID ${id} not found`);
-    //     }
-    //
-    //     const oldStage = application.currentStage;
-    //     const oldStatus = application.status;
-    //
-    //     application.status = dto.status;
-    //     const updated = await application.save();
-    //
-    //     // Log status change
-    //     await this.logStatusChange(id, {
-    //         stage: application.currentStage,
-    //         status: dto.status,
-    //         notes: dto.reason,
-    //         oldStage: oldStage,
-    //         oldStatus: oldStatus,
-    //     });
-    //
-    //     return updated;
-    // }
+        const oldStage = application.currentStage;
+        const oldStatus = application.status;
 
-    // async rejectApplication(id: string, reason?: string): Promise<Application> {
-    //     return this.updateApplicationStatus(id, {
-    //         status: ApplicationStatus.REJECTED,
-    //         reason: reason || 'Application rejected',
-    //     });
-    // }
+        application.currentStage = dto.stage;
+        if (dto.stage === ApplicationStage.OFFER) {
+            application.status = ApplicationStatus.OFFER;
+        }
+
+        const updated = await application.save();
+
+        // Log stage change
+        await this.logStatusChange(id, {
+            stage: dto.stage,
+            status: application.status,
+            notes: dto.notes,
+            changedBy: dto.changedBy,
+            oldStage: oldStage,
+            oldStatus: oldStatus,
+        });
+
+        return updated;
+    }
+
+    async updateApplicationStatus(id: string, dto: UpdateApplicationStatusDto): Promise<Application> {
+        const application = await this.applicationModel.findById(id).exec();
+        if (!application) {
+            throw new NotFoundException(`Application with ID ${id} not found`);
+        }
+
+        const oldStage = application.currentStage;
+        const oldStatus = application.status;
+
+        application.status = dto.status;
+        const updated = await application.save();
+
+        // Log status change
+        await this.logStatusChange(id, {
+            stage: application.currentStage,
+            status: dto.status,
+            notes: dto.reason,
+            oldStage: oldStage,
+            oldStatus: oldStatus,
+        });
+
+        return updated;
+    }
+
+    async rejectApplication(id: string, reason?: string): Promise<Application> {
+        return this.updateApplicationStatus(id, {
+            status: ApplicationStatus.REJECTED,
+            reason: reason || 'Application rejected',
+        });
+    }
 
     async getApplicationHistory(applicationId: string): Promise<ApplicationStatusHistory[]> {
         // Validate ObjectId format
@@ -524,37 +509,37 @@ export class RecruitmentService {
     // REC-010 & REC-021: Interview Management
     // Schedule interviews, manage panels, and coordinate availability
     // ============================================================
-    //
-    // async scheduleInterview(dto: ScheduleInterviewDto): Promise<Interview> {
-    //     // Validate application exists
-    //     const application = await this.applicationModel.findById(dto.applicationId).exec();
-    //     if (!application) {
-    //         throw new NotFoundException(`Application with ID ${dto.applicationId} not found`);
-    //     }
-    //
-    //     const interview = new this.interviewModel({
-    //         applicationId: new Types.ObjectId(dto.applicationId),
-    //         stage: dto.stage,
-    //         scheduledDate: new Date(dto.scheduledDate),
-    //         method: dto.method,
-    //         panel: dto.panel.map(id => new Types.ObjectId(id)),
-    //         videoLink: dto.videoLink,
-    //         status: InterviewStatus.SCHEDULED,
-    //     });
-    //
-    //     const saved = await interview.save();
-    //
-    //     // Update application stage
-    //     await this.updateApplicationStage(dto.applicationId, {
-    //         stage: dto.stage,
-    //         notes: `Interview scheduled for ${dto.scheduledDate}`,
-    //     });
-    //
-    //     // TODO: Send calendar invites to panel members
-    //     // TODO: Send notification to candidate
-    //
-    //     return saved;
-    // }
+
+    async scheduleInterview(dto: ScheduleInterviewDto): Promise<Interview> {
+        // Validate application exists
+        const application = await this.applicationModel.findById(dto.applicationId).exec();
+        if (!application) {
+            throw new NotFoundException(`Application with ID ${dto.applicationId} not found`);
+        }
+
+        const interview = new this.interviewModel({
+            applicationId: new Types.ObjectId(dto.applicationId),
+            stage: dto.stage,
+            scheduledDate: new Date(dto.scheduledDate),
+            method: dto.method,
+            panel: dto.panel.map(id => new Types.ObjectId(id)),
+            videoLink: dto.videoLink,
+            status: InterviewStatus.SCHEDULED,
+        });
+
+        const saved = await interview.save();
+
+        // Update application stage
+        await this.updateApplicationStage(dto.applicationId, {
+            stage: dto.stage,
+            notes: `Interview scheduled for ${dto.scheduledDate}`,
+        });
+
+        // TODO: Send calendar invites to panel members
+        // TODO: Send notification to candidate
+
+        return saved;
+    }
 
     async getInterviewById(id: string): Promise<Interview> {
         const interview = await this.interviewModel
@@ -663,6 +648,7 @@ export class RecruitmentService {
             feedbackId: saved._id,
         });
 
+        return saved;
 
         return saved;
     }
@@ -702,57 +688,57 @@ export class RecruitmentService {
     // REC-014 & REC-018: Offer Management
     // Create, approve, and send job offers with e-signatures
     // ============================================================
-    //
-    // async createOffer(dto: CreateOfferDto): Promise<Offer> {
-    //     // Validate application
-    //     const application = await this.applicationModel.findById(dto.applicationId).exec();
-    //     if (!application) {
-    //         throw new NotFoundException(`Application with ID ${dto.applicationId} not found`);
-    //     }
-    //
-    //     // Check for existing pending offer
-    //     const existingOffer = await this.offerModel.findOne({
-    //         applicationId: new Types.ObjectId(dto.applicationId),
-    //         finalStatus: { $in: [OfferFinalStatus.PENDING, OfferFinalStatus.APPROVED] },
-    //     }).exec();
-    //
-    //     if (existingOffer) {
-    //         throw new ConflictException('An active offer already exists for this application');
-    //     }
-    //
-    //     const approvers = dto.approvers.map(a => ({
-    //         employeeId: new Types.ObjectId(a.employeeId),
-    //         role: a.role,
-    //         status: ApprovalStatus.PENDING,
-    //     }));
-    //
-    //     const offer = new this.offerModel({
-    //         applicationId: new Types.ObjectId(dto.applicationId),
-    //         candidateId: new Types.ObjectId(dto.candidateId),
-    //         hrEmployeeId: dto.hrEmployeeId ? new Types.ObjectId(dto.hrEmployeeId) : undefined,
-    //         role: dto.role,
-    //         grossSalary: dto.grossSalary,
-    //         signingBonus: dto.signingBonus,
-    //         benefits: dto.benefits,
-    //         insurances: dto.insurances,
-    //         conditions: dto.conditions,
-    //         content: dto.content,
-    //         deadline: new Date(dto.deadline),
-    //         approvers,
-    //         applicantResponse: OfferResponseStatus.PENDING,
-    //         finalStatus: OfferFinalStatus.PENDING,
-    //     });
-    //
-    //     const saved = await offer.save();
-    //
-    //     // Update application stage
-    //     await this.updateApplicationStage(dto.applicationId, {
-    //         stage: ApplicationStage.OFFER,
-    //         notes: 'Offer created, pending approvals',
-    //     });
-    //
-    //     return saved;
-    // }
+
+    async createOffer(dto: CreateOfferDto): Promise<Offer> {
+        // Validate application
+        const application = await this.applicationModel.findById(dto.applicationId).exec();
+        if (!application) {
+            throw new NotFoundException(`Application with ID ${dto.applicationId} not found`);
+        }
+
+        // Check for existing pending offer
+        const existingOffer = await this.offerModel.findOne({
+            applicationId: new Types.ObjectId(dto.applicationId),
+            finalStatus: { $in: [OfferFinalStatus.PENDING, OfferFinalStatus.APPROVED] },
+        }).exec();
+
+        if (existingOffer) {
+            throw new ConflictException('An active offer already exists for this application');
+        }
+
+        const approvers = dto.approvers.map(a => ({
+            employeeId: new Types.ObjectId(a.employeeId),
+            role: a.role,
+            status: ApprovalStatus.PENDING,
+        }));
+
+        const offer = new this.offerModel({
+            applicationId: new Types.ObjectId(dto.applicationId),
+            candidateId: new Types.ObjectId(dto.candidateId),
+            hrEmployeeId: dto.hrEmployeeId ? new Types.ObjectId(dto.hrEmployeeId) : undefined,
+            role: dto.role,
+            grossSalary: dto.grossSalary,
+            signingBonus: dto.signingBonus,
+            benefits: dto.benefits,
+            insurances: dto.insurances,
+            conditions: dto.conditions,
+            content: dto.content,
+            deadline: new Date(dto.deadline),
+            approvers,
+            applicantResponse: OfferResponseStatus.PENDING,
+            finalStatus: OfferFinalStatus.PENDING,
+        });
+
+        const saved = await offer.save();
+
+        // Update application stage
+        await this.updateApplicationStage(dto.applicationId, {
+            stage: ApplicationStage.OFFER,
+            notes: 'Offer created, pending approvals',
+        });
+
+        return saved;
+    }
 
     async getOfferById(id: string): Promise<Offer> {
         const offer = await this.offerModel
@@ -815,45 +801,45 @@ export class RecruitmentService {
         return offer.save();
     }
 
-    // async recordCandidateResponse(offerId: string, dto: CandidateOfferResponseDto): Promise<Offer> {
-    //     const offer = await this.offerModel.findById(offerId).exec();
-    //     if (!offer) {
-    //         throw new NotFoundException(`Offer with ID ${offerId} not found`);
-    //     }
-    //
-    //     if (offer.finalStatus !== OfferFinalStatus.APPROVED) {
-    //         throw new BadRequestException('Offer has not been approved yet');
-    //     }
-    //
-    //     offer.applicantResponse = dto.response;
-    //
-    //     if (dto.response === OfferResponseStatus.ACCEPTED) {
-    //         offer.candidateSignedAt = new Date();
-    //
-    //         // Update application status to HIRED
-    //         await this.applicationModel.findByIdAndUpdate(offer.applicationId, {
-    //             status: ApplicationStatus.HIRED,
-    //         });
-    //
-    //         // Create contract (REC-029 trigger)
-    //         await this.createContractFromOffer(offer);
-    //     }
-    //
-    //     return offer.save();
-    // }
-    //
-    // private async createContractFromOffer(offer: OfferDocument): Promise<Contract> {
-    //     const contract = new this.contractModel({
-    //         offerId: offer._id,
-    //         acceptanceDate: new Date(),
-    //         grossSalary: offer.grossSalary,
-    //         signingBonus: offer.signingBonus,
-    //         role: offer.role,
-    //         benefits: offer.benefits,
-    //     });
-    //
-    //     return contract.save();
-    // }
+    async recordCandidateResponse(offerId: string, dto: CandidateOfferResponseDto): Promise<Offer> {
+        const offer = await this.offerModel.findById(offerId).exec();
+        if (!offer) {
+            throw new NotFoundException(`Offer with ID ${offerId} not found`);
+        }
+
+        if (offer.finalStatus !== OfferFinalStatus.APPROVED) {
+            throw new BadRequestException('Offer has not been approved yet');
+        }
+
+        offer.applicantResponse = dto.response;
+
+        if (dto.response === OfferResponseStatus.ACCEPTED) {
+            offer.candidateSignedAt = new Date();
+
+            // Update application status to HIRED
+            await this.applicationModel.findByIdAndUpdate(offer.applicationId, {
+                status: ApplicationStatus.HIRED,
+            });
+
+            // Create contract (REC-029 trigger)
+            await this.createContractFromOffer(offer);
+        }
+
+        return offer.save();
+    }
+
+    private async createContractFromOffer(offer: OfferDocument): Promise<Contract> {
+        const contract = new this.contractModel({
+            offerId: offer._id,
+            acceptanceDate: new Date(),
+            grossSalary: offer.grossSalary,
+            signingBonus: offer.signingBonus,
+            role: offer.role,
+            benefits: offer.benefits,
+        });
+
+        return contract.save();
+    }
 
     // ============================================================
     // REC-029: Pre-boarding Trigger
@@ -871,7 +857,7 @@ export class RecruitmentService {
         }
 
         // TODO: Integration with Onboarding module
-        // This would create onboarding tasks and notify relevant parties
+        // This would create offboarding.requirements tasks and notify relevant parties
 
         return {
             triggered: true,
@@ -933,30 +919,30 @@ export class RecruitmentService {
     // REC-022: Automated Rejection Notifications
     // Send rejection notifications with templates
     // ============================================================
-    //
-    // async sendRejectionNotification(dto: SendRejectionDto): Promise<{ sent: boolean; message: string }> {
-    //     const application = await this.applicationModel
-    //         .findById(dto.applicationId)
-    //         .exec();
-    //
-    //     if (!application) {
-    //         throw new NotFoundException(`Application with ID ${dto.applicationId} not found`);
-    //     }
-    //
-    //     // Update application status to rejected
-    //     await this.updateApplicationStatus(dto.applicationId, {
-    //         status: ApplicationStatus.REJECTED,
-    //         reason: dto.rejectionReason || 'Application not selected',
-    //     });
-    //
-    //     // TODO: Integrate with email service for rejection notifications
-    //     // This would use templates for respectful rejection communication
-    //
-    //     return {
-    //         sent: true,
-    //         message: 'Rejection notification sent successfully.',
-    //     };
-    // }
+
+    async sendRejectionNotification(dto: SendRejectionDto): Promise<{ sent: boolean; message: string }> {
+        const application = await this.applicationModel
+            .findById(dto.applicationId)
+            .exec();
+
+        if (!application) {
+            throw new NotFoundException(`Application with ID ${dto.applicationId} not found`);
+        }
+
+        // Update application status to rejected
+        await this.updateApplicationStatus(dto.applicationId, {
+            status: ApplicationStatus.REJECTED,
+            reason: dto.rejectionReason || 'Application not selected',
+        });
+
+        // TODO: Integrate with email service for rejection notifications
+        // This would use templates for respectful rejection communication
+
+        return {
+            sent: true,
+            message: 'Rejection notification sent successfully.',
+        };
+    }
 
     // ============================================================
     // REC-022: Email Template Management

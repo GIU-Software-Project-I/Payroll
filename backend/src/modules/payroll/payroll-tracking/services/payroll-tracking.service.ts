@@ -13,7 +13,7 @@ import {
   PayslipQueryDto,
   TaxDocumentQueryDto,
   UpdateRefundStatusDto,
-} from '../dto/test.dto';
+} from '../dto/payroll-tracking.dto';
 import { ClaimStatus, DisputeStatus, RefundStatus } from '../enums/payroll-tracking-enum';
 
 @Injectable()

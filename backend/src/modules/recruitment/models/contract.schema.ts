@@ -4,40 +4,40 @@ import { HydratedDocument, Types } from 'mongoose';
 @Schema({ timestamps: true })
 export class Contract {
 
-  @Prop({ type: Types.ObjectId, ref: 'Offer', required: true })
-  offerId: Types.ObjectId;
+    @Prop({ type: Types.ObjectId, ref: 'Offer', required: true })
+    offerId: Types.ObjectId;
 
-  @Prop()
-  acceptanceDate: Date;
+    @Prop()
+    acceptanceDate: Date;
 
-  // FINAL ACCEPTED COMPENSATION
-  @Prop({ required: true })
-  grossSalary: number;
+    // FINAL ACCEPTED COMPENSATION
+    @Prop({ required: true })
+    grossSalary: number;
 
-  @Prop()
-  signingBonus?: number;
+    @Prop()
+    signingBonus?: number;
 
-  @Prop()
-  role: string;
+    @Prop()
+    role: string;
 
-  @Prop()
-  benefits?: [string];
+    @Prop()
+    benefits?: [string];
 
-  @Prop({ type: Types.ObjectId, ref: 'Document' })
-  documentId: Types.ObjectId;
+    @Prop({ type: Types.ObjectId, ref: 'Document' })
+    documentId: Types.ObjectId;
 
-  // SIGNATURES
-  @Prop()
-  employeeSignatureUrl?: string;
+    // SIGNATURES
+    @Prop()
+    employeeSignatureUrl?: string;
 
-  @Prop()
-  employerSignatureUrl?: string;
+    @Prop()
+    employerSignatureUrl?: string;
 
-  @Prop()
-  employeeSignedAt?: Date;
+    @Prop()
+    employeeSignedAt?: Date;
 
-  @Prop()
-  employerSignedAt?: Date;
+    @Prop()
+    employerSignedAt?: Date;
 }
 
 export type ContractDocument = HydratedDocument<Contract>;

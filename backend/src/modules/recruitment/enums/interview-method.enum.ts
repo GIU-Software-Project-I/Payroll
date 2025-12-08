@@ -1,5 +1,5 @@
 export enum InterviewMethod {
-  ONSITE = 'onsite',
-  VIDEO = 'video',
-  PHONE = 'phone',
+    ONSITE = 'onsite',
+    VIDEO = 'video',
+    PHONE = 'phone',
 }

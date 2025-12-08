@@ -1,16 +1,17 @@
-import { IsString, IsNumber, Min, IsNotEmpty } from 'class-validator';
+// create-allowance.dto.ts
+import { IsNotEmpty, IsString, IsNumber, Min } from 'class-validator';
 
 export class CreateAllowanceDto {
-  @IsString()
   @IsNotEmpty()
+  @IsString()
   name: string;
 
+  @IsNotEmpty()
   @IsNumber()
   @Min(0)
   amount: number;
 
-  @IsString()
   @IsNotEmpty()
+  @IsString()
   createdByEmployeeId: string;
 }
-

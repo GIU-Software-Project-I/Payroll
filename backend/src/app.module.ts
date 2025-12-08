@@ -7,7 +7,7 @@ import { PayrollExecutionModule} from './modules/payroll/payroll-execution/payro
 import { PayrollConfigurationModule } from './modules/payroll/payroll-configuration/payroll-configuration.module';
 import {TimeManagementModule} from "./modules/time-management/time-management.module";
 import { PayrollTrackingModule } from './modules/payroll/payroll-tracking/payroll-tracking.module';
-import { RecruitmentModule } from "./modules/recruitment/module/Recruitment.module";
+
 import { OrganizationStructureModule } from "./modules/employee/modules/organization-structure.module";
 import { EmployeeModule } from "./modules/employee/modules/employee.module";
 import { PerformanceModule } from "./modules/employee/modules/performance.module";
@@ -15,6 +15,8 @@ import { LeavesModule } from "./modules/leaves/modules/leaves.module";
 import { AuthModule } from "./modules/auth/module/auth-module";
 import {AuthorizationGuard} from "./modules/auth/guards/authorization-guard";
 import {AuthenticationGuard} from "./modules/auth/guards/authentication-guard";
+import {BackupModule} from "./modules/payroll/payroll-configuration/backup/Backup-Module";
+import {RecruitmentModule} from "./modules/recruitment/module/recruitment.module";
 
 
 
@@ -37,7 +39,7 @@ import {AuthenticationGuard} from "./modules/auth/guards/authentication-guard";
         EmployeeModule,
         OrganizationStructureModule,
         PerformanceModule,
-
+BackupModule,
         TimeManagementModule,
         LeavesModule,
 

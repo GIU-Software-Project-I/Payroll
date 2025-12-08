@@ -1,30 +1,54 @@
+import {
+    Controller,
+    Get,
+    Post,
+    Put,
+    Patch,
+    Delete,
+    Body,
+    Param,
+    Query,
+    HttpStatus,
+    HttpCode,
+    UseGuards,
+} from '@nestjs/common';
+import {
+    ApiTags,
+    ApiOperation,
+    ApiResponse,
+    ApiParam,
+    ApiQuery,
+    ApiBearerAuth,
+} from '@nestjs/swagger';
 
-
-import { Controller, Post, Get, Put, Patch, Delete, Body, Param, Query } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { RecruitmentService } from '../services/recruitment.service';
-import { ApplicationStatus } from '../enums/application-status.enum';
-import { ApplicationStage } from '../enums/application-stage.enum';
+
 // DTOs
-import { CreateJobTemplateDto } from '../dto/create-job-template.dto';
-import { UpdateJobTemplateDto } from '../dto/update-job-template.dto';
-import { CreateJobRequisitionDto } from '../dto/create-job-requisition.dto';
-import { PublishJobRequisitionDto } from '../dto/publish-job-requisition.dto';
-import { UpdateJobRequisitionDto } from '../dto/update-job-requisition.dto';
-import { CreateApplicationDto } from '../dto/create-application.dto';
-import { UpdateApplicationStageDto } from '../dto/update-application-stage.dto';
-import { UpdateApplicationStatusDto } from '../dto/update-application-status.dto';
-import { AssignHrDto } from '../dto/assign-hr.dto';
-import { CreateReferralDto } from '../dto/create-referral.dto';
-import { ScheduleInterviewDto } from '../dto/schedule-interview.dto';
-import { UpdateInterviewDto } from '../dto/update-interview.dto';
-import { SubmitFeedbackDto } from '../dto/submit-feedback.dto';
-import { CreateOfferDto } from '../dto/create-offer.dto';
-import { ApproveOfferDto } from '../dto/approve-offer.dto';
-import { CandidateOfferResponseDto } from '../dto/candidate-offer-response.dto';
-import { SendNotificationDto } from '../dto/send-notification.dto';
-import { SendRejectionDto } from '../dto/send-rejection.dto';
-import { CancelInterviewDto } from '../dto/cancel-interview.dto';
+import {
+    CreateJobTemplateDto,
+    UpdateJobTemplateDto,
+    CreateJobRequisitionDto,
+    PublishJobRequisitionDto,
+    UpdateJobRequisitionDto,
+    CreateApplicationDto,
+    UpdateApplicationStageDto,
+    UpdateApplicationStatusDto,
+    AssignHrDto,
+    CreateReferralDto,
+    ScheduleInterviewDto,
+    UpdateInterviewDto,
+    CancelInterviewDto,
+    SubmitFeedbackDto,
+    CreateOfferDto,
+    ApproveOfferDto,
+    CandidateOfferResponseDto,
+    SendNotificationDto,
+    SendRejectionDto,
+} from '../dto/recruitment';
+
+// Enums
+import { ApplicationStage } from '../enums/application-stage.enum';
+import { ApplicationStatus } from '../enums/application-status.enum';
 
 @ApiTags('Recruitment')
 @Controller('recruitment')
@@ -210,32 +234,32 @@ export class RecruitmentController {
         return this.recruitmentService.assignHrToApplication(id, dto);
     }
 
-    // @Patch('applications/:id/stage')
-    // @ApiOperation({ summary: 'REC-008: Update application stage' })
-    // @ApiParam({ name: 'id', description: 'Application ID' })
-    // @ApiResponse({ status: 200, description: 'Application stage updated' })
-    // async updateApplicationStage(@Param('id') id: string, @Body() dto: UpdateApplicationStageDto) {
-    //     return this.recruitmentService.updateApplicationStage(id, dto);
-    // }
-    //
-    // @Patch('applications/:id/status')
-    // @ApiOperation({ summary: 'REC-008: Update application status' })
-    // @ApiParam({ name: 'id', description: 'Application ID' })
-    // @ApiResponse({ status: 200, description: 'Application status updated' })
-    // async updateApplicationStatus(@Param('id') id: string, @Body() dto: UpdateApplicationStatusDto) {
-    //     return this.recruitmentService.updateApplicationStatus(id, dto);
-    // }
-    //
-    // @Patch('applications/:id/reject')
-    // @ApiOperation({ summary: 'REC-022: Reject application' })
-    // @ApiParam({ name: 'id', description: 'Application ID' })
-    // @ApiResponse({ status: 200, description: 'Application rejected' })
-    // async rejectApplication(
-    //     @Param('id') id: string,
-    //     @Body('reason') reason?: string,
-    // ) {
-    //     return this.recruitmentService.rejectApplication(id, reason);
-    // }
+    @Patch('applications/:id/stage')
+    @ApiOperation({ summary: 'REC-008: Update application stage' })
+    @ApiParam({ name: 'id', description: 'Application ID' })
+    @ApiResponse({ status: 200, description: 'Application stage updated' })
+    async updateApplicationStage(@Param('id') id: string, @Body() dto: UpdateApplicationStageDto) {
+        return this.recruitmentService.updateApplicationStage(id, dto);
+    }
+
+    @Patch('applications/:id/status')
+    @ApiOperation({ summary: 'REC-008: Update application status' })
+    @ApiParam({ name: 'id', description: 'Application ID' })
+    @ApiResponse({ status: 200, description: 'Application status updated' })
+    async updateApplicationStatus(@Param('id') id: string, @Body() dto: UpdateApplicationStatusDto) {
+        return this.recruitmentService.updateApplicationStatus(id, dto);
+    }
+
+    @Patch('applications/:id/reject')
+    @ApiOperation({ summary: 'REC-022: Reject application' })
+    @ApiParam({ name: 'id', description: 'Application ID' })
+    @ApiResponse({ status: 200, description: 'Application rejected' })
+    async rejectApplication(
+        @Param('id') id: string,
+        @Body('reason') reason?: string,
+    ) {
+        return this.recruitmentService.rejectApplication(id, reason);
+    }
 
     // ============================================================
     // REC-009: Dashboard & Analytics
@@ -291,12 +315,12 @@ export class RecruitmentController {
     // Schedule interviews and coordinate panels
     // ============================================================
 
-    // @Post('interviews')
-    // @ApiOperation({ summary: 'REC-010: Schedule a new interview' })
-    // @ApiResponse({ status: 201, description: 'Interview scheduled successfully' })
-    // async scheduleInterview(@Body() dto: ScheduleInterviewDto) {
-    //     return this.recruitmentService.scheduleInterview(dto);
-    // }
+    @Post('interviews')
+    @ApiOperation({ summary: 'REC-010: Schedule a new interview' })
+    @ApiResponse({ status: 201, description: 'Interview scheduled successfully' })
+    async scheduleInterview(@Body() dto: ScheduleInterviewDto) {
+        return this.recruitmentService.scheduleInterview(dto);
+    }
 
     @Get('interviews')
     @ApiOperation({ summary: 'REC-010: Get upcoming interviews' })
@@ -396,61 +420,61 @@ export class RecruitmentController {
     // Create, approve, and manage job offers
     // ============================================================
 
-    // @Post('offers')
-    // @ApiOperation({ summary: 'REC-014: Create a new job offer' })
-    // @ApiResponse({ status: 201, description: 'Offer created successfully' })
-    // @ApiResponse({ status: 409, description: 'Active offer already exists' })
-    // async createOffer(@Body() dto: CreateOfferDto) {
-    //     return this.recruitmentService.createOffer(dto);
-    // }
-    //
-    // @Get('offers')
-    // @ApiOperation({ summary: 'REC-014: Get pending offers' })
-    // @ApiResponse({ status: 200, description: 'List of pending offers' })
-    // async getPendingOffers() {
-    //     return this.recruitmentService.getPendingOffers();
-    // }
-    //
-    // @Get('offers/:id')
-    // @ApiOperation({ summary: 'REC-014: Get offer by ID' })
-    // @ApiParam({ name: 'id', description: 'Offer ID' })
-    // @ApiResponse({ status: 200, description: 'Offer details' })
-    // async getOfferById(@Param('id') id: string) {
-    //     return this.recruitmentService.getOfferById(id);
-    // }
-    //
-    // @Get('offers/application/:applicationId')
-    // @ApiOperation({ summary: 'REC-014: Get offer for an application' })
-    // @ApiParam({ name: 'applicationId', description: 'Application ID' })
-    // @ApiResponse({ status: 200, description: 'Offer for application' })
-    // async getOfferByApplication(@Param('applicationId') applicationId: string) {
-    //     return this.recruitmentService.getOfferByApplication(applicationId);
-    // }
-    //
-    // @Patch('offers/:id/approve')
-    // @ApiOperation({ summary: 'REC-014: Approve or reject an offer' })
-    // @ApiParam({ name: 'id', description: 'Offer ID' })
-    // @ApiResponse({ status: 200, description: 'Offer approval status updated' })
-    // async approveOffer(@Param('id') id: string, @Body() dto: ApproveOfferDto) {
-    //     return this.recruitmentService.approveOffer(id, dto);
-    // }
-    //
-    // @Patch('offers/:id/candidate-response')
-    // @ApiOperation({ summary: 'REC-018: Record candidate response to offer' })
-    // @ApiParam({ name: 'id', description: 'Offer ID' })
-    // @ApiResponse({ status: 200, description: 'Candidate response recorded' })
-    // async recordCandidateResponse(@Param('id') id: string, @Body() dto: CandidateOfferResponseDto) {
-    //     return this.recruitmentService.recordCandidateResponse(id, dto);
-    // }
-    //
-    // @Post('offers/:id/send')
-    // @ApiOperation({ summary: 'REC-018: Send offer letter electronically to candidate' })
-    // @ApiParam({ name: 'id', description: 'Offer ID' })
-    // @ApiResponse({ status: 200, description: 'Offer letter sent successfully' })
-    // @ApiResponse({ status: 404, description: 'Offer not found' })
-    // async sendOfferLetter(@Param('id') id: string) {
-    //     return this.recruitmentService.sendOfferLetter(id);
-    // }
+    @Post('offers')
+    @ApiOperation({ summary: 'REC-014: Create a new job offer' })
+    @ApiResponse({ status: 201, description: 'Offer created successfully' })
+    @ApiResponse({ status: 409, description: 'Active offer already exists' })
+    async createOffer(@Body() dto: CreateOfferDto) {
+        return this.recruitmentService.createOffer(dto);
+    }
+
+    @Get('offers')
+    @ApiOperation({ summary: 'REC-014: Get pending offers' })
+    @ApiResponse({ status: 200, description: 'List of pending offers' })
+    async getPendingOffers() {
+        return this.recruitmentService.getPendingOffers();
+    }
+
+    @Get('offers/:id')
+    @ApiOperation({ summary: 'REC-014: Get offer by ID' })
+    @ApiParam({ name: 'id', description: 'Offer ID' })
+    @ApiResponse({ status: 200, description: 'Offer details' })
+    async getOfferById(@Param('id') id: string) {
+        return this.recruitmentService.getOfferById(id);
+    }
+
+    @Get('offers/application/:applicationId')
+    @ApiOperation({ summary: 'REC-014: Get offer for an application' })
+    @ApiParam({ name: 'applicationId', description: 'Application ID' })
+    @ApiResponse({ status: 200, description: 'Offer for application' })
+    async getOfferByApplication(@Param('applicationId') applicationId: string) {
+        return this.recruitmentService.getOfferByApplication(applicationId);
+    }
+
+    @Patch('offers/:id/approve')
+    @ApiOperation({ summary: 'REC-014: Approve or reject an offer' })
+    @ApiParam({ name: 'id', description: 'Offer ID' })
+    @ApiResponse({ status: 200, description: 'Offer approval status updated' })
+    async approveOffer(@Param('id') id: string, @Body() dto: ApproveOfferDto) {
+        return this.recruitmentService.approveOffer(id, dto);
+    }
+
+    @Patch('offers/:id/candidate-response')
+    @ApiOperation({ summary: 'REC-018: Record candidate response to offer' })
+    @ApiParam({ name: 'id', description: 'Offer ID' })
+    @ApiResponse({ status: 200, description: 'Candidate response recorded' })
+    async recordCandidateResponse(@Param('id') id: string, @Body() dto: CandidateOfferResponseDto) {
+        return this.recruitmentService.recordCandidateResponse(id, dto);
+    }
+
+    @Post('offers/:id/send')
+    @ApiOperation({ summary: 'REC-018: Send offer letter electronically to candidate' })
+    @ApiParam({ name: 'id', description: 'Offer ID' })
+    @ApiResponse({ status: 200, description: 'Offer letter sent successfully' })
+    @ApiResponse({ status: 404, description: 'Offer not found' })
+    async sendOfferLetter(@Param('id') id: string) {
+        return this.recruitmentService.sendOfferLetter(id);
+    }
 
     // ============================================================
     // REC-017 & REC-022: Notification Endpoints
@@ -465,13 +489,13 @@ export class RecruitmentController {
         return this.recruitmentService.sendStatusUpdateNotification(dto);
     }
 
-    // @Post('notifications/rejection')
-    // @ApiOperation({ summary: 'REC-022: Send automated rejection notification' })
-    // @ApiResponse({ status: 200, description: 'Rejection notification sent successfully' })
-    // @ApiResponse({ status: 400, description: 'Invalid rejection data' })
-    // async sendRejectionNotification(@Body() dto: SendRejectionDto) {
-    //     return this.recruitmentService.sendRejectionNotification(dto);
-    // }
+    @Post('notifications/rejection')
+    @ApiOperation({ summary: 'REC-022: Send automated rejection notification' })
+    @ApiResponse({ status: 200, description: 'Rejection notification sent successfully' })
+    @ApiResponse({ status: 400, description: 'Invalid rejection data' })
+    async sendRejectionNotification(@Body() dto: SendRejectionDto) {
+        return this.recruitmentService.sendRejectionNotification(dto);
+    }
 
     @Get('notifications/templates')
     @ApiOperation({ summary: 'REC-022: Get available email templates' })

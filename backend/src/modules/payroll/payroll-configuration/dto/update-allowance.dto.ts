@@ -1,13 +1,13 @@
-import { IsString, IsNumber, Min, IsOptional } from 'class-validator';
+// update-allowance.dto.ts
+import { IsOptional, IsString, IsNumber, Min } from 'class-validator';
 
 export class UpdateAllowanceDto {
-  @IsString()
   @IsOptional()
+  @IsString()
   name?: string;
 
+  @IsOptional()
   @IsNumber()
   @Min(0)
-  @IsOptional()
   amount?: number;
 }
-
