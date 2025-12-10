@@ -1,18 +1,25 @@
 // src/time-management/attendance/attendance.controller.ts
 
-
-import { AttendanceService } from "../services/AttendanceService";
-import {BadRequestException, Body, Controller, Get, Logger, Param, Post, Put, Query} from "@nestjs/common";
-import {ApiBody, ApiOperation, ApiResponse, ApiTags} from "@nestjs/swagger";
 import {
-    BulkReviewAttendanceDto,
-    CorrectAttendanceDto,
+    Controller,
+    Post,
+    Body,
+    Get,
+    Param,
+    Put,
+    Query,Logger,
+    BadRequestException, Req,
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 
-
+import {
     PunchInDto,
     PunchOutDto,
-    UpdateAttendanceRecordDto
-} from "../dto/AttendanceDtos";
+    UpdateAttendanceRecordDto,
+    CorrectAttendanceDto,
+    BulkReviewAttendanceDto,
+} from '../dto/AttendanceDtos';
+import { AttendanceService } from "../services/AttendanceService";
 
 @ApiTags('Attendance')
 @Controller('attendance')
@@ -37,17 +44,17 @@ export class AttendanceController {
 
     // --------------------------------------------------
     // PUNCH OUT
-    // // --------------------------------------------------
-    // @Post('punch-out')
-    // @ApiOperation({ summary: 'Punch Out', description: 'Record employee clock-out time' })
-    // @ApiBody({ type: PunchOutDto })
-    // @ApiResponse({ status: 201, description: 'Successfully punched out' })
-    // @ApiResponse({ status: 400, description: 'Bad request - employeeId is required' })
-    // async punchOut(@Body() dto: PunchOutDto) {
-    //     if (!dto.employeeId)
-    //         throw new BadRequestException('employeeId is required');
-    //     return this.attendanceService.punchOut(dto);
-    // }
+    // --------------------------------------------------
+    @Post('punch-out')
+    @ApiOperation({ summary: 'Punch Out', description: 'Record employee clock-out time' })
+    @ApiBody({ type: PunchOutDto })
+    @ApiResponse({ status: 201, description: 'Successfully punched out' })
+    @ApiResponse({ status: 400, description: 'Bad request - employeeId is required' })
+    async punchOut(@Body() dto: PunchOutDto) {
+        if (!dto.employeeId)
+            throw new BadRequestException('employeeId is required');
+        return this.attendanceService.punchOut(dto);
+    }
 
     // --------------------------------------------------
     // Get today's attendance for employee
@@ -133,7 +140,9 @@ export class AttendanceController {
     async reviewAttendance(@Param('recordId') recordId: string) {
         return this.attendanceService.reviewAttendanceRecord(recordId);
     }
-
+    // @UseGuards(AuthenticationGuard,AuthorizationGuard)
+    // @Roles(SystemRole.DEPARTMENT_HEAD)
+    // @ApiBearerAuth('access-token')
     @Post('correct')
     @ApiOperation({
         summary: 'Correct Attendance Record',
@@ -329,5 +338,4 @@ export class AttendanceController {
         }
         return this.attendanceService.bulkReviewAttendance(dto);
     }
-
 }

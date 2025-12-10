@@ -23,7 +23,16 @@ import {ShiftManagementService} from "./services/ShiftManagementService";
 import {HolidayService} from "./services/HolidayService";
 
 import {RepeatedLatenessService} from "./services/RepeatedLatenessService";
-
+import {TimeManagementController} from "./controllers/time-management.controller";
+import {HolidayController} from "./controllers/HolidayController";
+import {NotificationController} from "./controllers/NotificationController";
+import {AttendanceSyncController} from "./controllers/AttendanceSyncController";
+import {TimeManagementService} from "./services/time-management.service";
+import {ShiftExpiryScheduler} from "./services/ShiftExpiryScheduler";
+import {NotificationService} from "./services/NotificationService";
+import {AttendanceSyncService} from "./services/AttendanceSyncService";
+import { EmployeeModule } from '../employee/modules/employee.module';
+import {EmployeeProfile, EmployeeProfileSchema} from "../employee/models/Employee/employee-profile.schema";
 
 @Module({
     imports: [MongooseModule.forFeature([
@@ -38,20 +47,28 @@ import {RepeatedLatenessService} from "./services/RepeatedLatenessService";
         { name: ShiftAssignment.name, schema: ShiftAssignmentSchema },
         { name: LatenessRule.name, schema: latenessRuleSchema },
         { name: Holiday.name, schema: HolidaySchema },
-    ])],
-    controllers: [
+        { name: EmployeeProfile.name, schema: EmployeeProfileSchema },
+    ]),
+    EmployeeModule
+    ],
+    controllers: [TimeManagementController,
         AttendanceController,
         TimeExceptionController,
         AttendanceCorrectionController,
-        ShiftManagementController],
+        HolidayController,
+        ShiftManagementController,
+        NotificationController,
+        AttendanceSyncController],
 
-    providers: [
+    providers: [TimeManagementService,
         AttendanceService,
         TimeExceptionService,
         AttendanceCorrectionService,
         ShiftManagementService,
         HolidayService,
-        // ShiftExpiryScheduler,
-        RepeatedLatenessService,]
+        ShiftExpiryScheduler,
+        RepeatedLatenessService,
+        NotificationService,
+        AttendanceSyncService]
 })
 export class TimeManagementModule {}
