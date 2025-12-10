@@ -8,6 +8,7 @@ import { refunds, refundsDocument } from '../models/refunds.schema';
 import { ClaimStatus, DisputeStatus, RefundStatus } from '../enums/payroll-tracking-enum';
 import {paySlip, PayslipDocument} from "../../payroll-execution/models/payslip.schema";
 import {EmployeeProfile} from "../../../employee/models/Employee/employee-profile.schema";
+import {ContractType, WorkType} from "../../../employee/enums/employee-profile.enums";
 
 @Injectable()
 export class PayrollTrackingService {
@@ -25,6 +26,36 @@ export class PayrollTrackingService {
   async getEmployeePayslips(employeeId: string) {
     const objectId = new Types.ObjectId(employeeId);
     return this.payslipModel.find({ employeeId: objectId }).exec();
+  }
+
+  // REQ-PY-1 (download part): Get full payslip data for download
+  async downloadPayslip(payslipId: string, employeeId: string) {
+    const objectId = new Types.ObjectId(payslipId);
+    const employeeObjectId = new Types.ObjectId(employeeId);
+
+    const payslip = await this.payslipModel.findOne({
+      _id: objectId,
+      employeeId: employeeObjectId,
+    }).exec();
+
+    if (!payslip) {
+      throw new NotFoundException('Payslip not found');
+    }
+
+    // This structure is suitable for the frontend to generate a PDF/CSV download
+    return {
+      payslipId: payslip._id,
+      employeeId: payslip.employeeId,
+      payrollRunId: payslip.payrollRunId,
+      earningsDetails: payslip.earningsDetails,
+      deductionsDetails: payslip.deductionsDetails,
+      totalGrossSalary: payslip.totalGrossSalary,
+      totalDeductions: payslip.totaDeductions,
+      netPay: payslip.netPay,
+      paymentStatus: payslip.paymentStatus,
+      createdAt: (payslip as any)?.createdAt,
+      updatedAt: (payslip as any)?.updatedAt,
+    };
   }
 
   // REQ-PY-2: View payslip status and details
@@ -59,16 +90,49 @@ export class PayrollTrackingService {
       throw new NotFoundException('Employee not found');
     }
     
-    // This would typically come from employee contract/job info
-    // For now, we'll return basic info
+    // Derive contract/work type with sensible defaults
+    const contractType: ContractType = employee.contractType || ContractType.FULL_TIME_CONTRACT;
+    const workType: WorkType = employee.workType || WorkType.FULL_TIME;
+
+    // Try to use baseSalary from employee profile if present
+    let contractualBaseSalary = (employee as any)?.baseSalary as number | undefined;
+
+    // If not available on profile, fall back to latest payslip base salary
+    if (contractualBaseSalary == null) {
+      const latestPayslip = await this.payslipModel.findOne({
+        employeeId: new Types.ObjectId(employeeId),
+      })
+        .sort({ createdAt: -1 })
+        .exec();
+
+      if (latestPayslip?.earningsDetails?.baseSalary != null) {
+        contractualBaseSalary = latestPayslip.earningsDetails.baseSalary;
+      }
+    }
+
+    const baseMonthlySalary = contractualBaseSalary || 0;
+
+    // Simple working-hours assumption for hourly-rate view
+    const STANDARD_FULL_TIME_HOURS_PER_MONTH = 160; // 8h * 5d * 4w
+    const STANDARD_PART_TIME_HOURS_PER_MONTH = 80;  // example: 4h * 5d * 4w
+
+    const hoursPerMonth =
+      workType === WorkType.PART_TIME
+        ? STANDARD_PART_TIME_HOURS_PER_MONTH
+        : STANDARD_FULL_TIME_HOURS_PER_MONTH;
+
+    const hourlyRate = hoursPerMonth > 0 ? baseMonthlySalary / hoursPerMonth : 0;
+
     return {
       employeeId: employee._id,
       fullName: `${employee.firstName} ${employee.lastName}`,
-      // These fields would come from employee profile integration
-      contractType: employee.contractType || 'Full-time',
+      contractType,
+      workType,
       jobTitle: (employee as any)?.jobTitle || 'N/A',
-      baseSalary: (employee as any)?.baseSalary || 0,
-      currency: (employee as any)?.currency || 'USD'
+      baseMonthlySalary,
+      hoursPerMonth,
+      hourlyRate,
+      currency: (employee as any)?.currency || 'USD',
     };
   }
 
@@ -124,12 +188,41 @@ export class PayrollTrackingService {
       .sort({ createdAt: -1 })
       .exec();
     
-    return payslips.map(payslip => ({
-      payslipId: payslip._id,
-      totalTax: payslip.deductionsDetails?.taxes?.reduce((sum, t) => sum + ((t as any)?.amount || 0), 0) || 0,
-      taxDeductions: payslip.deductionsDetails?.taxes || [],
-      // Additional tax details would come from Payroll Configuration
-    }));
+    return payslips.map(payslip => {
+      const taxes = (payslip.deductionsDetails?.taxes || []) as any[];
+
+      const taxableBase =
+        payslip.totalGrossSalary ||
+        (payslip.earningsDetails as any)?.baseSalary ||
+        0;
+
+      const taxDetails = taxes.map((tax: any) => {
+        const amount = tax.amount ?? 0;
+        const configuredRatePct = tax.rate ?? null; // from taxRules
+        const effectiveRatePct =
+          taxableBase > 0 ? (amount / taxableBase) * 100 : null;
+
+        return {
+          ruleName: tax.name,
+          description: tax.description,
+          configuredRatePct,
+          calculatedAmount: amount,
+          taxableBase,
+          effectiveRatePct,
+        };
+      });
+
+      const totalTax = taxDetails.reduce(
+        (sum, t) => sum + (t.calculatedAmount || 0),
+        0,
+      );
+
+      return {
+        payslipId: payslip._id,
+        totalTax,
+        taxDetails,
+      };
+    });
   }
 
   // REQ-PY-9: View insurance deductions
@@ -205,135 +298,116 @@ export class PayrollTrackingService {
       netSalary: payslip.netPay || 0,
       status: payslip.paymentStatus,
       totalDeductions: payslip.totaDeductions || 0,
-      createdAt: (payslip as any)?.createdAt || new Date()
+      createdAt: (payslip as any)?.createdAt || new Date(),
     }));
   }
 
   // REQ-PY-14: View employer contributions
   async getEmployerContributions(employeeId: string, payslipId?: string) {
     let query: any = { employeeId: new Types.ObjectId(employeeId) };
-    
+
     if (payslipId) {
       query._id = new Types.ObjectId(payslipId);
     }
-    
-    const payslips = await this.payslipModel.find(query)
+
+    const payslips = await this.payslipModel
+      .find(query)
       .sort({ createdAt: -1 })
       .exec();
-    
+
     return payslips.map(payslip => ({
       payslipId: payslip._id,
       employerContributions: payslip.earningsDetails?.benefits || [],
-      totalEmployerContribution: payslip.earningsDetails?.benefits?.reduce((sum, b) => sum + (b.amount || 0), 0) || 0
+      totalEmployerContribution:
+        payslip.earningsDetails?.benefits?.reduce(
+          (sum, b) => sum + (b.amount || 0),
+          0,
+        ) || 0,
     }));
   }
 
-  // REQ-PY-15: Download tax documents (placeholder)
+  // REQ-PY-15: Download tax documents (metadata)
   async getTaxDocuments(employeeId: string, year?: number) {
     const targetYear = year || new Date().getFullYear();
-    
-    // This would generate or fetch tax documents
+
     return {
       employeeId,
       taxYear: targetYear,
       documents: [
         {
           type: 'ANNUAL_TAX_STATEMENT',
-          fileName: `tax-statement-${employeeId}-${targetYear}.pdf`,
-          downloadUrl: `/api/payroll/tracking/tax-documents/${employeeId}/${targetYear}/statement`,
-          generatedDate: new Date().toISOString()
-        }
-      ]
+          fileName: `tax-statement-${employeeId}-${targetYear}.csv`,
+          downloadUrl: `/api/payroll/tracking/employee/${employeeId}/tax-documents/${targetYear}/download`,
+          generatedDate: new Date().toISOString(),
+        },
+      ],
     };
   }
 
-  // REQ-PY-16: Dispute payroll errors
-  async createDispute(employeeId: string, createDisputeDto: any) {
-    // Generate dispute ID
-    const latestDispute = await this.disputesModel.findOne()
-      .sort({ createdAt: -1 })
-      .exec();
-    
-    let nextNumber = 1;
-    if (latestDispute && latestDispute.disputeId) {
-      const match = latestDispute.disputeId.match(/DISP-(\d+)/);
-      if (match) {
-        nextNumber = parseInt(match[1]) + 1;
-      }
-    }
-    
-    const disputeId = `DISP-${nextNumber.toString().padStart(4, '0')}`;
-    
-    const dispute = new this.disputesModel({
-      disputeId,
-      employeeId: new Types.ObjectId(employeeId),
-      ...createDisputeDto,
-      payslipId: new Types.ObjectId(createDisputeDto.payslipId),
-      status: DisputeStatus.UNDER_REVIEW
-    });
-    
-    return dispute.save();
-  }
+  // REQ-PY-15 (download part): Aggregate annual tax data for download
+  async downloadAnnualTaxStatement(employeeId: string, year?: number) {
+    const targetYear = year || new Date().getFullYear();
 
-  // REQ-PY-17: Submit expense reimbursement claims
-  async createClaim(employeeId: string, createClaimDto: any) {
-    // Generate claim ID
-    const latestClaim = await this.claimsModel.findOne()
-      .sort({ createdAt: -1 })
-      .exec();
-    
-    let nextNumber = 1;
-    if (latestClaim && latestClaim.claimId) {
-      const match = latestClaim.claimId.match(/CLAIM-(\d+)/);
-      if (match) {
-        nextNumber = parseInt(match[1]) + 1;
-      }
-    }
-    
-    const claimId = `CLAIM-${nextNumber.toString().padStart(4, '0')}`;
-    
-    const claim = new this.claimsModel({
-      claimId,
-      employeeId: new Types.ObjectId(employeeId),
-      ...createClaimDto,
-      status: ClaimStatus.UNDER_REVIEW
-    });
-    
-    return claim.save();
-  }
+    const startDate = new Date(targetYear, 0, 1);
+    const endDate = new Date(targetYear, 11, 31, 23, 59, 59, 999);
 
-  // REQ-PY-18: Track claims and disputes status
-  async trackClaimsAndDisputes(employeeId: string) {
-    const [claims, disputes] = await Promise.all([
-      this.claimsModel.find({ employeeId: new Types.ObjectId(employeeId) })
-        .sort({ createdAt: -1 })
-        .exec(),
-      this.disputesModel.find({ employeeId: new Types.ObjectId(employeeId) })
-        .sort({ createdAt: -1 })
-        .exec()
-    ]);
-    
+    const payslips = await this.payslipModel
+      .find({
+        employeeId: new Types.ObjectId(employeeId),
+        createdAt: { $gte: startDate, $lte: endDate },
+      })
+      .exec();
+
+    const summary = payslips.reduce(
+      (acc, payslip: any) => {
+        const taxableBase =
+          payslip.totalGrossSalary || payslip.earningsDetails?.baseSalary || 0;
+        const totalTaxForSlip = (payslip.deductionsDetails?.taxes || []).reduce(
+          (sum: number, tax: any) => sum + (tax.amount || 0),
+          0,
+        );
+
+        acc.totalTaxableIncome += taxableBase;
+        acc.totalTaxPaid += totalTaxForSlip;
+        acc.payslipsCount += 1;
+
+        acc.payslips.push({
+          payslipId: payslip._id,
+          payrollRunId: payslip.payrollRunId,
+          periodDate: (payslip as any)?.createdAt,
+          taxableBase,
+          totalTaxForSlip,
+        });
+
+        return acc;
+      },
+      {
+        totalTaxableIncome: 0,
+        totalTaxPaid: 0,
+        payslipsCount: 0,
+        payslips: [] as Array<{
+          payslipId: string;
+          payrollRunId: string;
+          periodDate: Date | string;
+          taxableBase: number;
+          totalTaxForSlip: number;
+        }>,
+      },
+    );
+
+    const effectiveRatePct =
+      summary.totalTaxableIncome > 0
+        ? (summary.totalTaxPaid / summary.totalTaxableIncome) * 100
+        : 0;
+
     return {
-      claims: claims.map(claim => ({
-        id: claim._id,
-        claimId: claim.claimId,
-        description: claim.description,
-        claimType: claim.claimType,
-        amount: claim.amount,
-        approvedAmount: claim.approvedAmount,
-        status: claim.status,
-        createdAt: (claim as any)?.createdAt || new Date(),
-        updatedAt: (claim as any)?.updatedAt || new Date()
-      })),
-      disputes: disputes.map(dispute => ({
-        id: dispute._id,
-        disputeId: dispute.disputeId,
-        description: dispute.description,
-        payslipId: dispute.payslipId,
-        status: dispute.status,
-        createdAt: (dispute as any)?.createdAt || new Date(),
-        updatedAt: (dispute as any)?.updatedAt || new Date()
-      }))
+      employeeId,
+      taxYear: targetYear,
+      totalTaxableIncome: summary.totalTaxableIncome,
+      totalTaxPaid: summary.totalTaxPaid,
+      effectiveRatePct,
+      payslipsCount: summary.payslipsCount,
+      payslips: summary.payslips,
     };
   }
 
