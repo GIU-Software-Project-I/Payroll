@@ -30,8 +30,6 @@ export class UpdateShiftTypeDto {
 }
 
 export class CreateShiftDto {
-
-
     @ApiProperty({
         description: 'Name of the shift',
         example: 'Morning Shift 9-5',
@@ -95,7 +93,6 @@ export class CreateShiftDto {
         default: true
     })
     active?: boolean = true;
-
 }
 
 export class UpdateShiftDto {
@@ -111,9 +108,6 @@ export class UpdateShiftDto {
 }
 
 export class CreateScheduleRuleDto {
-
-
-
     @ApiProperty({
         description: 'Name of the schedule rule',
         example: 'Weekly Office Hours'
@@ -130,13 +124,10 @@ export class CreateScheduleRuleDto {
         description: 'Whether the schedule rule is active',
         default: true
     })
-
     active?: boolean;
 }
 
 export class UpdateScheduleRuleDto {
-
-
     @ApiPropertyOptional({
         description: 'Name of the schedule rule',
         example: 'Updated Weekly Schedule'
@@ -152,14 +143,11 @@ export class UpdateScheduleRuleDto {
     @ApiPropertyOptional({
         description: 'Whether the schedule rule is active'
     })
-
     active?: boolean;
 }
 
 // src/time-management/shift-management/dtos/shift-assignment.dtos.ts
 export class AssignShiftDto {
-
-
     @ApiPropertyOptional({
         description: 'Target specific employee by their ID (MongoDB ObjectId). Use this for individual assignment.',
         example: '674c1a1b2c3d4e5f6a7b8c9d'
@@ -214,7 +202,6 @@ export class AssignShiftDto {
         description: 'User ID who created this assignment (MongoDB ObjectId)',
         example: '674c1a1b2c3d4e5f6a7b8d03'
     })
-
     createdBy?: string; // userId who created
 }
 
@@ -225,7 +212,6 @@ export class BulkAssignTarget {
 }
 
 export class BulkAssignShiftDto {
-
     @ApiProperty({
         description: 'The shift to assign (MongoDB ObjectId)',
         example: '507f1f77bcf86cd799439011'
@@ -271,7 +257,6 @@ export class BulkAssignShiftDto {
         description: 'User ID who created this assignment (MongoDB ObjectId)',
         example: '507f1f77bcf86cd799439050'
     })
-
     createdBy?: string;
 }
 
@@ -281,7 +266,6 @@ export class RenewAssignmentDto {
     scheduleRuleId?: string;
     status?: string;
 }
-
 
 export class UpdateShiftAssignmentStatusDto {
     @ApiProperty({
@@ -320,33 +304,229 @@ export class UpdateHolidayDto {
 }
 // src/time-management/shift-management/dtos/lateness-rule.dtos.ts
 export class CreateLatenessRuleDto {
+    @ApiProperty({
+        description: 'Name of the lateness rule',
+        example: 'Standard Lateness Policy'
+    })
     name: string;
+
+    @ApiPropertyOptional({
+        description: 'Description of the lateness rule',
+        example: 'Employees arriving later than the grace period are marked late.'
+    })
     description?: string;
+
+    @ApiPropertyOptional({
+        description: 'Grace period in minutes before being considered late',
+        example: 15,
+        default: 0
+    })
     gracePeriodMinutes?: number;
+
+    @ApiPropertyOptional({
+        description: 'Deduction (e.g., payroll deduction) for each minute of lateness',
+        example: 0.5,
+        default: 0
+    })
     deductionForEachMinute?: number;
+
+    @ApiPropertyOptional({
+        description: 'Whether this lateness rule is active',
+        example: true,
+        default: true
+    })
     active?: boolean;
 }
 
 export class UpdateLatenessRuleDto {
+    @ApiPropertyOptional({
+        description: 'Name of the lateness rule',
+        example: 'Standard Lateness Policy'
+    })
     name?: string;
+
+    @ApiPropertyOptional({
+        description: 'Description of the lateness rule',
+        example: 'Employees arriving later than the grace period are marked late.'
+    })
     description?: string;
+
+    @ApiPropertyOptional({
+        description: 'Grace period in minutes before being considered late',
+        example: 15
+    })
     gracePeriodMinutes?: number;
+
+    @ApiPropertyOptional({
+        description: 'Deduction (e.g., payroll deduction) for each minute of lateness',
+        example: 0.5
+    })
     deductionForEachMinute?: number;
+
+    @ApiPropertyOptional({
+        description: 'Whether this lateness rule is active',
+        example: true
+    })
     active?: boolean;
 }
 // src/time-management/shift-management/dtos/overtime-rule.dtos.ts
 export class CreateOvertimeRuleDto {
+    @ApiProperty({
+        description: 'Name of the overtime rule',
+        example: 'Standard Overtime Policy'
+    })
     name: string;
+
+    @ApiPropertyOptional({
+        description: 'Description of the overtime rule and how overtime is calculated',
+        example: 'Overtime paid at 1.5x for hours beyond 8 per day; weekend/holiday overtime paid at 2x.'
+    })
     description?: string;
+
+    @ApiPropertyOptional({
+        description: 'Whether this overtime rule is active',
+        example: true,
+        default: true
+    })
     active?: boolean;
+
+    @ApiPropertyOptional({
+        description: 'Whether this rule has already been approved by an admin',
+        example: false,
+        default: false
+    })
     approved?: boolean;
 }
 
 export class UpdateOvertimeRuleDto {
+    @ApiPropertyOptional({
+        description: 'Name of the overtime rule',
+        example: 'Standard Overtime Policy'
+    })
     name?: string;
+
+    @ApiPropertyOptional({
+        description: 'Description of the overtime rule',
+        example: 'Overtime paid at 1.5x for hours beyond 8 per day; weekend/holiday overtime paid at 2x.'
+    })
     description?: string;
+
+    @ApiPropertyOptional({
+        description: 'Whether this overtime rule is active',
+        example: true
+    })
     active?: boolean;
+
+    @ApiPropertyOptional({
+        description: 'Whether this rule has been approved by an admin',
+        example: false
+    })
     approved?: boolean;
 }
 
+// Short-time rule DTOs
+export class CreateShortTimeRuleDto {
+    @ApiProperty({
+        description: 'Name of the short-time rule',
+        example: 'Standard Short Time Policy'
+    })
+    name: string;
 
+    @ApiPropertyOptional({
+        description: 'Friendly description of the rule',
+        example: 'Short time detected when employee works more than 30 minutes less than scheduled; weekends ignored by default.'
+    })
+    description?: string;
+
+    @ApiPropertyOptional({
+        description: 'Whether short-time requires pre-approval',
+        example: false,
+        default: false
+    })
+    requiresPreApproval?: boolean;
+
+    @ApiPropertyOptional({
+        description: 'Ignore weekends when calculating short-time',
+        example: false,
+        default: false
+    })
+    ignoreWeekends?: boolean;
+
+    @ApiPropertyOptional({
+        description: 'Ignore holidays when calculating short-time',
+        example: true,
+        default: true
+    })
+    ignoreHolidays?: boolean;
+
+    @ApiPropertyOptional({
+        description: 'Minimum minutes difference to consider short-time (threshold)',
+        example: 30,
+        default: 30
+    })
+    minShortMinutes?: number;
+
+    @ApiPropertyOptional({
+        description: 'Whether this rule is active',
+        example: true,
+        default: true
+    })
+    active?: boolean;
+
+    @ApiPropertyOptional({
+        description: 'Whether this rule has been approved by an admin',
+        example: false,
+        default: false
+    })
+    approved?: boolean;
+}
+
+export class UpdateShortTimeRuleDto {
+    @ApiPropertyOptional({
+        description: 'Name of the short-time rule',
+        example: 'Standard Short Time Policy'
+    })
+    name?: string;
+
+    @ApiPropertyOptional({
+        description: 'Friendly description of the rule',
+        example: 'Short time detected when employee works more than 30 minutes less than scheduled.'
+    })
+    description?: string;
+
+    @ApiPropertyOptional({
+        description: 'Whether short-time requires pre-approval',
+        example: false
+    })
+    requiresPreApproval?: boolean;
+
+    @ApiPropertyOptional({
+        description: 'Ignore weekends when calculating short-time',
+        example: false
+    })
+    ignoreWeekends?: boolean;
+
+    @ApiPropertyOptional({
+        description: 'Ignore holidays when calculating short-time',
+        example: true
+    })
+    ignoreHolidays?: boolean;
+
+    @ApiPropertyOptional({
+        description: 'Minimum minutes difference to consider short-time (threshold)',
+        example: 30
+    })
+    minShortMinutes?: number;
+
+    @ApiPropertyOptional({
+        description: 'Whether this rule is active',
+        example: true
+    })
+    active?: boolean;
+
+    @ApiPropertyOptional({
+        description: 'Whether this rule has been approved by an admin',
+        example: false
+    })
+    approved?: boolean;
+}

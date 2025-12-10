@@ -6,7 +6,9 @@ import { NotificationService } from '../services/NotificationService';
 @Controller('notifications')
 export class NotificationController {
     constructor(private readonly notificationService: NotificationService) {}
-
+    // @UseGuards(AuthenticationGuard,AuthorizationGuard)
+    // @Roles(SystemRole.HR_ADMIN)
+    // @ApiBearerAuth('access-token')
     @Get()
     @ApiOperation({
         summary: 'Get All Notifications',

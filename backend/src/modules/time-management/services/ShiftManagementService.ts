@@ -1,7 +1,8 @@
-import {InjectModel} from "@nestjs/mongoose";
-import {BadRequestException, ConflictException, Injectable, Logger, NotFoundException} from "@nestjs/common";
+// src/time-management/shift-management/shift-management.service.ts
+import { Injectable, BadRequestException, NotFoundException, ConflictException, Logger } from '@nestjs/common';
+import { Model, Types } from 'mongoose';
+import { InjectModel } from '@nestjs/mongoose';
 import {ShiftType, ShiftTypeDocument} from "../models/shift-type.schema";
-import {Model, Types} from "mongoose";
 import {Shift, ShiftDocument} from "../models/shift.schema";
 import {ScheduleRule, ScheduleRuleDocument} from "../models/schedule-rule.schema";
 import {ShiftAssignment, ShiftAssignmentDocument} from "../models/shift-assignment.schema";
@@ -9,16 +10,16 @@ import {Holiday, HolidayDocument} from "../models/holiday.schema";
 import {LatenessRule, LatenessRuleDocument} from "../models/lateness-rule.schema";
 import {OvertimeRule, OvertimeRuleDocument} from "../models/overtime-rule.schema";
 import {NotificationLog, NotificationLogDocument} from "../models/notification-log.schema";
+import { ShiftAssignmentStatus } from "../models/enums/index";
 import {
-    AssignShiftDto,
-    BulkAssignShiftDto, CreateHolidayDto, CreateLatenessRuleDto, CreateOvertimeRuleDto,
+    AssignShiftDto, BulkAssignShiftDto, CreateHolidayDto, CreateLatenessRuleDto, CreateOvertimeRuleDto,
     CreateScheduleRuleDto,
     CreateShiftDto,
-    CreateShiftTypeDto, RenewAssignmentDto, UpdateHolidayDto, UpdateLatenessRuleDto, UpdateOvertimeRuleDto,
-    UpdateScheduleRuleDto,
-    UpdateShiftAssignmentStatusDto,
+    CreateShiftTypeDto, RenewAssignmentDto, UpdateHolidayDto, UpdateLatenessRuleDto,
+    UpdateOvertimeRuleDto, UpdateScheduleRuleDto,
     UpdateShiftDto,
-    UpdateShiftTypeDto
+    UpdateShiftTypeDto,
+    UpdateShiftAssignmentStatusDto, CreateShortTimeRuleDto, UpdateShortTimeRuleDto
 } from "../dto/ShiftManagementDtos";
 
 
@@ -172,12 +173,28 @@ export class ShiftManagementService {
         const overlapping = await this.shiftAssignmentModel.findOne(overlapQuery).lean();
         if (overlapping) throw new ConflictException('Assignment overlaps an existing assignment');
 
+        // prepare scheduleRuleId if provided: normalize, validate format and existence
+        let scheduleRuleOid: Types.ObjectId | null = null;
+        // normalize common variants to be tolerant of client casing/format mistakes
+        const rawScheduleId = (dto as any).scheduleRuleId || (dto as any).ScheduleRuleId || (dto as any).schedule_rule_id || (dto as any).scheduleRuleID || null;
+        if (rawScheduleId) {
+            if (!Types.ObjectId.isValid(rawScheduleId)) {
+                throw new BadRequestException('Invalid scheduleRuleId format');
+            }
+            const scheduleRule = await this.scheduleRuleModel.findById(rawScheduleId).lean();
+            if (!scheduleRule) {
+                throw new NotFoundException('ScheduleRule not found');
+            }
+            scheduleRuleOid = new Types.ObjectId(rawScheduleId);
+        }
+
         const assignment = new this.shiftAssignmentModel({
             employeeId: dto.employeeId ? new Types.ObjectId(dto.employeeId) : undefined,
             departmentId: dto.departmentId ? new Types.ObjectId(dto.departmentId) : undefined,
             positionId: dto.positionId ? new Types.ObjectId(dto.positionId) : undefined,
             shiftId: new Types.ObjectId(dto.shiftId),
-            scheduleRuleId: dto.scheduleRuleId ? new Types.ObjectId(dto.scheduleRuleId) : undefined,
+            // set scheduleRuleId to validated ObjectId when provided, otherwise null
+            scheduleRuleId: scheduleRuleOid,
             startDate: dto.startDate,
             endDate: dto.endDate,
             status: dto.status ?? 'PENDING',
@@ -196,7 +213,14 @@ export class ShiftManagementService {
             this.logger.error('Failed to create notification log', e?.message ?? e);
         }
 
-        return saved;
+        // Return the saved assignment with scheduleRuleId populated (if set) to make the schedule rule visible in API response
+        try {
+            const populated = await this.shiftAssignmentModel.findById(saved._id).populate('scheduleRuleId').lean();
+            return populated as any;
+        } catch (e) {
+            // fallback: return saved document if populate fails
+            return saved;
+        }
     }
 
     async bulkAssignShift(dto: BulkAssignShiftDto): Promise<ShiftAssignment[]> {
@@ -427,6 +451,124 @@ export class ShiftManagementService {
         rule.approved = true;
         await rule.save();
         return rule.toObject() as OvertimeRule;
+    }
+
+    // --------------------------
+    // Short-time rules (stored in overtimeRule collection using description prefix)
+    // --------------------------
+    private encodeShortTimeDescription(dto: CreateShortTimeRuleDto | UpdateShortTimeRuleDto): string {
+        const cfg: any = {
+            kind: 'SHORT_TIME',
+            description: dto.description ?? null,
+            requiresPreApproval: dto.requiresPreApproval ?? false,
+            ignoreWeekends: dto.ignoreWeekends ?? false,
+            ignoreHolidays: dto.ignoreHolidays ?? false,
+            minShortMinutes: dto.minShortMinutes ?? 30,
+        };
+        return 'SHORT_TIME:' + JSON.stringify(cfg);
+    }
+
+    private tryDecodeShortTimeDescription(desc?: any) {
+        if (!desc || typeof desc !== 'string') return null;
+        if (!desc.startsWith('SHORT_TIME:')) return null;
+        try {
+            const json = desc.substring('SHORT_TIME:'.length);
+            return JSON.parse(json);
+        } catch (e) {
+            return null;
+        }
+    }
+
+    async createShortTimeRule(dto: CreateShortTimeRuleDto): Promise<any> {
+        const desc = this.encodeShortTimeDescription(dto);
+        const r = new this.overtimeRuleModel({
+            name: dto.name,
+            description: desc,
+            active: dto.active ?? true,
+            approved: dto.approved ?? false,
+        });
+        const saved = await r.save();
+        return {
+            _id: saved._id,
+            name: saved.name,
+            ...(this.tryDecodeShortTimeDescription(saved.description) || { rawDescription: saved.description }),
+            active: saved.active,
+            approved: saved.approved,
+        };
+    }
+
+    async getShortTimeRules(): Promise<any[]> {
+        const all = await this.overtimeRuleModel.find().lean();
+        const results: any[] = [];
+        for (const r of all) {
+            const cfg = this.tryDecodeShortTimeDescription(r.description as any);
+            if (cfg && cfg.kind === 'SHORT_TIME') {
+                results.push({
+                    _id: r._id,
+                    name: r.name,
+                    description: cfg.description,
+                    requiresPreApproval: cfg.requiresPreApproval,
+                    ignoreWeekends: cfg.ignoreWeekends,
+                    ignoreHolidays: cfg.ignoreHolidays,
+                    minShortMinutes: cfg.minShortMinutes,
+                    active: r.active,
+                    approved: r.approved,
+                });
+            }
+        }
+        return results;
+    }
+
+    async updateShortTimeRule(id: string, dto: UpdateShortTimeRuleDto): Promise<any> {
+        const rule = await this.overtimeRuleModel.findById(id);
+        if (!rule) throw new NotFoundException('ShortTimeRule not found');
+        const cfg = this.tryDecodeShortTimeDescription(rule.description as any);
+        if (!cfg || cfg.kind !== 'SHORT_TIME') throw new NotFoundException('ShortTimeRule not found');
+
+        // update config
+        const updatedCfg = {
+            ...cfg,
+            description: dto.description ?? cfg.description,
+            requiresPreApproval: dto.requiresPreApproval ?? cfg.requiresPreApproval,
+            ignoreWeekends: dto.ignoreWeekends ?? cfg.ignoreWeekends,
+            ignoreHolidays: dto.ignoreHolidays ?? cfg.ignoreHolidays,
+            minShortMinutes: dto.minShortMinutes ?? cfg.minShortMinutes,
+        };
+
+        rule.name = dto.name ?? rule.name;
+        rule.description = 'SHORT_TIME:' + JSON.stringify(updatedCfg);
+        if (dto.active !== undefined) rule.active = dto.active;
+        if (dto.approved !== undefined) rule.approved = dto.approved;
+
+        await rule.save();
+
+        return {
+            _id: rule._id,
+            name: rule.name,
+            description: updatedCfg.description,
+            requiresPreApproval: updatedCfg.requiresPreApproval,
+            ignoreWeekends: updatedCfg.ignoreWeekends,
+            ignoreHolidays: updatedCfg.ignoreHolidays,
+            minShortMinutes: updatedCfg.minShortMinutes,
+            active: rule.active,
+            approved: rule.approved,
+        };
+    }
+
+    async approveShortTimeRule(id: string): Promise<any> {
+        const rule = await this.overtimeRuleModel.findById(id);
+        if (!rule) throw new NotFoundException('ShortTimeRule not found');
+        const cfg = this.tryDecodeShortTimeDescription(rule.description as any);
+        if (!cfg || cfg.kind !== 'SHORT_TIME') throw new NotFoundException('ShortTimeRule not found');
+        rule.approved = true;
+        await rule.save();
+        return {
+            _id: rule._id,
+            name: rule.name,
+            ...(this.tryDecodeShortTimeDescription(rule.description) || { rawDescription: rule.description }),
+            active: rule.active,
+            approved: rule.approved,
+        };
     }
 
     // --------------------------

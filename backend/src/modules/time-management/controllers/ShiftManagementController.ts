@@ -1,37 +1,29 @@
-import { AttendanceService } from "../services/AttendanceService";
-import {
-    BadRequestException,
-    Body,
-    Controller,
-    Delete,
-    Get,
-    Logger,
-    Param,
-    Patch,
-    Post,
-    Put,
-    Query
-} from "@nestjs/common";
-import {ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags} from "@nestjs/swagger";
-
-import {ShiftManagementService} from "../services/ShiftManagementService";
+import {Controller, Get, Post, Patch, Body, Param, Delete, Query} from '@nestjs/common';
+import {ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam} from '@nestjs/swagger';
 import {
     AssignShiftDto, BulkAssignShiftDto, CreateHolidayDto, CreateLatenessRuleDto, CreateOvertimeRuleDto,
-    CreateScheduleRuleDto, CreateShiftDto,
+    CreateScheduleRuleDto,
+    CreateShiftDto,
     CreateShiftTypeDto, RenewAssignmentDto, UpdateHolidayDto, UpdateLatenessRuleDto,
-    UpdateOvertimeRuleDto, UpdateScheduleRuleDto, UpdateShiftAssignmentStatusDto,
+    UpdateOvertimeRuleDto, UpdateScheduleRuleDto,
     UpdateShiftDto,
-    UpdateShiftTypeDto
+    UpdateShiftTypeDto,
+    UpdateShiftAssignmentStatusDto, CreateShortTimeRuleDto, UpdateShortTimeRuleDto
 } from "../dto/ShiftManagementDtos";
-
-
+import {ShiftManagementService} from "../services/ShiftManagementService";
+import { RepeatedLatenessService } from '../services/RepeatedLatenessService';
 
 @ApiTags('Shift Management')
 @Controller('shift-management')
 export class ShiftManagementController {
-    constructor(private readonly service: ShiftManagementService) {}
+    constructor(
+        private readonly service: ShiftManagementService,
+        private readonly repeatedLatenessService: RepeatedLatenessService,
+    ) {}
 
     // Shift Types
+
+
     @Post('shift-types')
     @ApiOperation({
         summary: 'Create Shift Type',
@@ -229,8 +221,10 @@ export class ShiftManagementController {
     }
 
     // Schedule Rules
+    // @UseGuards(AuthenticationGuard,AuthorizationGuard)
+    // @Roles(SystemRole.HR_MANAGER)
+    // @ApiBearerAuth('access-token')
     @Post('schedule-rules')
-
     @ApiOperation({
         summary: 'Create Schedule Rule',
         description: 'HR Manager/Admin creates a scheduling rule with a specific pattern (e.g., weekly, daily, or custom patterns)'
@@ -276,7 +270,6 @@ export class ShiftManagementController {
     }
 
     @Get('schedule-rules')
-
     @ApiOperation({
         summary: 'Get All Schedule Rules',
         description: 'Retrieve all schedule rules in the system'
@@ -295,14 +288,15 @@ export class ShiftManagementController {
     @ApiBody({ type: UpdateScheduleRuleDto })
     @ApiResponse({ status: 200, description: 'Schedule rule updated successfully' })
     @ApiResponse({ status: 404, description: 'Schedule rule not found' })
-
     updateScheduleRule(@Param('id') id: string, @Body() dto: UpdateScheduleRuleDto) {
         return this.service.updateScheduleRule(id, dto);
     }
 
-    // Shift Assignments
+    //Shift Assignments
+    // @UseGuards(AuthenticationGuard,AuthorizationGuard)
+    // @Roles(SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+    // @ApiBearerAuth('access-token')
     @Post('assignments')
-
     @ApiOperation({
         summary: 'Assign Shift (Individual, Department, or Position)',
         description: 'HR Manager/Admin assigns a shift to an employee, all employees in a department, or all employees in a position. At least one target (employeeId, departmentId, or positionId) must be provided.'
@@ -318,6 +312,7 @@ export class ShiftManagementController {
                     shiftId: '674c1a1b2c3d4e5f6a7b8d01',
                     startDate: '2025-12-01T00:00:00.000Z',
                     endDate: '2026-12-31T23:59:59.000Z',
+                    scheduleRuleId: '6932fd2227fcf7d270695536',
                     status: 'APPROVED'
                 }
             },
@@ -584,94 +579,93 @@ export class ShiftManagementController {
         return this.service.expireAssignment(id);
     }
 
-    // @Patch('assignments/:id/status')
-    // @ApiOperation({
-    //     summary: 'Update Shift Assignment Status',
-    //     description: 'HR Manager/Admin updates the status of a shift assignment. Status can be PENDING, APPROVED, CANCELLED, or EXPIRED.'
-    // })
-    // @ApiParam({
-    //     name: 'id',
-    //     description: 'Shift Assignment ID (MongoDB ObjectId)',
-    //     example: '674c1a1b2c3d4e5f6a7b8d10'
-    // })
-    // @ApiBody({
-    //     type: UpdateShiftAssignmentStatusDto,
-    //     description: 'Status update data',
-    //     examples: {
-    //         'Approve Assignment': {
-    //             summary: 'Approve a pending shift assignment',
-    //             value: {
-    //                 status: 'APPROVED',
-    //                 reason: 'Approved by HR Manager after verification',
-    //                 updatedBy: '674c1a1b2c3d4e5f6a7b8d03'
-    //             }
-    //         },
-    //         'Cancel Assignment': {
-    //             summary: 'Cancel a shift assignment',
-    //             value: {
-    //                 status: 'CANCELLED',
-    //                 reason: 'Employee requested shift change',
-    //                 updatedBy: '674c1a1b2c3d4e5f6a7b8d03'
-    //             }
-    //         },
-    //         'Mark as Expired': {
-    //             summary: 'Mark assignment as expired',
-    //             value: {
-    //                 status: 'EXPIRED',
-    //                 reason: 'Assignment period has ended'
-    //             }
-    //         },
-    //         'Set to Pending': {
-    //             summary: 'Set status back to pending for review',
-    //             value: {
-    //                 status: 'PENDING',
-    //                 reason: 'Requires additional approval'
-    //             }
-    //         }
-    //     }
-    // })
-    // @ApiResponse({
-    //     status: 200,
-    //     description: 'Shift assignment status updated successfully',
-    //     schema: {
-    //         example: {
-    //             message: 'Shift assignment status updated successfully',
-    //             assignmentId: '674c1a1b2c3d4e5f6a7b8d10',
-    //             oldStatus: 'PENDING',
-    //             newStatus: 'APPROVED',
-    //             updatedAt: '2025-12-01T10:30:00.000Z'
-    //         }
-    //     }
-    // })
-    // @ApiResponse({
-    //     status: 400,
-    //     description: 'Bad request - Invalid status value',
-    //     schema: {
-    //         example: {
-    //             statusCode: 400,
-    //             message: 'Invalid status. Must be one of: PENDING, APPROVED, CANCELLED, EXPIRED',
-    //             error: 'Bad Request'
-    //         }
-    //     }
-    // })
-    // @ApiResponse({
-    //     status: 404,
-    //     description: 'Shift assignment not found',
-    //     schema: {
-    //         example: {
-    //             statusCode: 404,
-    //             message: 'Shift assignment with ID 674c1a1b2c3d4e5f6a7b8d10 not found',
-    //             error: 'Not Found'
-    //         }
-    //     }
-    // })
-    // updateAssignmentStatus(
-    //     @Param('id') id: string,
-    //     @Body() dto: UpdateShiftAssignmentStatusDto
-    // ) {
-    //     return this.service.updateAssignmentStatus(id, dto);
-    // }
-
+    @Patch('assignments/:id/status')
+    @ApiOperation({
+        summary: 'Update Shift Assignment Status',
+        description: 'HR Manager/Admin updates the status of a shift assignment. Status can be PENDING, APPROVED, CANCELLED, or EXPIRED.'
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'Shift Assignment ID (MongoDB ObjectId)',
+        example: '674c1a1b2c3d4e5f6a7b8d10'
+    })
+    @ApiBody({
+        type: UpdateShiftAssignmentStatusDto,
+        description: 'Status update data',
+        examples: {
+            'Approve Assignment': {
+                summary: 'Approve a pending shift assignment',
+                value: {
+                    status: 'APPROVED',
+                    reason: 'Approved by HR Manager after verification',
+                    updatedBy: '674c1a1b2c3d4e5f6a7b8d03'
+                }
+            },
+            'Cancel Assignment': {
+                summary: 'Cancel a shift assignment',
+                value: {
+                    status: 'CANCELLED',
+                    reason: 'Employee requested shift change',
+                    updatedBy: '674c1a1b2c3d4e5f6a7b8d03'
+                }
+            },
+            'Mark as Expired': {
+                summary: 'Mark assignment as expired',
+                value: {
+                    status: 'EXPIRED',
+                    reason: 'Assignment period has ended'
+                }
+            },
+            'Set to Pending': {
+                summary: 'Set status back to pending for review',
+                value: {
+                    status: 'PENDING',
+                    reason: 'Requires additional approval'
+                }
+            }
+        }
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Shift assignment status updated successfully',
+        schema: {
+            example: {
+                message: 'Shift assignment status updated successfully',
+                assignmentId: '674c1a1b2c3d4e5f6a7b8d10',
+                oldStatus: 'PENDING',
+                newStatus: 'APPROVED',
+                updatedAt: '2025-12-01T10:30:00.000Z'
+            }
+        }
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Bad request - Invalid status value',
+        schema: {
+            example: {
+                statusCode: 400,
+                message: 'Invalid status. Must be one of: PENDING, APPROVED, CANCELLED, EXPIRED',
+                error: 'Bad Request'
+            }
+        }
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Shift assignment not found',
+        schema: {
+            example: {
+                statusCode: 404,
+                message: 'Shift assignment with ID 674c1a1b2c3d4e5f6a7b8d10 not found',
+                error: 'Not Found'
+            }
+        }
+    })
+    updateAssignmentStatus(
+        @Param('id') id: string,
+        @Body() dto: UpdateShiftAssignmentStatusDto
+    ) {
+        return this.service.updateAssignmentStatus(id, dto);
+    }
 
     // Holidays
     @Post('holidays')
@@ -695,39 +689,200 @@ export class ShiftManagementController {
     }
 
     // Lateness Rules
+    // @UseGuards(AuthenticationGuard,AuthorizationGuard)
+    // @Roles(SystemRole.HR_MANAGER)
+    // @ApiBearerAuth('access-token')
     @Post('lateness-rules')
+    @ApiOperation({ summary: 'Create Lateness Rule', description: 'HR Manager/Admin defines lateness policy (grace period and deductions)' })
+    @ApiBody({
+        type: CreateLatenessRuleDto,
+        examples: {
+            'Standard Lateness': {
+                summary: 'Standard policy with 15 minutes grace and 0.5 deduction per minute',
+                value: {
+                    name: 'Standard Lateness Policy',
+                    description: 'Late arrivals greater than grace period are marked and may have payroll deductions',
+                    gracePeriodMinutes: 15,
+                    deductionForEachMinute: 0.5,
+                    active: true
+                }
+            },
+            'Strict Lateness': {
+                summary: 'Strict policy with no grace and higher deduction',
+                value: {
+                    name: 'Strict Lateness Policy',
+                    description: 'No grace allowed; deduction applied for each minute late',
+                    gracePeriodMinutes: 0,
+                    deductionForEachMinute: 1.0,
+                    active: true
+                }
+            }
+        }
+    })
     createLatenessRule(@Body() dto: CreateLatenessRuleDto) {
         return this.service.createLatenessRule(dto);
     }
 
     @Get('lateness-rules')
+    @ApiOperation({ summary: 'Get Lateness Rules' })
+    @ApiResponse({ status: 200, description: 'List of lateness rules' })
     getLatenessRules() {
         return this.service.getLatenessRules();
     }
 
-    @Patch('lateness-rules/:id')
-    updateLatenessRule(@Param('id') id: string, @Body() dto: UpdateLatenessRuleDto) {
-        return this.service.updateLatenessRule(id, dto);
+    // Repeated lateness utilities
+    @Get('repeated-lateness/:employeeId/count')
+    @ApiOperation({ summary: 'Get repeated lateness count for an employee', description: 'Returns number of LATE exceptions within the configured window (or provided windowDays query param).' })
+    @ApiParam({ name: 'employeeId', description: 'Employee ID (ObjectId)' })
+    @ApiResponse({ status: 200, description: 'Count returned' })
+    getRepeatedLatenessCount(@Param('employeeId') employeeId: string, @Query('windowDays') windowDays?: number) {
+        return this.repeatedLatenessService.getLateCount(employeeId, windowDays ? Number(windowDays) : undefined);
+    }
+
+    @Post('repeated-lateness/:employeeId/evaluate')
+    @ApiOperation({ summary: 'Evaluate and escalate repeated lateness for an employee', description: 'Manually trigger repeated-lateness evaluation and escalation (creates escalation exception & notification when threshold met).' })
+    @ApiParam({ name: 'employeeId', description: 'Employee ID (ObjectId)' })
+    @ApiBody({
+        type: Object,
+        examples: {
+            'DefaultEvaluate': {
+                summary: 'Trigger evaluation with system defaults',
+                value: {}
+            },
+            'CustomWindowAndNotify': {
+                summary: 'Use a custom windowDays and notify a specific HR user',
+                value: { windowDays: 30, threshold: 3, notifyHrId: '674c1a1b2c3d4e5f6a7b8d03' }
+            }
+        }
+    })
+    evaluateRepeatedLateness(@Param('employeeId') employeeId: string, @Body() body?: { windowDays?: number; threshold?: number; notifyHrId?: string }) {
+        return this.repeatedLatenessService.evaluateAndEscalateIfNeeded(employeeId, {
+            windowDays: body?.windowDays,
+            threshold: body?.threshold,
+            notifyHrId: body?.notifyHrId,
+        });
     }
 
     // Overtime Rules
+    // @UseGuards(AuthenticationGuard,AuthorizationGuard)
+    // @Roles(SystemRole.HR_MANAGER)
+    // @ApiBearerAuth('access-token')
     @Post('overtime-rules')
+    @ApiOperation({ summary: 'Create Overtime Rule', description: 'HR Manager/Admin creates an overtime rule which may include weekend/holiday handling and approval requirements' })
+    @ApiBody({
+        type: CreateOvertimeRuleDto,
+        examples: {
+            'Standard Overtime': {
+                summary: 'Standard overtime policy with 1.5x rate and admin approval required for weekend/holiday',
+                value: {
+                    name: 'Standard Overtime Policy',
+                    description: 'Overtime paid at 1.5x after 8 hours/day. Weekend and holiday overtime require manager approval.',
+                    active: true,
+                    approved: false
+                }
+            },
+            'Holiday and Weekend OT': {
+                summary: 'A rule focusing on weekend and holiday overtime handling',
+                value: {
+                    name: 'Weekend/Holiday Overtime',
+                    description: 'Weekend and holiday overtime paid at 2x. Requires pre-approval for weekend work.',
+                    active: true,
+                    approved: false
+                }
+            },
+            'Disabled Rule Example': {
+                summary: 'Example of an inactive overtime rule',
+                value: {
+                    name: 'Legacy OT Rule',
+                    description: 'Legacy rule kept for reference',
+                    active: false,
+                    approved: true
+                }
+            }
+        }
+    })
     createOvertimeRule(@Body() dto: CreateOvertimeRuleDto) {
         return this.service.createOvertimeRule(dto);
     }
 
-    @Get('overtime-rules')
-    getOvertimeRules() {
-        return this.service.getOvertimeRules();
-    }
-
+    // @UseGuards(AuthenticationGuard,AuthorizationGuard)
+    // @Roles(SystemRole.HR_MANAGER)
+    // @ApiBearerAuth('access-token')
     @Patch('overtime-rules/:id')
     updateOvertimeRule(@Param('id') id: string, @Body() dto: UpdateOvertimeRuleDto) {
         return this.service.updateOvertimeRule(id, dto);
     }
 
+
     @Post('overtime-rules/:id/approve')
     approveOvertime(@Param('id') id: string) {
         return this.service.approveOvertimeRule(id);
+    }
+
+    // Short-time Rules
+    // @UseGuards(AuthenticationGuard,AuthorizationGuard)
+    // @Roles(SystemRole.HR_MANAGER)
+    // @ApiBearerAuth('access-token')
+    @Post('short-time-rules')
+    @ApiOperation({ summary: 'Create Short-time Rule', description: 'HR Manager/Admin creates a short-time rule (weekday/weekend/holiday handling and pre-approval settings)' })
+    @ApiBody({
+        type: CreateShortTimeRuleDto,
+        examples: {
+            'Standard Short Time': {
+                summary: 'Short time threshold 30 minutes, ignore holidays',
+                value: {
+                    name: 'Standard Short Time Policy',
+                    description: 'Detect short time when worked 30+ minutes less than scheduled; ignore holidays.',
+                    requiresPreApproval: false,
+                    ignoreWeekends: false,
+                    ignoreHolidays: true,
+                    minShortMinutes: 30,
+                    active: true,
+                    approved: false
+                }
+            },
+            'Strict Short Time': {
+                summary: 'Requires pre-approval and applies on weekends',
+                value: {
+                    name: 'Strict Short Time Policy',
+                    description: 'Short time flagged for any 15+ minutes difference; weekends included and require pre-approval.',
+                    requiresPreApproval: true,
+                    ignoreWeekends: false,
+                    ignoreHolidays: false,
+                    minShortMinutes: 15,
+                    active: true,
+                    approved: false
+                }
+            }
+        }
+    })
+
+    createShortTimeRule(@Body() dto: CreateShortTimeRuleDto) {
+        return this.service.createShortTimeRule(dto);
+    }
+
+    @Get('short-time-rules')
+    @ApiOperation({ summary: 'Get Short-time Rules' })
+    @ApiResponse({ status: 200, description: 'List of short-time rules' })
+    getShortTimeRules() {
+        return this.service.getShortTimeRules();
+    }
+
+    // @UseGuards(AuthenticationGuard,AuthorizationGuard)
+    // @Roles(SystemRole.HR_MANAGER)
+    // @ApiBearerAuth('access-token')
+    @Patch('short-time-rules/:id')
+    @ApiOperation({ summary: 'Update Short-time Rule' })
+    @ApiParam({ name: 'id', description: 'Short-time Rule ID' })
+    @ApiBody({ type: UpdateShortTimeRuleDto })
+    updateShortTimeRule(@Param('id') id: string, @Body() dto: UpdateShortTimeRuleDto) {
+        return this.service.updateShortTimeRule(id, dto);
+    }
+
+    @Post('short-time-rules/:id/approve')
+    @ApiOperation({ summary: 'Approve Short-time Rule' })
+    @ApiParam({ name: 'id', description: 'Short-time Rule ID' })
+    approveShortTime(@Param('id') id: string) {
+        return this.service.approveShortTimeRule(id);
     }
 }

@@ -146,9 +146,7 @@ export class NotificationService {
         }
     }
 
-    /**
-     * Find all HR/Admin users in the system
-     */
+
     private async findHRUsers(): Promise<any[]> {
         try {
             if (!this.connection.db) {
@@ -156,30 +154,69 @@ export class NotificationService {
                 return [];
             }
 
-            const hrRoles = await this.connection.db.collection('employeesystemroles').find({
-                roles: { $in: ['HR Manager', 'System Admin', 'HR Admin'] },
-                isActive: true
-            }).toArray();
+            const HR_ROLE = 'HR Admin';
 
-            if (!hrRoles || hrRoles.length === 0) {
-                return [];
+            // --- 1) Try: employees have roles embedded in employee_profiles (fast path) ---
+            // If your employee_profiles documents have a `roles` array, search there first.
+            const directQuery = await this.connection.db
+                .collection('employee_profiles')
+                .findOne({}); // probe one document to see if `roles` exists
+
+            if (directQuery && Object.prototype.hasOwnProperty.call(directQuery, 'roles')) {
+                const directHr = await this.connection.db
+                    .collection('employee_profiles')
+                    .find({
+                        roles: { $in: [HR_ROLE] },         // match role inside employee_profiles.roles
+                        // status: 'ACTIVE',                  // ensure active employees only
+                    })
+                    .project({ _id: 1, workEmail: 1, roles: 1, status: 1 })
+                    .toArray();
+
+                return directHr.map(e => ({
+                    employeeProfileId: e._id,
+                    roles: e.roles,
+                    workEmail: e.workEmail,
+                    isActive: e.status === 'ACTIVE',
+                }));
             }
 
-            const employeeIds = hrRoles.map((r: any) => r.employeeProfileId);
-            const employees = await this.connection.db.collection('employeeprofiles').find({
-                _id: { $in: employeeIds },
-                isActive: true
-            }).toArray();
+            // --- 2) Fallback: roles stored in employee_system_roles collection (existing setup) ---
+            const hrRoles = await this.connection.db
+                .collection('employee_system_roles')
+                .find({
+                    roles: { $in: [HR_ROLE] },
+                    isActive: true,
+                })
+                .toArray();
 
-            return hrRoles.map((role: any) => {
-                const emp: any = employees.find((e: any) => e._id.equals(role.employeeProfileId));
-                return {
-                    employeeProfileId: role.employeeProfileId,
-                    roles: role.roles,
-                    workEmail: emp?.workEmail,
-                    isActive: emp?.isActive
-                };
-            }).filter(u => u.isActive);
+            if (!hrRoles?.length) return [];
+
+            // Build list of employeeProfileIds (unique)
+            const employeeIds = Array.from(new Set(hrRoles.map((r: any) => String(r.employeeProfileId))))
+                .map(id => new Types.ObjectId(id));
+
+            // Fetch matching employee profiles
+            const employees = await this.connection.db
+                .collection('employee_profiles')
+                .find({ _id: { $in: employeeIds }, status: 'ACTIVE' })
+                .project({ _id: 1, workEmail: 1, status: 1 })
+                .toArray();
+
+            // Join and return only active employees
+            const results = hrRoles
+                .map((role: any) => {
+                    const emp = employees.find(e => String(e._id) === String(role.employeeProfileId));
+                    if (!emp) return null;
+                    return {
+                        employeeProfileId: role.employeeProfileId,
+                        roles: role.roles,
+                        workEmail: emp.workEmail,
+                        isActive: emp.status === 'ACTIVE',
+                    };
+                })
+                .filter(Boolean);
+
+            return results;
         } catch (error) {
             this.logger.error('Failed to find HR users', error);
             return [];
