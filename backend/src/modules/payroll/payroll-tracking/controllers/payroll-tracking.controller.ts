@@ -1,162 +1,341 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
-import { PayrollTrackingService } from '../services/payroll-tracking.service';
+
+
+// Note: In a real application, you would implement proper guards
+// @UseGuards(JwtAuthGuard, RolesGuard)
+
+import {Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put, Query} from "@nestjs/common";
+import {PayrollTrackingService} from "../services/payroll-tracking.service";
 import {
-  CreateClaimDto,
-  CreateDisputeDto,
-  DecideClaimDto,
-  DecideDisputeDto,
-  PayslipQueryDto,
-  TaxDocumentQueryDto,
-  UpdateRefundStatusDto,
-} from '../dto/payroll-tracking.dto';
-import { CurrentUser } from '../../../auth/decorators/Current-User';
-import { Public } from '../../../auth/decorators/Public-Decorator';
-import type { JwtPayload } from '../../../auth/token/JWT-Payload';
-import { ClaimStatus, DisputeStatus } from '../enums/payroll-tracking-enum';
+    CreateClaimDto,
+    CreateDisputeDto,
+    CreateRefundDto,
+    UpdateClaimDto,
+    UpdateDisputeDto,
+    UpdateRefundDto
+} from "../dtos";
 
-@Controller('payroll-tracking')
+@Controller('payroll/tracking')
 export class PayrollTrackingController {
-  constructor(private readonly trackingService: PayrollTrackingService) {}
+  constructor(private readonly payrollTrackingService: PayrollTrackingService) {}
 
-  // ===== Employee-facing: payslips =====
+  // ========== Employee Self-Service Endpoints ==========
 
-  @Public()
-  @Get('payslips/me')
-  getMyPayslips(@CurrentUser() user: JwtPayload | undefined, @Query('employeeId') employeeId?: string, @Query() query?: PayslipQueryDto) {
-    const empId = employeeId || user?.sub;
-    if (!empId) throw new Error('employeeId required (pass as query param for testing)');
-    return this.trackingService.getEmployeePayslips(empId, query || {});
+  @Get('employee/:employeeId/payslips')
+  async getEmployeePayslips(@Param('employeeId') employeeId: string) {
+    return this.payrollTrackingService.getEmployeePayslips(employeeId);
   }
 
-  @Public()
-  @Get('payslips/me/history')
-  getMySalaryHistory(@CurrentUser() user: JwtPayload | undefined, @Query('employeeId') employeeId?: string) {
-    const empId = employeeId || user?.sub;
-    if (!empId) throw new Error('employeeId required (pass as query param for testing)');
-    return this.trackingService.getEmployeeSalaryHistory(empId);
-  }
-
-  @Public()
-  @Get('payslips/:id')
-  getMyPayslipById(@CurrentUser() user: JwtPayload | undefined, @Param('id') id: string, @Query('employeeId') employeeId?: string) {
-    const empId = employeeId || user?.sub;
-    if (!empId) throw new Error('employeeId required (pass as query param for testing)');
-    return this.trackingService.getEmployeePayslipById(empId, id);
-  }
-
-  @Public()
-  @Get('tax-documents/me')
-  getMyTaxDocuments(@CurrentUser() user: JwtPayload | undefined, @Query('employeeId') employeeId?: string, @Query() query?: TaxDocumentQueryDto) {
-    const empId = employeeId || user?.sub;
-    if (!empId) throw new Error('employeeId required (pass as query param for testing)');
-    return this.trackingService.getEmployeeTaxDocuments(empId, query || {});
-  }
-
-  // ===== Employee-facing: disputes =====
-
-  @Public()
-  @Post('disputes')
-  createDispute(@CurrentUser() user: JwtPayload | undefined, @Body() body: CreateDisputeDto & { employeeId?: string }) {
-    const empId = body.employeeId || user?.sub;
-    if (!empId) throw new Error('employeeId required (pass in body for testing)');
-    const { employeeId: _, ...dto } = body;
-    return this.trackingService.createDispute(empId, dto);
-  }
-
-  @Public()
-  @Get('disputes/me')
-  getMyDisputes(@CurrentUser() user: JwtPayload | undefined, @Query('employeeId') employeeId?: string) {
-    const empId = employeeId || user?.sub;
-    if (!empId) throw new Error('employeeId required (pass as query param for testing)');
-    return this.trackingService.getEmployeeDisputes(empId);
-  }
-
-  @Public()
-  @Get('disputes/me/:id')
-  getMyDisputeById(@CurrentUser() user: JwtPayload | undefined, @Param('id') id: string, @Query('employeeId') employeeId?: string) {
-    const empId = employeeId || user?.sub;
-    if (!empId) throw new Error('employeeId required (pass as query param for testing)');
-    return this.trackingService.getEmployeeDisputeById(empId, id);
-  }
-
-  // ===== Employee-facing: claims =====
-
-  @Public()
-  @Post('claims')
-  createClaim(@CurrentUser() user: JwtPayload | undefined, @Body() body: CreateClaimDto & { employeeId?: string }) {
-    const empId = body.employeeId || user?.sub;
-    if (!empId) throw new Error('employeeId required (pass in body for testing)');
-    const { employeeId: _, ...dto } = body;
-    return this.trackingService.createClaim(empId, dto);
-  }
-
-  @Public()
-  @Get('claims/me')
-  getMyClaims(@CurrentUser() user: JwtPayload | undefined, @Query('employeeId') employeeId?: string) {
-    const empId = employeeId || user?.sub;
-    if (!empId) throw new Error('employeeId required (pass as query param for testing)');
-    return this.trackingService.getEmployeeClaims(empId);
-  }
-
-  @Public()
-  @Get('claims/me/:id')
-  getMyClaimById(@CurrentUser() user: JwtPayload | undefined, @Param('id') id: string, @Query('employeeId') employeeId?: string) {
-    const empId = employeeId || user?.sub;
-    if (!empId) throw new Error('employeeId required (pass as query param for testing)');
-    return this.trackingService.getEmployeeClaimById(empId, id);
-  }
-
-  @Public()
-  @Get('refunds/me')
-  getMyRefunds(@CurrentUser() user: JwtPayload | undefined, @Query('employeeId') employeeId?: string) {
-    const empId = employeeId || user?.sub;
-    if (!empId) throw new Error('employeeId required (pass as query param for testing)');
-    return this.trackingService.getEmployeeRefunds(empId);
-  }
-
-  // ===== Staff-facing: disputes & claims workflow =====
-
-  @Public()
-  @Get('admin/disputes')
-  listDisputes(@Query('status') status?: DisputeStatus) {
-    return this.trackingService.listDisputesByStatus(status);
-  }
-
-  @Public()
-  @Patch('admin/disputes/:id/decision')
-  decideDispute(
-    @CurrentUser() user: JwtPayload | undefined,
-    @Param('id') id: string,
-    @Body() body: DecideDisputeDto & { financeStaffId?: string },
+  @Get('payslip/:payslipId/employee/:employeeId')
+  async getPayslipDetails(
+    @Param('payslipId') payslipId: string,
+    @Param('employeeId') employeeId: string
   ) {
-    const financeId = body.financeStaffId || user?.sub;
-    if (!financeId) throw new Error('financeStaffId required (pass in body for testing)');
-    const { financeStaffId: _, ...dto } = body;
-    return this.trackingService.decideDispute(id, financeId, dto);
+    return this.payrollTrackingService.getPayslipDetails(payslipId, employeeId);
   }
 
-  @Public()
-  @Get('admin/claims')
-  listClaims(@Query('status') status?: ClaimStatus) {
-    return this.trackingService.listClaimsByStatus(status);
+  @Get('employee/:employeeId/base-salary')
+  async getBaseSalary(@Param('employeeId') employeeId: string) {
+    return this.payrollTrackingService.getBaseSalary(employeeId);
   }
 
-  @Public()
-  @Patch('admin/claims/:id/decision')
-  decideClaim(
-    @CurrentUser() user: JwtPayload | undefined,
-    @Param('id') id: string,
-    @Body() body: DecideClaimDto & { financeStaffId?: string },
+  @Get('employee/:employeeId/leave-compensation')
+  async getLeaveCompensation(@Param('employeeId') employeeId: string) {
+    return this.payrollTrackingService.getLeaveCompensation(employeeId);
+  }
+
+  @Get('employee/:employeeId/transportation')
+  async getTransportationCompensation(@Param('employeeId') employeeId: string) {
+    return this.payrollTrackingService.getTransportationCompensation(employeeId);
+  }
+
+  @Get('employee/:employeeId/tax-deductions')
+  async getTaxDeductions(
+    @Param('employeeId') employeeId: string,
+    @Query('payslipId') payslipId?: string
   ) {
-    const financeId = body.financeStaffId || user?.sub;
-    if (!financeId) throw new Error('financeStaffId required (pass in body for testing)');
-    const { financeStaffId: _, ...dto } = body;
-    return this.trackingService.decideClaim(id, financeId, dto);
+    return this.payrollTrackingService.getTaxDeductions(employeeId, payslipId);
   }
 
-  @Public()
-  @Patch('admin/refunds/:id/status')
-  updateRefundStatus(@Param('id') id: string, @Body() dto: UpdateRefundStatusDto) {
-    return this.trackingService.updateRefundStatus(id, dto);
+  @Get('employee/:employeeId/insurance-deductions')
+  async getInsuranceDeductions(
+    @Param('employeeId') employeeId: string,
+    @Query('payslipId') payslipId?: string
+  ) {
+    return this.payrollTrackingService.getInsuranceDeductions(employeeId, payslipId);
+  }
+
+  @Get('employee/:employeeId/misconduct-deductions')
+  async getMisconductDeductions(
+    @Param('employeeId') employeeId: string,
+    @Query('payslipId') payslipId?: string
+  ) {
+    return this.payrollTrackingService.getMisconductDeductions(employeeId, payslipId);
+  }
+
+  @Get('employee/:employeeId/unpaid-leave-deductions')
+  async getUnpaidLeaveDeductions(
+    @Param('employeeId') employeeId: string,
+    @Query('payslipId') payslipId?: string
+  ) {
+    return this.payrollTrackingService.getUnpaidLeaveDeductions(employeeId, payslipId);
+  }
+
+  @Get('employee/:employeeId/salary-history')
+  async getSalaryHistory(@Param('employeeId') employeeId: string) {
+    return this.payrollTrackingService.getSalaryHistory(employeeId);
+  }
+
+  @Get('employee/:employeeId/employer-contributions')
+  async getEmployerContributions(
+    @Param('employeeId') employeeId: string,
+    @Query('payslipId') payslipId?: string
+  ) {
+    return this.payrollTrackingService.getEmployerContributions(employeeId, payslipId);
+  }
+
+  @Get('employee/:employeeId/tax-documents')
+  async getTaxDocuments(
+    @Param('employeeId') employeeId: string,
+    @Query('year') year?: number
+  ) {
+    return this.payrollTrackingService.getTaxDocuments(employeeId, year);
+  }
+
+  @Post('employee/:employeeId/disputes')
+  @HttpCode(HttpStatus.CREATED)
+  async createDispute(
+    @Param('employeeId') employeeId: string,
+    @Body() createDisputeDto: CreateDisputeDto
+  ) {
+    return this.payrollTrackingService.createDispute(employeeId, createDisputeDto);
+  }
+
+  @Post('employee/:employeeId/claims')
+  @HttpCode(HttpStatus.CREATED)
+  async createClaim(
+    @Param('employeeId') employeeId: string,
+    @Body() createClaimDto: CreateClaimDto
+  ) {
+    return this.payrollTrackingService.createClaim(employeeId, createClaimDto);
+  }
+
+  @Get('employee/:employeeId/track-requests')
+  async trackClaimsAndDisputes(@Param('employeeId') employeeId: string) {
+    return this.payrollTrackingService.trackClaimsAndDisputes(employeeId);
+  }
+
+  // ========== Operational Reports Endpoints ==========
+
+  @Get('reports/department-payroll')
+  async generateDepartmentPayrollReport(
+    @Query('departmentId') departmentId?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string
+  ) {
+    const start = startDate ? new Date(startDate) : undefined;
+    const end = endDate ? new Date(endDate) : undefined;
+    return this.payrollTrackingService.generateDepartmentPayrollReport(departmentId, start, end);
+  }
+
+  @Get('reports/payroll-summary')
+  async generatePayrollSummary(
+    @Query('type') type: 'monthly' | 'yearly',
+    @Query('period') period?: string
+  ) {
+    return this.payrollTrackingService.generatePayrollSummary(type, period);
+  }
+
+  @Get('reports/compliance')
+  async generateComplianceReport(
+    @Query('type') type: string,
+    @Query('year') year?: number
+  ) {
+    return this.payrollTrackingService.generateComplianceReport(type, year);
+  }
+
+  // ========== Disputes and Claims Approval Endpoints ==========
+
+  @Put('disputes/:disputeId/review')
+  async reviewDispute(
+    @Param('disputeId') disputeId: string,
+    @Query('specialistId') specialistId: string,
+    @Query('action') action: 'approve' | 'reject',
+    @Body() body: { reason?: string }
+  ) {
+    return this.payrollTrackingService.reviewDispute(disputeId, specialistId, action, body.reason);
+  }
+
+  @Put('disputes/:disputeId/confirm')
+  async confirmDisputeApproval(
+    @Param('disputeId') disputeId: string,
+    @Query('managerId') managerId: string,
+    @Query('action') action: 'confirm' | 'reject',
+    @Body() body: { reason?: string }
+  ) {
+    return this.payrollTrackingService.confirmDisputeApproval(disputeId, managerId, action, body.reason);
+  }
+
+  @Get('disputes/approved')
+  async getApprovedDisputes(@Query('financeStaffId') financeStaffId?: string) {
+    return this.payrollTrackingService.getApprovedDisputes(financeStaffId);
+  }
+
+  @Put('claims/:claimId/review')
+  async reviewClaim(
+    @Param('claimId') claimId: string,
+    @Query('specialistId') specialistId: string,
+    @Query('action') action: 'approve' | 'reject',
+    @Body() body: { approvedAmount?: number; reason?: string }
+  ) {
+    return this.payrollTrackingService.reviewClaim(
+      claimId, 
+      specialistId, 
+      action, 
+      body.approvedAmount, 
+      body.reason
+    );
+  }
+
+  @Put('claims/:claimId/confirm')
+  async confirmClaimApproval(
+    @Param('claimId') claimId: string,
+    @Query('managerId') managerId: string,
+    @Query('action') action: 'confirm' | 'reject',
+    @Body() body: { reason?: string }
+  ) {
+    return this.payrollTrackingService.confirmClaimApproval(claimId, managerId, action, body.reason);
+  }
+
+  @Get('claims/approved')
+  async getApprovedClaims(@Query('financeStaffId') financeStaffId?: string) {
+    return this.payrollTrackingService.getApprovedClaims(financeStaffId);
+  }
+
+  // ========== Refund Process Endpoints ==========
+
+  @Post('refunds/dispute/:disputeId')
+  @HttpCode(HttpStatus.CREATED)
+  async generateDisputeRefund(
+    @Param('disputeId') disputeId: string,
+    @Query('financeStaffId') financeStaffId: string,
+    @Body() createRefundDto: CreateRefundDto
+  ) {
+    return this.payrollTrackingService.generateDisputeRefund(
+      disputeId,
+      financeStaffId,
+      createRefundDto.amount,
+      createRefundDto.description
+    );
+  }
+
+  @Post('refunds/claim/:claimId')
+  @HttpCode(HttpStatus.CREATED)
+  async generateClaimRefund(
+    @Param('claimId') claimId: string,
+    @Query('financeStaffId') financeStaffId: string,
+    @Body() createRefundDto: CreateRefundDto
+  ) {
+    return this.payrollTrackingService.generateClaimRefund(
+      claimId,
+      financeStaffId,
+      createRefundDto.amount,
+      createRefundDto.description
+    );
+  }
+
+  @Get('refunds/pending')
+  async getPendingRefunds() {
+    return this.payrollTrackingService.getPendingRefunds();
+  }
+
+  @Put('refunds/:refundId/mark-paid')
+  async markRefundAsPaid(
+    @Param('refundId') refundId: string,
+    @Body() body: { payrollRunId: string }
+  ) {
+    return this.payrollTrackingService.markRefundAsPaid(refundId, body.payrollRunId);
+  }
+
+  // ========== CRUD Endpoints for Claims, Disputes, Refunds ==========
+
+  @Get('claims')
+  async getAllClaims(
+    @Query('status') status?: string,
+    @Query('employeeId') employeeId?: string
+  ) {
+    return this.payrollTrackingService.getAllClaims(status, employeeId);
+  }
+
+  @Get('claims/:id')
+  async getClaimById(@Param('id') id: string) {
+    return this.payrollTrackingService.getClaimById(id);
+  }
+
+  @Put('claims/:id')
+  async updateClaim(
+    @Param('id') id: string,
+    @Body() updateClaimDto: UpdateClaimDto
+  ) {
+    return this.payrollTrackingService.updateClaimById(id, updateClaimDto);
+  }
+
+  @Delete('claims/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteClaim(@Param('id') id: string) {
+    await this.payrollTrackingService.deleteClaimById(id);
+  }
+
+  @Get('disputes')
+  async getAllDisputes(
+    @Query('status') status?: string,
+    @Query('employeeId') employeeId?: string
+  ) {
+    return this.payrollTrackingService.getAllDisputes(status, employeeId);
+  }
+
+  @Get('disputes/:id')
+  async getDisputeById(@Param('id') id: string) {
+    return this.payrollTrackingService.getDisputeById(id);
+  }
+
+  @Put('disputes/:id')
+  async updateDispute(
+    @Param('id') id: string,
+    @Body() updateDisputeDto: UpdateDisputeDto
+  ) {
+    return this.payrollTrackingService.updateDisputeById(id, updateDisputeDto);
+  }
+
+  @Delete('disputes/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteDispute(@Param('id') id: string) {
+    await this.payrollTrackingService.deleteDisputeById(id);
+  }
+
+  @Get('refunds')
+  async getAllRefunds(
+    @Query('status') status?: string,
+    @Query('employeeId') employeeId?: string
+  ) {
+    return this.payrollTrackingService.getAllRefunds(status, employeeId);
+  }
+
+  @Get('refunds/:id')
+  async getRefundById(@Param('id') id: string) {
+    return this.payrollTrackingService.getRefundById(id);
+  }
+
+  @Put('refunds/:id')
+  async updateRefund(
+    @Param('id') id: string,
+    @Body() updateRefundDto: UpdateRefundDto
+  ) {
+    return this.payrollTrackingService.updateRefundById(id, updateRefundDto);
+  }
+
+  @Delete('refunds/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteRefund(@Param('id') id: string) {
+    await this.payrollTrackingService.deleteRefundById(id);
   }
 }
