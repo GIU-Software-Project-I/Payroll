@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory, } from '@nestjs/mongoose';
 import mongoose, { HydratedDocument } from 'mongoose';
 // import schemas from employee subsystem
-import {  EmployeeProfile as Employee} from '../../../employee/models/Employee/employee-profile.schema';
+import { EmployeeProfile as Employee } from '../../../employee/models/Employee/employee-profile.schema';
 // import enums
 import { DisputeStatus } from '../enums/payroll-tracking-enum';
 
