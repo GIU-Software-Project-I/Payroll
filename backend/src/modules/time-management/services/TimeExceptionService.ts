@@ -164,7 +164,68 @@ export class TimeExceptionService {
             const att = await this.attendanceModel.findById(exDoc.attendanceRecordId);
             if (!att) return;
 
-            // Mark exception resolved in document list: leave id in array for audit but ensure payroll flag may be reset
+            // If this was a SHORT_TIME exception, and the attendance now meets scheduled minutes, delete the exception document
+            if (exDoc.type === TimeExceptionType.SHORT_TIME) {
+                try {
+                    // Determine attendance day
+                    const recDate = (att.punches && att.punches.length) ? new Date(att.punches[0].time) : (att as any)._id?.getTimestamp?.() || new Date();
+                    const dayStart = new Date(recDate); dayStart.setHours(0,0,0,0);
+                    const dayEnd = new Date(recDate); dayEnd.setHours(23,59,59,999);
+
+                    // Find assignment for the day
+                    const assignment = await this.attendanceModel.db.model('ShiftAssignment').findOne({
+                        employeeId: att.employeeId,
+                        status: { $in: ['PENDING', 'APPROVED'] },
+                        startDate: { $lte: dayEnd },
+                        $or: [{ endDate: { $exists: false } }, { endDate: { $gte: dayStart } }],
+                    }).lean();
+
+                    if (assignment) {
+                        // load shift
+                        const ShiftModel = this.attendanceModel.db.model('Shift') as any;
+                        const shift = await ShiftModel.findById((assignment as any).shiftId).lean() as any;
+                        if (shift) {
+                            const [sh, sm] = (shift.startTime || '00:00').split(':').map(Number);
+                            const [eh, em] = (shift.endTime || '00:00').split(':').map(Number);
+
+                            const scheduledStart = new Date(recDate); scheduledStart.setHours(sh, sm, 0, 0);
+                            const scheduledEnd = new Date(recDate); scheduledEnd.setHours(eh, em, 0, 0);
+                            if (scheduledEnd.getTime() <= scheduledStart.getTime()) scheduledEnd.setDate(scheduledEnd.getDate() + 1);
+
+                            const overlapStart = new Date(Math.max(scheduledStart.getTime(), dayStart.getTime()));
+                            const overlapEnd = new Date(Math.min(scheduledEnd.getTime(), dayEnd.getTime()));
+
+                            const scheduledMinutes = (overlapEnd.getTime() > overlapStart.getTime()) ? Math.ceil((overlapEnd.getTime() - overlapStart.getTime()) / 60000) : 0;
+
+                            // If attendance totalWorkMinutes >= scheduledMinutes, delete the SHORT_TIME exception doc
+                            if ((att as any).totalWorkMinutes >= scheduledMinutes) {
+                                try {
+                                    await this.exceptionModel.deleteOne({ _id: exDoc._id });
+                                } catch (e) {
+                                    this.logger.warn('Failed to delete SHORT_TIME exception after resolution check', e);
+                                }
+
+                                // Remove from attendance.exceptionIds
+                                try {
+                                    att.exceptionIds = (att.exceptionIds || []).filter(id => String(id) !== String(exDoc._id));
+                                    // If no other open exceptions, allow finalisation
+                                    const otherOpen = await this.exceptionModel.findOne({ attendanceRecordId: att._id, status: { $ne: TimeExceptionStatus.RESOLVED } });
+                                    if (!otherOpen) att.finalisedForPayroll = true;
+                                    await att.save();
+                                } catch (e) {
+                                    this.logger.warn('Failed to remove SHORT_TIME id reference from attendance after deleting exception', e);
+                                }
+
+                                return; // we're done
+                            }
+                        }
+                    }
+                } catch (e) {
+                    this.logger.warn('SHORT_TIME post-resolve removal check failed', e);
+                }
+            }
+
+            // Default behavior: leave id in array for audit but ensure payroll flag may be reset
             // Recompute finalisedForPayroll: check if other open exceptions remain for this att
             const otherOpen = await this.exceptionModel.findOne({
                 attendanceRecordId: att._id,

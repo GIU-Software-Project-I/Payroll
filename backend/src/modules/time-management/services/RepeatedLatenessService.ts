@@ -5,6 +5,7 @@ import { Model, Types } from 'mongoose';
 import { TimeException, TimeExceptionDocument } from '../models/time-exception.schema';
 import { TimeExceptionType, TimeExceptionStatus } from '../models/enums';
 import { NotificationLog } from '../models/notification-log.schema';
+import { AttendanceRecord, AttendanceRecordDocument } from '../models/attendance-record.schema';
 
 @Injectable()
 export class RepeatedLatenessService {
@@ -12,6 +13,7 @@ export class RepeatedLatenessService {
 
     constructor(
         @InjectModel(TimeException.name) private readonly exceptionModel: Model<TimeExceptionDocument>,
+        @InjectModel(AttendanceRecord.name) private readonly attendanceModel: Model<AttendanceRecordDocument>,
         @InjectModel(NotificationLog.name) private readonly notificationModel: Model<NotificationLog>,
     ) {}
 
@@ -33,13 +35,14 @@ export class RepeatedLatenessService {
 
         const matchEmployee = typeof employeeId === 'string' ? new Types.ObjectId(employeeId) : employeeId;
 
-        // Count LATE exceptions (status not RESOLVED) within window
-        const lateCount = await this.exceptionModel.countDocuments({
+        // Find LATE exceptions (status not RESOLVED) within window so we can later attach summary to their attendance records
+        const lateExceptions = await this.exceptionModel.find({
             employeeId: matchEmployee,
             type: TimeExceptionType.LATE,
             createdAt: { $gte: start, $lte: end },
             status: { $ne: TimeExceptionStatus.RESOLVED },
-        });
+        }).lean();
+        const lateCount = lateExceptions.length;
 
         this.logger.debug(`Employee ${matchEmployee} has ${lateCount} late exceptions in last ${windowDays} days`);
 
@@ -78,6 +81,26 @@ export class RepeatedLatenessService {
                 status: TimeExceptionStatus.ESCALATED,
                 reason: `REPEATED_LATENESS_ESCALATION: ${lateCount} lateness events in ${windowDays} days`,
             } as any);
+            // Attach the summary exception id to any attendance records referenced by the escalated late exceptions
+            try {
+                const attendanceIds = Array.from(new Set(lateExceptions.map(e => (e.attendanceRecordId || null)).filter(Boolean).map(String)));
+                for (const attId of attendanceIds) {
+                    try {
+                        const att = await this.attendanceModel.findById(attId as any);
+                        if (att) {
+                            att.exceptionIds = att.exceptionIds || [];
+                            const exists = att.exceptionIds.some(id => id?.toString?.() === (summary as any)._id.toString());
+                            if (!exists) att.exceptionIds.push((summary as any)._id as any);
+                            att.finalisedForPayroll = false;
+                            await att.save();
+                        }
+                    } catch (inner) {
+                        this.logger.warn(`Failed to attach summary exception to attendance ${attId}`, inner);
+                    }
+                }
+            } catch (attachErr) {
+                this.logger.warn('Failed to attach summary exception to attendance records', attachErr);
+            }
             // Notify HR / manager via NotificationLog (recipient passed in opts or env)
             const hrId = opts?.notifyHrId
                 ? (typeof opts.notifyHrId === 'string' ? new Types.ObjectId(opts.notifyHrId) : opts.notifyHrId)
@@ -100,15 +123,12 @@ export class RepeatedLatenessService {
     /**
      * Helper to get count for an employee (for UI or reporting)
      */
-    async getLateCount(employeeId: Types.ObjectId | string, windowDays?: number) {
-        const end = new Date();
-        const start = new Date();
-        start.setDate(end.getDate() - (windowDays ?? Number(process.env.LATENESS_THRESHOLD_WINDOW_DAYS ?? 90)));
+    async getLateCount(employeeId: Types.ObjectId | string) {
+        // Count all LATE exceptions for the employee (no time window)
         const matchEmployee = typeof employeeId === 'string' ? new Types.ObjectId(employeeId) : employeeId;
         const count = await this.exceptionModel.countDocuments({
             employeeId: matchEmployee,
             type: TimeExceptionType.LATE,
-            createdAt: { $gte: start, $lte: end },
             status: { $ne: TimeExceptionStatus.RESOLVED },
         });
         return count;

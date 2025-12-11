@@ -14,7 +14,7 @@ export class AttendanceCorrectionController {
         private readonly correctionService: AttendanceCorrectionService,
     ) {}
 
-    // employee submits incorrect-punch correction only
+    // Employee submits incorrect-punch correction only
     @Post('request')
     @ApiOperation({ summary: 'Create an INCORRECT_PUNCH attendance correction request' })
     @ApiBody({ schema: { $ref: getSchemaPath(RequestCorrectionDto) }, examples: {
@@ -87,7 +87,7 @@ export class AttendanceCorrectionController {
         return this.correctionService.reviewCorrection(dto);
     }
 
-    // employee sees all his requests
+    // Employee sees all his requests
     @Get(':employeeId')
     @ApiOperation({ summary: "Get all correction requests for an employee" })
     @ApiResponse({ status: 200, description: 'List of correction requests' })
