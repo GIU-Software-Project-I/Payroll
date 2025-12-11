@@ -1,0 +1,59 @@
+Recruitment Process	Requirement Name	User Stories Needed (IDs/titles)	User Stories Needed (IDs/titles)	Inputs Needed from Other Sub‑Systems	Downstream Sub‑Systems Depending on This Output	Key BRs (IDs)	Key BRs
+
+
+Recruitment Process	Job Design & Posting	REC-003	"As an HR Manager, I want to define standardized job description templates, so that postings are consistent.
+
+
+Each job requisition must include Job details (title, department, location, openings) and Qualifications and skills needed."	Organizational Structure (OS) (Jobs/Positions)	Recruitment (Job Posting)	BR 2	Each job requisition must include Job details (title, department, location, openings) and Qualifications and skills needed.
+
+
+Recruitment Process	Job Design & Posting	REC-004	"As an HR Manager, I want to be able to establish hiring processes templates so that the system can automatically update progress percentage.
+ Each application must be tracked through defined stages (e.g., Screening, Shortlisting, Interview, Offer, Hired)."	None (System Configuration)	Recruitment (Candidate Tracking)	BR 9	Each application must be tracked through defined stages (e.g., Screening, Shortlisting, Interview, Offer, Hired).
+
+
+Recruitment Process	Job Design & Posting	REC-023	As a HR Employee, I want to preview and publish jobs on the company careers page with employer-brand content, so openings look professional.	None	External Careers Page	BR 6	The system must allow automatic posting of approved requisitions to internal and external career sites.
+
+
+Recruitment Process	Candidate App. & Comm.	REC-007	As a Candidate, I want to upload my CV and apply for positions, so that I can be considered for opportunities.	Candidate CVs/Documents	Recruitment (Talent Pool)	BR 12	The system must support the storage/upload of applications with resumes, which creates the organization's talent pool.
+
+
+Recruitment Process	Candidate App. & Comm.	REC-017	As a Candidate, I want to receive updates about my application status, so that I know where I stand.	Recruitment (Candidate Status Tracking)	Candidate Self-Service Portal	BR 27, BR 36	Candidate Status Tracking must be easily visualized and up-to-date in real-time. The system must send automated alerts/emails to candidates regarding status updates.
+
+
+
+Recruitment Process	Candidate App. & Comm.	REC-022	As a HR Employee, I want automated rejection notifications and templates, so candidates are informed respectfully and consistently.	Recruitment (Rejection Reason/Template)	External Communication (Candidate Email)	BR 36, BR 37	The system must support email templates for communication (e.g., rejection). Communication logs must be stored in the applicant profile.
+
+
+
+Recruitment Process	Candidate Tracking & Eval.	REC-008	As a HR Employee, I want to track candidates through each stage of the hiring process, so that I can manage progress.	Hiring Process Template (REC-004)	Recruitment (Status Tracking)	BR 9, BR 11	Applications must be tracked through defined stages. Recruiters and hiring managers must be notified of status changes via alerts or workflow emails.
+
+
+Recruitment Process	Candidate Tracking & Eval.	REC-010	As a HR Employee, I want to schedule and manage interview invitations, so that candidates are engaged efficiently.	Time Management (TM), Email/Calendar systems	Notifications (N)	BR 19(a, c, d)	Recruiters must be able to schedule interviews by selecting time slots, panel members, and modes. Interviewers must receive automatic calendar invites, and candidates must be notified automatically.
+
+
+Recruitment Process	Candidate Tracking & Eval.	REC-011	"As an HR Employee, I want to be able to provide feedback/interview score for scheduled interviews for filtration.
+ Recruiters must be able to schedule interviews by selecting time slots, panel members, and modes. Interviewers must receive automatic calendar invites, and candidates must be notified automatically."	Interview panel feedback/scores	Recruitment (Applicant Scoring)	BR 10, BR 22	The system must allow adding comments and ratings at each stage. Feedback at each stage must be submitted by the panel/interviewers to ensure accuracy.
+
+
+Recruitment Process	Candidate Tracking & Eval.	REC-020	As an HR Employee, I want structured assessment and scoring forms per role, so evaluations are consistent and auditable.	Evaluation Criteria (REC-015)	Recruitment (Applicant Scoring)	BR 21, BR 23	Criteria used in interview assessment are pre-set and agreed upon. The system needs to allow/house the multiple assessment tools to be used.
+
+
+Recruitment Process	Candidate Tracking & Eval.	REC-021	As a HR Employee, I want to coordinate interview panels (members, availability, scoring), so scheduling and feedback collection are centralized.	Calendar/Time Management (Availability)	Recruitment (Interview Scheduling/Feedback)	BR 19(a, b), BR 20	Interview scheduling requires selecting panel members. Panels need to possess the knowledge and/or training to conduct the needed interviews/selection tests.
+
+
+Recruitment Process	Candidate Tracking & Eval.	REC-030	As a HR Employee, I want to be able to tag candidates as referrals in order to give them a higher chance of having an earlier interview. 	Candidate data, Referral source info	Recruitment 	BR 14, BR 25	Electronic screening includes rule-based filters. Tie-Breaking Rules should be predetermined and could be based on Internal candidate preference.
+
+
+Recruitment Process	Recruitment Analytics	REC-009	As an HR Manager, I want to monitor recruitment progress across all open positions, so that I stay informed.	Recruitment data (REC-008)	Recruitment 	BR 33	Multiple reports could be generated like time-to-hire and source effectiveness.
+
+
+Recruitment Process	Compliance & B. Checks	REC-028	As a Candidate, I want to give consent for personal-data processing and background checks, so the system remains compliant with privacy laws.	None (Candidate input)	Recruitment 	BR 28, NFR-33	Storing the talent pool needs to be authorized by applicants in the early stages of the recruitment process. All data handling must comply with GDPR and labor laws.
+
+
+Recruitment Process	Offers & Hiring Decisions	REC-014	As an HR Manager, I want to manage job offers and approvals, so that candidates can be hired smoothly.	Financial Approval (REC-027)	Onboarding	BR 26(b, c)	The system must support securing related parties’ approval before sending out the offer. Once candidate acceptance is received, the next module (Onboarding) should be triggered.
+
+
+Recruitment Process	Offers & Hiring Decisions	REC-018	As a HR Employee/HR Manager, I want to generate, send and collect electronically signed offer letters, so candidates can accept offers quickly and legally.	Offer template, Candidate signature data	Onboarding	BR 26(a, d), BR 37	The system supports issuing an offer letter which needs to be customizable and editable (e.g., include compensation/benefits). Communication logs must be stored.
+
+
+Recruitment Process	Offers & Hiring Decisions	REC-029	As a HR Employee, I want to trigger pre-boarding tasks (contract signing, forms) after offer acceptance and before the start date, so new hire readiness is improved.	Offer Acceptance Status	Onboarding Module (Task Checklist)	BR 26(c)	Once a candidate’s acceptance is received, the next module (Onboarding) should be triggered.

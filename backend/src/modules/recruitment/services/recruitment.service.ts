@@ -38,10 +38,11 @@ export class RecruitmentService {
         @InjectModel(Contract.name) private contractModel: Model<ContractDocument>,
     ) {}
 
-    // ============================================================
-    // REC-003: Job Template Management
-    // Define standardized job description templates
-    // ============================================================
+    private validateObjectId(id: string, fieldName: string): void {
+        if (!Types.ObjectId.isValid(id)) {
+            throw new BadRequestException(`Invalid ${fieldName} format: ${id}`);
+        }
+    }
 
     async createJobTemplate(dto: CreateJobTemplateDto): Promise<JobTemplate> {
         const template = new this.jobTemplateModel(dto);
@@ -53,6 +54,8 @@ export class RecruitmentService {
     }
 
     async getJobTemplateById(id: string): Promise<JobTemplate> {
+        this.validateObjectId(id, 'id');
+
         const template = await this.jobTemplateModel.findById(id).exec();
         if (!template) {
             throw new NotFoundException(`Job template with ID ${id} not found`);
@@ -61,6 +64,8 @@ export class RecruitmentService {
     }
 
     async updateJobTemplate(id: string, dto: UpdateJobTemplateDto): Promise<JobTemplate> {
+        this.validateObjectId(id, 'id');
+
         const template = await this.jobTemplateModel.findByIdAndUpdate(id, dto, { new: true }).exec();
         if (!template) {
             throw new NotFoundException(`Job template with ID ${id} not found`);
@@ -69,6 +74,8 @@ export class RecruitmentService {
     }
 
     async deleteJobTemplate(id: string): Promise<{ deleted: boolean }> {
+        this.validateObjectId(id, 'id');
+
         const result = await this.jobTemplateModel.findByIdAndDelete(id).exec();
         if (!result) {
             throw new NotFoundException(`Job template with ID ${id} not found`);
@@ -76,13 +83,12 @@ export class RecruitmentService {
         return { deleted: true };
     }
 
-    // ============================================================
-    // REC-004 & REC-023: Job Requisition Management
-    // Create job openings and publish to careers page
-    // ============================================================
-
     async createJobRequisition(dto: CreateJobRequisitionDto): Promise<JobRequisition> {
-        // Generate unique requisition ID
+        this.validateObjectId(dto.hiringManagerId, 'hiringManagerId');
+        if (dto.templateId) {
+            this.validateObjectId(dto.templateId, 'templateId');
+        }
+
         const count = await this.jobRequisitionModel.countDocuments();
         const requisitionId = `REQ-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
 
@@ -99,14 +105,14 @@ export class RecruitmentService {
         return requisition.save();
     }
 
-    async getAllJobRequisitions(filters?: { status?: string; managerId?: string }): Promise<JobRequisition[]> {
+    async getAllJobRequisitions(
+        filters?: { status?: string; managerId?: string }
+    ): Promise<JobRequisition[]> {
         const query: any = {};
         if (filters?.status) query.publishStatus = filters.status;
         if (filters?.managerId) query.hiringManagerId = new Types.ObjectId(filters.managerId);
 
-        return this.jobRequisitionModel
-            .find(query)
-            .exec();
+        return this.jobRequisitionModel.find(query).exec();
     }
 
     async getJobRequisitionById(id: string): Promise<JobRequisition> {
@@ -121,9 +127,7 @@ export class RecruitmentService {
     }
 
     async getPublishedJobs(): Promise<JobRequisition[]> {
-        return this.jobRequisitionModel
-            .find({ publishStatus: 'published' })
-            .exec();
+        return this.jobRequisitionModel.find({ publishStatus: 'published' }).exec();
     }
 
     async publishJobRequisition(id: string, dto: PublishJobRequisitionDto): Promise<JobRequisition> {
@@ -168,13 +172,9 @@ export class RecruitmentService {
         return this.publishJobRequisition(id, { publishStatus: 'closed' });
     }
 
-    // ============================================================
-    // REC-007 & REC-028: Application Management
-    // Candidate uploads CV and applies for positions with GDPR consent
-    // ============================================================
-
     async createApplication(dto: CreateApplicationDto): Promise<Application> {
-        // Check if requisition exists and is published
+        this.validateObjectId(dto.candidateId, 'candidateId');
+
         const requisition = await this.jobRequisitionModel.findOne({ requisitionId: dto.requisitionId }).exec();
         if (!requisition) {
             throw new NotFoundException(`Job requisition with ID ${dto.requisitionId} not found`);
@@ -183,77 +183,73 @@ export class RecruitmentService {
             throw new BadRequestException('Cannot apply to unpublished job requisition');
         }
 
-        // Check for duplicate application
+        if (requisition.expiryDate && new Date(requisition.expiryDate) < new Date()) {
+            throw new BadRequestException('Cannot apply to expired job requisition');
+        }
+
         const existingApp = await this.applicationModel.findOne({
             candidateId: new Types.ObjectId(dto.candidateId),
-            requisitionId: requisition._id, // Use the ObjectId from the found requisition
+            requisitionId: requisition._id,
         }).exec();
 
         if (existingApp) {
             throw new ConflictException('Candidate has already applied for this position');
         }
 
-        // Validate GDPR consent
         if (!dto.dataProcessingConsent) {
             throw new BadRequestException('Data processing consent is required to submit application');
         }
 
         const application = new this.applicationModel({
             candidateId: new Types.ObjectId(dto.candidateId),
-            requisitionId: requisition._id, // Use the ObjectId from the found requisition
+            requisitionId: requisition._id,
             currentStage: ApplicationStage.SCREENING,
             status: ApplicationStatus.SUBMITTED,
         });
 
         const savedApp = await application.save();
 
-        // Log initial status history
         await this.logStatusChange(savedApp._id.toString(), {
             stage: ApplicationStage.SCREENING,
             status: ApplicationStatus.SUBMITTED,
             notes: 'Application submitted',
-            changedBy: dto.candidateId || '507f1f77bcf86cd799439000', // Use candidate ID or system user
+            changedBy: dto.candidateId || '507f1f77bcf86cd799439000',
         });
 
         return savedApp;
     }
 
-    async getAllApplications(filters?: {
-        requisitionId?: string;
-        status?: ApplicationStatus;
-        stage?: ApplicationStage;
-        hrId?: string;
-    }): Promise<Application[]> {
+    async getAllApplications(
+        filters?: {
+            requisitionId?: string;
+            status?: ApplicationStatus;
+            stage?: ApplicationStage;
+            hrId?: string;
+        }
+    ): Promise<Application[]> {
         const query: any = {};
-        
-        // Handle requisitionId filter - convert string requisitionId to ObjectId
+
         if (filters?.requisitionId) {
             const requisition = await this.jobRequisitionModel
                 .findOne({ requisitionId: filters.requisitionId })
                 .exec();
             if (!requisition) {
-                // If no requisition found, check if there are any applications without this filter
-                // This helps debug if the issue is with the requisition lookup or no applications exist
-                return []; 
+                return [];
             }
             query.requisitionId = requisition._id;
         }
-        
+
         if (filters?.status) query.status = filters.status;
         if (filters?.stage) query.currentStage = filters.stage;
         if (filters?.hrId) {
-            // Validate ObjectId format before converting
             if (Types.ObjectId.isValid(filters.hrId)) {
                 query.assignedHr = new Types.ObjectId(filters.hrId);
             } else {
-                // If not a valid ObjectId, return empty array
                 return [];
             }
         }
 
-        return this.applicationModel
-            .find(query)
-            .exec();
+        return this.applicationModel.find(query).exec();
     }
 
     async getApplicationById(id: string): Promise<Application> {
@@ -268,12 +264,17 @@ export class RecruitmentService {
     }
 
     async getApplicationsByCandidate(candidateId: string): Promise<Application[]> {
+        this.validateObjectId(candidateId, 'candidateId');
+
         return this.applicationModel
             .find({ candidateId: new Types.ObjectId(candidateId) })
             .exec();
     }
 
     async assignHrToApplication(applicationId: string, dto: AssignHrDto): Promise<Application> {
+        this.validateObjectId(applicationId, 'applicationId');
+        this.validateObjectId(dto.hrEmployeeId, 'hrEmployeeId');
+
         const application = await this.applicationModel.findByIdAndUpdate(
             applicationId,
             { assignedHr: new Types.ObjectId(dto.hrEmployeeId) },
@@ -286,15 +287,16 @@ export class RecruitmentService {
         return application;
     }
 
-    // ============================================================
-    // REC-008: Candidate Tracking through Stages
-    // Track candidates through each stage of the hiring process
-    // ============================================================
-
     async updateApplicationStage(id: string, dto: UpdateApplicationStageDto): Promise<Application> {
+        this.validateObjectId(id, 'id');
+
         const application = await this.applicationModel.findById(id).exec();
         if (!application) {
             throw new NotFoundException(`Application with ID ${id} not found`);
+        }
+
+        if (application.status === ApplicationStatus.REJECTED) {
+            throw new BadRequestException('Cannot update stage for a rejected application');
         }
 
         const oldStage = application.currentStage;
@@ -307,7 +309,6 @@ export class RecruitmentService {
 
         const updated = await application.save();
 
-        // Log stage change
         await this.logStatusChange(id, {
             stage: dto.stage,
             status: application.status,
@@ -321,9 +322,15 @@ export class RecruitmentService {
     }
 
     async updateApplicationStatus(id: string, dto: UpdateApplicationStatusDto): Promise<Application> {
+        this.validateObjectId(id, 'id');
+
         const application = await this.applicationModel.findById(id).exec();
         if (!application) {
             throw new NotFoundException(`Application with ID ${id} not found`);
+        }
+
+        if (application.status === ApplicationStatus.HIRED && dto.status !== ApplicationStatus.HIRED) {
+            throw new BadRequestException('Cannot change status of a hired application');
         }
 
         const oldStage = application.currentStage;
@@ -332,7 +339,6 @@ export class RecruitmentService {
         application.status = dto.status;
         const updated = await application.save();
 
-        // Log status change
         await this.logStatusChange(id, {
             stage: application.currentStage,
             status: dto.status,
@@ -345,6 +351,21 @@ export class RecruitmentService {
     }
 
     async rejectApplication(id: string, reason?: string): Promise<Application> {
+        this.validateObjectId(id, 'id');
+
+        const application = await this.applicationModel.findById(id).exec();
+        if (!application) {
+            throw new NotFoundException(`Application with ID ${id} not found`);
+        }
+
+        if (application.status === ApplicationStatus.HIRED) {
+            throw new BadRequestException('Cannot reject an application that has already been hired');
+        }
+
+        if (application.status === ApplicationStatus.REJECTED) {
+            throw new BadRequestException('Application is already rejected');
+        }
+
         return this.updateApplicationStatus(id, {
             status: ApplicationStatus.REJECTED,
             reason: reason || 'Application rejected',
@@ -352,12 +373,10 @@ export class RecruitmentService {
     }
 
     async getApplicationHistory(applicationId: string): Promise<ApplicationStatusHistory[]> {
-        // Validate ObjectId format
         if (!Types.ObjectId.isValid(applicationId)) {
             throw new BadRequestException(`Invalid application ID format: ${applicationId}`);
         }
 
-        // Check if application exists
         const application = await this.applicationModel.findById(applicationId).exec();
         if (!application) {
             throw new NotFoundException(`Application with ID ${applicationId} not found`);
@@ -387,11 +406,6 @@ export class RecruitmentService {
         });
         await history.save();
     }
-
-    // ============================================================
-    // REC-009: Recruitment Progress Monitoring & Analytics
-    // Monitor recruitment progress across all open positions
-    // ============================================================
 
     async getRecruitmentDashboard(): Promise<any> {
         const [
@@ -461,13 +475,10 @@ export class RecruitmentService {
         };
     }
 
-    // ============================================================
-    // REC-030: Referral Management
-    // Tag candidates as referrals for preferential filtering
-    // ============================================================
-
     async createReferral(dto: CreateReferralDto): Promise<Referral> {
-        // Check for existing referral
+        this.validateObjectId(dto.candidateId, 'candidateId');
+        this.validateObjectId(dto.referringEmployeeId, 'referringEmployeeId');
+
         const existing = await this.referralModel.findOne({
             candidateId: new Types.ObjectId(dto.candidateId),
         }).exec();
@@ -487,34 +498,53 @@ export class RecruitmentService {
     }
 
     async getReferralByCandidate(candidateId: string): Promise<Referral | null> {
+        this.validateObjectId(candidateId, 'candidateId');
+
         return this.referralModel
             .findOne({ candidateId: new Types.ObjectId(candidateId) })
             .exec();
     }
 
     async getAllReferrals(): Promise<Referral[]> {
-        return this.referralModel
-            .find()
-            .exec();
+        return this.referralModel.find().exec();
     }
 
     async isReferral(candidateId: string): Promise<boolean> {
+        this.validateObjectId(candidateId, 'candidateId');
+
         const referral = await this.referralModel.findOne({
             candidateId: new Types.ObjectId(candidateId),
         }).exec();
         return !!referral;
     }
 
-    // ============================================================
-    // REC-010 & REC-021: Interview Management
-    // Schedule interviews, manage panels, and coordinate availability
-    // ============================================================
-
     async scheduleInterview(dto: ScheduleInterviewDto): Promise<Interview> {
-        // Validate application exists
+        this.validateObjectId(dto.applicationId, 'applicationId');
+        dto.panel.forEach((id, index) => this.validateObjectId(id, `panel[${index}]`));
+
         const application = await this.applicationModel.findById(dto.applicationId).exec();
         if (!application) {
             throw new NotFoundException(`Application with ID ${dto.applicationId} not found`);
+        }
+
+        const invalidStatuses = [ApplicationStatus.REJECTED, ApplicationStatus.HIRED];
+        if (invalidStatuses.includes(application.status)) {
+            throw new BadRequestException(`Cannot schedule interview for application with status: ${application.status}`);
+        }
+
+        const scheduledDate = new Date(dto.scheduledDate);
+        if (scheduledDate <= new Date()) {
+            throw new BadRequestException('Interview date must be in the future');
+        }
+
+        const existingInterview = await this.interviewModel.findOne({
+            applicationId: new Types.ObjectId(dto.applicationId),
+            stage: dto.stage,
+            status: { $ne: InterviewStatus.CANCELLED },
+        }).exec();
+
+        if (existingInterview) {
+            throw new ConflictException(`An interview for stage ${dto.stage} already exists for this application`);
         }
 
         const interview = new this.interviewModel({
@@ -529,7 +559,6 @@ export class RecruitmentService {
 
         const saved = await interview.save();
 
-        // Update application stage
         await this.updateApplicationStage(dto.applicationId, {
             stage: dto.stage,
             notes: `Interview scheduled for ${dto.scheduledDate}`,
@@ -542,6 +571,8 @@ export class RecruitmentService {
     }
 
     async getInterviewById(id: string): Promise<Interview> {
+        this.validateObjectId(id, 'id');
+
         const interview = await this.interviewModel
             .findById(id)
             .exec();
@@ -553,6 +584,8 @@ export class RecruitmentService {
     }
 
     async getInterviewsByApplication(applicationId: string): Promise<Interview[]> {
+        this.validateObjectId(applicationId, 'applicationId');
+
         return this.interviewModel
             .find({ applicationId: new Types.ObjectId(applicationId) })
             .sort({ scheduledDate: 1 })
@@ -560,6 +593,8 @@ export class RecruitmentService {
     }
 
     async getInterviewsByPanelist(panelistId: string): Promise<Interview[]> {
+        this.validateObjectId(panelistId, 'panelistId');
+
         return this.interviewModel
             .find({ panel: new Types.ObjectId(panelistId) })
             .sort({ scheduledDate: 1 })
@@ -581,6 +616,20 @@ export class RecruitmentService {
     }
 
     async updateInterview(id: string, dto: UpdateInterviewDto): Promise<Interview> {
+        this.validateObjectId(id, 'id');
+
+        const existingInterview = await this.interviewModel.findById(id).exec();
+        if (!existingInterview) {
+            throw new NotFoundException(`Interview with ID ${id} not found`);
+        }
+
+        if (existingInterview.status === InterviewStatus.COMPLETED) {
+            throw new BadRequestException('Cannot update a completed interview');
+        }
+        if (existingInterview.status === InterviewStatus.CANCELLED) {
+            throw new BadRequestException('Cannot update a cancelled interview');
+        }
+
         const updateData: any = { ...dto };
         if (dto.scheduledDate) updateData.scheduledDate = new Date(dto.scheduledDate);
         if (dto.panel) updateData.panel = dto.panel.map(p => new Types.ObjectId(p));
@@ -590,41 +639,67 @@ export class RecruitmentService {
         if (!interview) {
             throw new NotFoundException(`Interview with ID ${id} not found`);
         }
+
         return interview;
     }
 
     async completeInterview(id: string): Promise<Interview> {
-        return this.updateInterview(id, { status: InterviewStatus.COMPLETED });
-    }
+        this.validateObjectId(id, 'id');
 
-    async cancelInterview(id: string, reason: string): Promise<Interview> {
-        const interview = await this.interviewModel.findByIdAndUpdate(
-            id,
-            { status: InterviewStatus.CANCELLED },
-            { new: true },
-        ).exec();
-
+        const interview = await this.interviewModel.findById(id).exec();
         if (!interview) {
             throw new NotFoundException(`Interview with ID ${id} not found`);
         }
 
-        // TODO: Send cancellation notifications
+        if (interview.status !== InterviewStatus.SCHEDULED) {
+            throw new BadRequestException(`Cannot complete interview with status: ${interview.status}. Only SCHEDULED interviews can be completed.`);
+        }
 
-        return interview;
+        interview.status = InterviewStatus.COMPLETED;
+        return interview.save();
     }
 
-    // ============================================================
-    // REC-011 & REC-020: Feedback & Assessment Management
-    // Structured assessment forms and feedback scoring
-    // ============================================================
+    async cancelInterview(id: string, reason: string): Promise<Interview> {
+        this.validateObjectId(id, 'id');
+
+        const interview = await this.interviewModel.findById(id).exec();
+        if (!interview) {
+            throw new NotFoundException(`Interview with ID ${id} not found`);
+        }
+
+        if (interview.status !== InterviewStatus.SCHEDULED) {
+            throw new BadRequestException(`Cannot cancel interview with status: ${interview.status}. Only SCHEDULED interviews can be cancelled.`);
+        }
+
+        interview.status = InterviewStatus.CANCELLED;
+        // TODO: add cancellationReason field to schema if needed
+        return interview.save();
+    }
 
     async submitFeedback(dto: SubmitFeedbackDto): Promise<AssessmentResult> {
+        this.validateObjectId(dto.interviewId, 'interviewId');
+        this.validateObjectId(dto.interviewerId, 'interviewerId');
+
+        if (dto.score === undefined || dto.score === null || dto.score < 1 || dto.score > 10 || !Number.isFinite(dto.score)) {
+            throw new BadRequestException('Score must be a number between 1 and 10');
+        }
+
         const interview = await this.interviewModel.findById(dto.interviewId).exec();
         if (!interview) {
             throw new NotFoundException(`Interview with ID ${dto.interviewId} not found`);
         }
 
-        // Check if feedback already exists for this interviewer
+        if (interview.status === InterviewStatus.CANCELLED) {
+            throw new BadRequestException('Cannot submit feedback for a cancelled interview');
+        }
+
+        const isInPanel = interview.panel.some(
+            panelId => panelId.toString() === dto.interviewerId
+        );
+        if (!isInPanel) {
+            throw new BadRequestException('Only panel members can submit feedback for this interview');
+        }
+
         const existingFeedback = await this.assessmentModel.findOne({
             interviewId: dto.interviewId,
             interviewerId: dto.interviewerId,
@@ -643,37 +718,38 @@ export class RecruitmentService {
 
         const saved = await assessment.save();
 
-        // Link feedback to interview
         await this.interviewModel.findByIdAndUpdate(dto.interviewId, {
             feedbackId: saved._id,
         });
 
         return saved;
-
-        return saved;
     }
 
     async getFeedbackByInterview(interviewId: string): Promise<AssessmentResult[]> {
+        this.validateObjectId(interviewId, 'interviewId');
+
         return this.assessmentModel
             .find({ interviewId: new Types.ObjectId(interviewId) })
             .exec();
     }
 
     async getFeedbackByApplication(applicationId: string): Promise<AssessmentResult[]> {
-        // Get all interviews for this application
-        const interviews = await this.interviewModel.find({ applicationId });
+        this.validateObjectId(applicationId, 'applicationId');
+
+        const interviews = await this.interviewModel.find({ applicationId: new Types.ObjectId(applicationId) });
         const interviewIds = interviews.map(i => i._id);
-        
+
         return this.assessmentModel
             .find({ interviewId: { $in: interviewIds } })
             .exec();
     }
 
     async getAverageScore(applicationId: string): Promise<number> {
-        // Get all interviews for this application
-        const interviews = await this.interviewModel.find({ applicationId });
+        this.validateObjectId(applicationId, 'applicationId');
+
+        const interviews = await this.interviewModel.find({ applicationId: new Types.ObjectId(applicationId) });
         const interviewIds = interviews.map(i => i._id);
-        
+
         const feedbacks = await this.assessmentModel.find({
             interviewId: { $in: interviewIds },
         }).exec();
@@ -684,19 +760,24 @@ export class RecruitmentService {
         return Math.round((total / feedbacks.length) * 10) / 10;
     }
 
-    // ============================================================
-    // REC-014 & REC-018: Offer Management
-    // Create, approve, and send job offers with e-signatures
-    // ============================================================
-
     async createOffer(dto: CreateOfferDto): Promise<Offer> {
-        // Validate application
+        this.validateObjectId(dto.applicationId, 'applicationId');
+        this.validateObjectId(dto.candidateId, 'candidateId');
+        if (dto.hrEmployeeId) {
+            this.validateObjectId(dto.hrEmployeeId, 'hrEmployeeId');
+        }
+        dto.approvers.forEach((a, index) => this.validateObjectId(a.employeeId, `approvers[${index}].employeeId`));
+
+        const deadline = new Date(dto.deadline);
+        if (deadline <= new Date()) {
+            throw new BadRequestException('Offer deadline must be in the future');
+        }
+
         const application = await this.applicationModel.findById(dto.applicationId).exec();
         if (!application) {
             throw new NotFoundException(`Application with ID ${dto.applicationId} not found`);
         }
 
-        // Check for existing pending offer
         const existingOffer = await this.offerModel.findOne({
             applicationId: new Types.ObjectId(dto.applicationId),
             finalStatus: { $in: [OfferFinalStatus.PENDING, OfferFinalStatus.APPROVED] },
@@ -731,7 +812,6 @@ export class RecruitmentService {
 
         const saved = await offer.save();
 
-        // Update application stage
         await this.updateApplicationStage(dto.applicationId, {
             stage: ApplicationStage.OFFER,
             notes: 'Offer created, pending approvals',
@@ -741,6 +821,8 @@ export class RecruitmentService {
     }
 
     async getOfferById(id: string): Promise<Offer> {
+        this.validateObjectId(id, 'id');
+
         const offer = await this.offerModel
             .findById(id)
             .exec();
@@ -752,6 +834,8 @@ export class RecruitmentService {
     }
 
     async getOfferByApplication(applicationId: string): Promise<Offer | null> {
+        this.validateObjectId(applicationId, 'applicationId');
+
         return this.offerModel
             .findOne({ applicationId: new Types.ObjectId(applicationId) })
             .sort({ createdAt: -1 })
@@ -759,18 +843,22 @@ export class RecruitmentService {
     }
 
     async getPendingOffers(): Promise<Offer[]> {
-        return this.offerModel
-            .find({ finalStatus: OfferFinalStatus.PENDING })
-            .exec();
+        return this.offerModel.find({ finalStatus: OfferFinalStatus.PENDING }).exec();
     }
 
     async approveOffer(offerId: string, dto: ApproveOfferDto): Promise<Offer> {
+        this.validateObjectId(offerId, 'offerId');
+        this.validateObjectId(dto.approverId, 'approverId');
+
         const offer = await this.offerModel.findById(offerId).exec();
         if (!offer) {
             throw new NotFoundException(`Offer with ID ${offerId} not found`);
         }
 
-        // Find and update approver status
+        if (offer.finalStatus === OfferFinalStatus.REJECTED) {
+            throw new BadRequestException('Cannot approve a rejected offer');
+        }
+
         const approverIndex = offer.approvers.findIndex(
             a => a.employeeId.toString() === dto.approverId,
         );
@@ -779,11 +867,14 @@ export class RecruitmentService {
             throw new BadRequestException('You are not an approver for this offer');
         }
 
+        if (offer.approvers[approverIndex].status !== ApprovalStatus.PENDING) {
+            throw new BadRequestException('You have already submitted your approval decision');
+        }
+
         offer.approvers[approverIndex].status = dto.status;
         offer.approvers[approverIndex].actionDate = new Date();
         offer.approvers[approverIndex].comment = dto.comment;
 
-        // Check if all approvers have approved
         const allApproved = offer.approvers.every(
             a => a.status === ApprovalStatus.APPROVED,
         );
@@ -802,6 +893,8 @@ export class RecruitmentService {
     }
 
     async recordCandidateResponse(offerId: string, dto: CandidateOfferResponseDto): Promise<Offer> {
+        this.validateObjectId(offerId, 'offerId');
+
         const offer = await this.offerModel.findById(offerId).exec();
         if (!offer) {
             throw new NotFoundException(`Offer with ID ${offerId} not found`);
@@ -811,17 +904,23 @@ export class RecruitmentService {
             throw new BadRequestException('Offer has not been approved yet');
         }
 
+        if (offer.applicantResponse !== OfferResponseStatus.PENDING) {
+            throw new BadRequestException('Candidate has already responded to this offer');
+        }
+
+        if (offer.deadline && new Date(offer.deadline) < new Date()) {
+            throw new BadRequestException('Offer deadline has passed');
+        }
+
         offer.applicantResponse = dto.response;
 
         if (dto.response === OfferResponseStatus.ACCEPTED) {
             offer.candidateSignedAt = new Date();
 
-            // Update application status to HIRED
             await this.applicationModel.findByIdAndUpdate(offer.applicationId, {
                 status: ApplicationStatus.HIRED,
             });
 
-            // Create contract (REC-029 trigger)
             await this.createContractFromOffer(offer);
         }
 
@@ -829,6 +928,11 @@ export class RecruitmentService {
     }
 
     private async createContractFromOffer(offer: OfferDocument): Promise<Contract> {
+        const existingContract = await this.contractModel.findOne({ offerId: offer._id }).exec();
+        if (existingContract) {
+            throw new ConflictException('Contract already exists for this offer');
+        }
+
         const contract = new this.contractModel({
             offerId: offer._id,
             acceptanceDate: new Date(),
@@ -840,11 +944,6 @@ export class RecruitmentService {
 
         return contract.save();
     }
-
-    // ============================================================
-    // REC-029: Pre-boarding Trigger
-    // Trigger pre-boarding tasks after offer acceptance
-    // ============================================================
 
     async triggerPreboarding(applicationId: string): Promise<{ triggered: boolean; message: string }> {
         const application = await this.applicationModel.findById(applicationId).exec();
@@ -864,11 +963,6 @@ export class RecruitmentService {
             message: 'Pre-boarding tasks triggered successfully. Onboarding module will be initialized.',
         };
     }
-
-    // ============================================================
-    // REC-018: Electronic Offer Letter Sending
-    // Send offer letters electronically to candidates
-    // ============================================================
 
     async sendOfferLetter(offerId: string): Promise<{ sent: boolean; message: string }> {
         const offer = await this.offerModel
@@ -892,11 +986,6 @@ export class RecruitmentService {
         };
     }
 
-    // ============================================================
-    // REC-017: Status Update Notifications
-    // Send status updates to candidates
-    // ============================================================
-
     async sendStatusUpdateNotification(dto: SendNotificationDto): Promise<{ sent: boolean; message: string }> {
         const application = await this.applicationModel
             .findById(dto.applicationId)
@@ -915,11 +1004,6 @@ export class RecruitmentService {
         };
     }
 
-    // ============================================================
-    // REC-022: Automated Rejection Notifications
-    // Send rejection notifications with templates
-    // ============================================================
-
     async sendRejectionNotification(dto: SendRejectionDto): Promise<{ sent: boolean; message: string }> {
         const application = await this.applicationModel
             .findById(dto.applicationId)
@@ -929,7 +1013,6 @@ export class RecruitmentService {
             throw new NotFoundException(`Application with ID ${dto.applicationId} not found`);
         }
 
-        // Update application status to rejected
         await this.updateApplicationStatus(dto.applicationId, {
             status: ApplicationStatus.REJECTED,
             reason: dto.rejectionReason || 'Application not selected',
@@ -943,11 +1026,6 @@ export class RecruitmentService {
             message: 'Rejection notification sent successfully.',
         };
     }
-
-    // ============================================================
-    // REC-022: Email Template Management
-    // Manage email templates for notifications
-    // ============================================================
 
     async getEmailTemplates(): Promise<any[]> {
         // TODO: Implement email template management
@@ -978,3 +1056,4 @@ export class RecruitmentService {
         ];
     }
 }
+

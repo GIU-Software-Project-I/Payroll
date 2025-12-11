@@ -21,37 +21,41 @@ export class OnboardingService {
         @InjectModel(Document.name) private documentModel: Model<DocumentDocument>,
     ) {}
 
-    // ============================================================
-    // ONB-001: Create Onboarding Task Checklists
-    // ============================================================
+    private validateObjectId(id: string, fieldName: string): void {
+        if (!Types.ObjectId.isValid(id)) {
+            throw new BadRequestException(`Invalid ${fieldName} format: ${id}`);
+        }
+    }
 
-    /**
-     * ONB-001: As an HR Manager, I want to create onboarding task checklists,
-     * so that new hires complete all required steps.
-     *
-     * BR 8, 11: Customizable checklists, department-specific tasks
-     * Triggered by offer acceptance
-     */
     async createOnboarding(dto: CreateOnboardingDto): Promise<Onboarding> {
-        // TODO: Validate employee exists in employee Profile module
+        this.validateObjectId(dto.employeeId, 'employeeId');
+        this.validateObjectId(dto.contractId, 'contractId');
 
-        // Validate contract exists
         const contract = await this.contractModel.findById(dto.contractId).exec();
         if (!contract) {
             throw new NotFoundException(`Contract with ID ${dto.contractId} not found`);
         }
 
-        // Check for existing onboarding
-        const existing = await this.onboardingModel
+        if (!contract.employeeSignedAt || !contract.employerSignedAt) {
+            throw new BadRequestException('Contract must be fully signed (by both employee and employer) before creating onboarding');
+        }
+
+        const existingByEmployee = await this.onboardingModel
             .findOne({ employeeId: new Types.ObjectId(dto.employeeId) })
             .exec();
 
-        if (existing) {
+        if (existingByEmployee) {
             throw new ConflictException('Onboarding checklist already exists for this employee');
         }
 
-        // BR 8, 11: Customizable checklists - tasks must be provided or use a template
-        // TODO: Load default tasks from onboarding template configuration based on department/role
+        const existingByContract = await this.onboardingModel
+            .findOne({ contractId: new Types.ObjectId(dto.contractId) })
+            .exec();
+
+        if (existingByContract) {
+            throw new ConflictException('Onboarding checklist already exists for this contract');
+        }
+
         if (!dto.tasks || dto.tasks.length === 0) {
             throw new BadRequestException(
                 'Onboarding tasks must be provided. Alternatively, load from template configuration (TODO: implement template system)'
@@ -77,17 +81,6 @@ export class OnboardingService {
         return onboarding.save();
     }
 
-    // ============================================================
-    // ONB-002: Access Signed Contract Details
-    // ============================================================
-
-    /**
-     * ONB-002: As an HR Manager, I want to be able to access signed contract
-     * detail to be able create an employee profile.
-     *
-     * BR 17(a, b): Uses signed contract data from Recruitment
-     * Outputs to employee Profile (EP)
-     */
     async getContractDetails(contractId: string): Promise<Contract> {
         const contract = await this.contractModel
             .findById(contractId)
@@ -99,7 +92,6 @@ export class OnboardingService {
             throw new NotFoundException(`Contract with ID ${contractId} not found`);
         }
 
-        // Verify contract is signed
         if (!contract.employeeSignedAt || !contract.employerSignedAt) {
             throw new BadRequestException('Contract must be fully signed before creating employee profile');
         }
@@ -110,16 +102,6 @@ export class OnboardingService {
         return contract;
     }
 
-    // ============================================================
-    // ONB-004: View Onboarding Steps (Tracker)
-    // ============================================================
-
-    /**
-     * ONB-004: As a New Hire, I want to view my onboarding steps in a tracker,
-     * so that I know what to complete next.
-     *
-     * BR 11(a, b): Onboarding workflow with department-specific tasks
-     */
     async getOnboardingByEmployeeId(employeeId: string): Promise<Onboarding> {
         const onboarding = await this.onboardingModel
             .findOne({ employeeId: new Types.ObjectId(employeeId) })
@@ -134,9 +116,6 @@ export class OnboardingService {
         return onboarding;
     }
 
-    /**
-     * Get all onboarding records (for HR Manager)
-     */
     async getAllOnboardings(): Promise<Onboarding[]> {
         return this.onboardingModel
             .find()
@@ -145,9 +124,6 @@ export class OnboardingService {
             .exec();
     }
 
-    /**
-     * Get onboarding by ID
-     */
     async getOnboardingById(id: string): Promise<Onboarding> {
         const onboarding = await this.onboardingModel
             .findById(id)
@@ -162,22 +138,21 @@ export class OnboardingService {
         return onboarding;
     }
 
-    // ============================================================
-    // ONB-004: Update Task Status
-    // ============================================================
-
-    /**
-     * Update individual task status in onboarding checklist
-     */
     async updateTaskStatus(
         onboardingId: string,
         taskName: string,
         dto: UpdateTaskStatusDto,
     ): Promise<Onboarding> {
+        this.validateObjectId(onboardingId, 'onboardingId');
+
         const onboarding = await this.onboardingModel.findById(onboardingId).exec();
 
         if (!onboarding) {
             throw new NotFoundException(`Onboarding with ID ${onboardingId} not found`);
+        }
+
+        if (onboarding.completed && dto.status !== OnboardingTaskStatus.COMPLETED) {
+            throw new BadRequestException('Cannot modify tasks on a completed onboarding checklist');
         }
 
         const taskIndex = onboarding.tasks.findIndex(t => t.name === taskName);
@@ -191,7 +166,6 @@ export class OnboardingService {
             onboarding.tasks[taskIndex].completedAt = new Date(dto.completedAt);
         }
 
-        // Check if all tasks are completed
         const allCompleted = onboarding.tasks.every(t => t.status === OnboardingTaskStatus.COMPLETED);
         if (allCompleted) {
             onboarding.completed = true;
@@ -201,14 +175,22 @@ export class OnboardingService {
         return onboarding.save();
     }
 
-    /**
-     * Add task to onboarding checklist
-     */
     async addTask(onboardingId: string, dto: CreateOnboardingTaskDto): Promise<Onboarding> {
+        this.validateObjectId(onboardingId, 'onboardingId');
+
         const onboarding = await this.onboardingModel.findById(onboardingId).exec();
 
         if (!onboarding) {
             throw new NotFoundException(`Onboarding with ID ${onboardingId} not found`);
+        }
+
+        if (onboarding.completed) {
+            throw new BadRequestException('Cannot add tasks to a completed onboarding checklist');
+        }
+
+        const existingTask = onboarding.tasks.find(t => t.name === dto.name);
+        if (existingTask) {
+            throw new ConflictException(`Task with name "${dto.name}" already exists in this onboarding checklist`);
         }
 
         onboarding.tasks.push({
@@ -223,16 +205,6 @@ export class OnboardingService {
         return onboarding.save();
     }
 
-    // ============================================================
-    // ONB-005: Reminders and Notifications
-    // ============================================================
-
-    /**
-     * ONB-005: As a New Hire, I want to receive reminders and notifications,
-     * so that I don't miss important onboarding tasks.
-     *
-     * BR 12: Track reminders and task assignments
-     */
     async getPendingTasks(employeeId: string): Promise<{
         employeeId: string;
         pendingTasks: any[];
@@ -260,16 +232,6 @@ export class OnboardingService {
         return {employeeId, pendingTasks, overdueTasks,};
     }
 
-    // ============================================================
-    // ONB-007: Upload Documents
-    // ============================================================
-
-    /**
-     * ONB-007: As a New Hire, I want to upload documents (e.g., ID, contracts,
-     * certifications), so that compliance is ensured.
-     *
-     * BR 7: Documents collected and verified before first working day
-     */
     async uploadDocument(dto: UploadDocumentDto): Promise<Document> {
         // TODO: Validate employee/candidate exists
 
@@ -280,17 +242,12 @@ export class OnboardingService {
             uploadedAt: new Date(),
         });
 
-        const saved = await document.save();
-
         // TODO: Store documents in employee Profile (EP)
         // TODO: Trigger verification workflow in HR
 
-        return saved;
+        return document.save();
     }
 
-    /**
-     * Get all documents for an employee
-     */
     async getDocumentsByOwner(ownerId: string): Promise<Document[]> {
         return this.documentModel
             .find({ ownerId: new Types.ObjectId(ownerId) })
@@ -298,9 +255,6 @@ export class OnboardingService {
             .exec();
     }
 
-    /**
-     * Link document to onboarding task
-     */
     async linkDocumentToTask(onboardingId: string, taskName: string, documentId: string,): Promise<Onboarding> {
         const onboarding = await this.onboardingModel.findById(onboardingId).exec();
 
@@ -319,16 +273,6 @@ export class OnboardingService {
         return onboarding.save();
     }
 
-    // ============================================================
-    // ONB-009: Provision System Access
-    // ============================================================
-
-    /**
-     * ONB-009: As a System Admin, I want to provision system access
-     * (payroll, email, internal systems), so that the employee can work.
-     *
-     * BR 9(b): Auto onboarding tasks for IT (email, laptop, system access)
-     */
     async provisionSystemAccess(dto: ProvisionAccessDto): Promise<{ success: boolean; employeeId: string; message: string; provisionedAt: Date; }> {
         // TODO: Validate employee exists in employee Profile module
 
@@ -346,16 +290,6 @@ export class OnboardingService {
         };
     }
 
-    // ============================================================
-    // ONB-012: Reserve Equipment and Resources
-    // ============================================================
-
-    /**
-     * ONB-012: As a HR employee, I want to reserve and track equipment,
-     * desk and access cards for new hires, so resources are ready on Day 1.
-     *
-     * BR 9(c): Auto onboarding tasks for Admin (workspace, ID badge)
-     */
     async reserveEquipment(dto: ReserveEquipmentDto): Promise<{ success: boolean; employeeId: string; reservedItems: { equipment?: string[];deskNumber?: string; accessCardNumber?: string; }; message: string; }> {
         // TODO: Validate employee exists
 
@@ -376,17 +310,6 @@ export class OnboardingService {
         };
     }
 
-    // ============================================================
-    // ONB-013: Schedule Access Revocation
-    // ============================================================
-
-    /**
-     * ONB-013: As a HR Manager, I want automated account provisioning on start date
-     * and scheduled revocation on exit, so access is consistent and secure.
-     *
-     * BR 9(b): IT allocation is automated
-     * Links to Offboarding (OFF-007)
-     */
     async scheduleAccessRevocation(dto: ScheduleAccessRevocationDto): Promise<{
         success: boolean;
         employeeId: string;
@@ -407,17 +330,6 @@ export class OnboardingService {
         };
     }
 
-    // ============================================================
-    // ONB-018: Trigger Payroll Initiation
-    // ============================================================
-
-    /**
-     * ONB-018: As a HR Manager, I want the system to automatically handle
-     * payroll initiation based on the contract signing day for the current payroll cycle.
-     *
-     * BR 9(a): Auto onboarding tasks for HR (payroll & benefits creation)
-     * REQ-PY-23: Automatically process payroll initiation
-     */
     async triggerPayrollInitiation(dto: TriggerPayrollInitiationDto): Promise<{
         success: boolean;
         contractId: string;
@@ -445,17 +357,6 @@ export class OnboardingService {
         };
     }
 
-    // ============================================================
-    // ONB-019: Process Signing Bonuses
-    // ============================================================
-
-    /**
-     * ONB-019: As a HR Manager, I want the system to automatically process
-     * signing bonuses based on contract after a new hire is signed.
-     *
-     * BR 9(a): Bonuses as distinct payroll components
-     * REQ-PY-27: Automatically process signing bonuses
-     */
     async processSigningBonus(contractId: string): Promise<{
         success: boolean;
         contractId: string;
@@ -486,14 +387,6 @@ export class OnboardingService {
         };
     }
 
-    // ============================================================
-    // ONB-020: Cancel Onboarding (No-Show)
-    // ============================================================
-
-    /**
-     * BR20: The system should allow onboarding cancellation/termination
-     * of the created employee profile in case of a "no show".
-     */
     async cancelOnboarding(onboardingId: string, dto: CancelOnboardingDto): Promise<{
         success: boolean;
         onboardingId: string;
@@ -527,9 +420,6 @@ export class OnboardingService {
         };
     }
 
-    /**
-     * Get onboarding progress statistics
-     */
     async getOnboardingProgress(onboardingId: string): Promise<{
         onboardingId: string;
         totalTasks: number;

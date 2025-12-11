@@ -39,7 +39,7 @@ import {RecruitmentModule} from "./modules/recruitment/recruitment.module";
         EmployeeModule,
         OrganizationStructureModule,
         PerformanceModule,
-BackupModule,
+        BackupModule,
         TimeManagementModule,
         LeavesModule,
 

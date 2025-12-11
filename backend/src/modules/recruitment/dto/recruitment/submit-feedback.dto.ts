@@ -17,10 +17,10 @@ export class SubmitFeedbackDto {
     @IsNotEmpty()
     interviewerId: string;
 
-    @ApiProperty({ description: 'Score (0-100)', example: 85 })
+    @ApiProperty({ description: 'Score (1-10)', example: 8, minimum: 1, maximum: 10 })
     @IsNumber()
-    @Min(0)
-    @Max(100)
+    @Min(1, { message: 'Score must be at least 1' })
+    @Max(10, { message: 'Score must be at most 10' })
     score: number;
 
     @ApiPropertyOptional({ description: 'Comments and feedback' })
