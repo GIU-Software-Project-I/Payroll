@@ -1,8 +1,24 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsMongoId, IsOptional, IsNumber, IsDateString, IsArray, IsEnum, ValidateNested } from 'class-validator';
+import { IsString, IsNotEmpty, IsMongoId, IsOptional, IsNumber, IsDateString, IsArray, IsEnum, ValidateNested, Validate, ValidatorConstraint, ValidatorConstraintInterface, ValidationArguments } from 'class-validator';
 import { Type } from 'class-transformer';
 import { OfferResponseStatus } from '../../enums/offer-response-status.enum';
 import { ApprovalStatus } from '../../enums/approval-status.enum';
+
+/**
+ * Custom validator to ensure date is in the future
+ */
+@ValidatorConstraint({ name: 'isFutureDate', async: false })
+export class IsFutureDateConstraint implements ValidatorConstraintInterface {
+    validate(dateString: string, args: ValidationArguments) {
+        if (!dateString) return true;
+        const date = new Date(dateString);
+        return date > new Date();
+    }
+
+    defaultMessage(args: ValidationArguments) {
+        return 'Date must be in the future';
+    }
+}
 
 /**
  * REC-014: Manage job offers and approvals
@@ -87,11 +103,12 @@ export class CreateOfferDto {
     content?: string;
 
     @ApiProperty({ 
-        description: 'Offer acceptance deadline', 
-        example: '2025-12-31T23:59:59Z' 
+        description: 'Offer acceptance deadline (must be in the future)',
+        example: '2025-12-31T23:59:59Z'
     })
     @IsDateString()
     @IsNotEmpty()
+    @Validate(IsFutureDateConstraint, { message: 'Offer deadline must be in the future' })
     deadline: string;
 
     @ApiProperty({ description: 'List of approvers required', type: [ApproverDto] })
