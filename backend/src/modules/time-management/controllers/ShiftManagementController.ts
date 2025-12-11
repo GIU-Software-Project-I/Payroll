@@ -4,7 +4,7 @@ import {
     AssignShiftDto, BulkAssignShiftDto, CreateHolidayDto, CreateLatenessRuleDto, CreateOvertimeRuleDto,
     CreateScheduleRuleDto,
     CreateShiftDto,
-    CreateShiftTypeDto, RenewAssignmentDto, UpdateHolidayDto, UpdateLatenessRuleDto,
+    CreateShiftTypeDto, RenewAssignmentDto, UpdateHolidayDto,
     UpdateOvertimeRuleDto, UpdateScheduleRuleDto,
     UpdateShiftDto,
     UpdateShiftTypeDto,
@@ -12,6 +12,7 @@ import {
 } from "../dto/ShiftManagementDtos";
 import {ShiftManagementService} from "../services/ShiftManagementService";
 import { RepeatedLatenessService } from '../services/RepeatedLatenessService';
+import { RepeatedLatenessEvaluateRequestDto, RepeatedLatenessEvaluateResponseDto } from '../dto/ShiftManagementDtos';
 
 @ApiTags('Shift Management')
 @Controller('shift-management')
@@ -605,7 +606,7 @@ export class ShiftManagementController {
                 summary: 'Cancel a shift assignment',
                 value: {
                     status: 'CANCELLED',
-                    reason: 'employee requested shift change',
+                    reason: 'Employee requested shift change',
                     updatedBy: '674c1a1b2c3d4e5f6a7b8d03'
                 }
             },
@@ -732,30 +733,44 @@ export class ShiftManagementController {
 
     // Repeated lateness utilities
     @Get('repeated-lateness/:employeeId/count')
-    @ApiOperation({ summary: 'Get repeated lateness count for an employee', description: 'Returns number of LATE exceptions within the configured window (or provided windowDays query param).' })
-    @ApiParam({ name: 'employeeId', description: 'employee ID (ObjectId)' })
-    @ApiResponse({ status: 200, description: 'Count returned' })
-    getRepeatedLatenessCount(@Param('employeeId') employeeId: string, @Query('windowDays') windowDays?: number) {
-        return this.repeatedLatenessService.getLateCount(employeeId, windowDays ? Number(windowDays) : undefined);
+    @ApiOperation({ summary: 'Get repeated lateness count for an employee', description: 'Returns number of LATE exceptions (total, not limited to a window).' })
+    @ApiParam({ name: 'employeeId', description: 'Employee ID (ObjectId)' })
+    @ApiResponse({ status: 200, description: 'Total count of LATE exceptions for the employee', schema: { type: 'integer', example: 4 } })
+    getRepeatedLatenessCount(@Param('employeeId') employeeId: string) {
+        return this.repeatedLatenessService.getLateCount(employeeId);
     }
 
     @Post('repeated-lateness/:employeeId/evaluate')
     @ApiOperation({ summary: 'Evaluate and escalate repeated lateness for an employee', description: 'Manually trigger repeated-lateness evaluation and escalation (creates escalation exception & notification when threshold met).' })
-    @ApiParam({ name: 'employeeId', description: 'employee ID (ObjectId)' })
+    @ApiParam({ name: 'employeeId', description: 'Employee ID (ObjectId)' })
     @ApiBody({
-        type: Object,
+        schema: {
+            type: 'object',
+            properties: {
+                windowDays: { type: 'integer', description: 'Number of days in the rolling window to evaluate', example: 90 },
+                threshold: { type: 'integer', description: 'Threshold number of late occurrences that triggers escalation', example: 3 },
+                notifyHrId: { type: 'string', description: 'Optional HR/User ObjectId to notify', example: '693308bb32822777ec0e2411' }
+            },
+            additionalProperties: false,
+            example: {
+                windowDays: 30,
+                threshold: 3,
+                notifyHrId: '674c1a1b2c3d4e5f6a7b8d03'
+            }
+        },
         examples: {
-            'DefaultEvaluate': {
-                summary: 'Trigger evaluation with system defaults',
+            DefaultEvaluate: {
+                summary: 'Trigger evaluation with system defaults (empty body)',
                 value: {}
             },
-            'CustomWindowAndNotify': {
-                summary: 'Use a custom windowDays and notify a specific HR user',
-                value: { windowDays: 30, threshold: 3, notifyHrId: '674c1a1b2c3d4e5f6a7b8d03' }
+            CustomWindowAndNotify: {
+                summary: 'Custom windowDays and notify specific HR user',
+                value: { windowDays: 30, threshold: 3, notifyHrId: '693308bb32822777ec0e2411' }
             }
         }
     })
-    evaluateRepeatedLateness(@Param('employeeId') employeeId: string, @Body() body?: { windowDays?: number; threshold?: number; notifyHrId?: string }) {
+    @ApiResponse({ status: 200, description: 'Evaluation completed', type: RepeatedLatenessEvaluateResponseDto })
+    evaluateRepeatedLateness(@Param('employeeId') employeeId: string, @Body() body?: RepeatedLatenessEvaluateRequestDto) {
         return this.repeatedLatenessService.evaluateAndEscalateIfNeeded(employeeId, {
             windowDays: body?.windowDays,
             threshold: body?.threshold,

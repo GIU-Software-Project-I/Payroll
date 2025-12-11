@@ -3,7 +3,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { CorrectionRequestStatus } from '../models/enums';
 
 export class RequestCorrectionDto {
-    @ApiProperty({ description: 'employee MongoDB ObjectId', example: '674c1a1b2c3d4e5f6a7b8c9d' })
+    @ApiProperty({ description: 'Employee MongoDB ObjectId', example: '674c1a1b2c3d4e5f6a7b8c9d' })
     @IsNotEmpty()
     employeeId: string;
 
@@ -55,7 +55,7 @@ export class AttendanceCorrectionResponseDto {
     @ApiProperty({ description: 'Correction Request ID', example: '674c1a1b2c3d4e5f6a7b8d01' })
     _id: string;
 
-    @ApiProperty({ description: 'employee MongoDB ObjectId', example: '674c1a1b2c3d4e5f6a7b8c9d' })
+    @ApiProperty({ description: 'Employee MongoDB ObjectId', example: '674c1a1b2c3d4e5f6a7b8c9d' })
     employeeId: string;
 
     @ApiProperty({ description: 'Attendance Record ID', example: '674c1a1b2c3d4e5f6a7b8d02' })
@@ -117,7 +117,7 @@ export class AuditEventDto {
 //     @IsNotEmpty()
 //     requestType: AttendanceRequestType;
 //
-//     @ApiProperty({ description: 'employee MongoDB ObjectId', example: '674c1a1b2c3d4e5f6a7b8c9d' })
+//     @ApiProperty({ description: 'Employee MongoDB ObjectId', example: '674c1a1b2c3d4e5f6a7b8c9d' })
 //     @IsNotEmpty()
 //     employeeId: string;
 //

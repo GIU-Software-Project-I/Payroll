@@ -399,28 +399,9 @@ export class CreateOvertimeRuleDto {
 }
 
 export class UpdateOvertimeRuleDto {
-    @ApiPropertyOptional({
-        description: 'Name of the overtime rule',
-        example: 'Standard Overtime Policy'
-    })
     name?: string;
-
-    @ApiPropertyOptional({
-        description: 'Description of the overtime rule',
-        example: 'Overtime paid at 1.5x for hours beyond 8 per day; weekend/holiday overtime paid at 2x.'
-    })
     description?: string;
-
-    @ApiPropertyOptional({
-        description: 'Whether this overtime rule is active',
-        example: true
-    })
     active?: boolean;
-
-    @ApiPropertyOptional({
-        description: 'Whether this rule has been approved by an admin',
-        example: false
-    })
     approved?: boolean;
 }
 
@@ -529,4 +510,45 @@ export class UpdateShortTimeRuleDto {
         example: false
     })
     approved?: boolean;
+}
+
+// DTOs for Repeated Lateness evaluation (used by the ShiftManagementController evaluate endpoint)
+export class RepeatedLatenessEvaluateRequestDto {
+    @ApiPropertyOptional({
+        description: 'Number of days in the rolling window to evaluate',
+        example: 90,
+    })
+    windowDays?: number;
+
+    @ApiPropertyOptional({
+        description: 'Threshold number of late occurrences that triggers escalation',
+        example: 3,
+    })
+    threshold?: number;
+
+    @ApiPropertyOptional({
+        description: 'Optional HR/User ObjectId to notify (if omitted system HR_USER_ID is used)',
+        example: '674c1a1b2c3d4e5f6a7b8d03'
+    })
+    notifyHrId?: string;
+}
+
+export class RepeatedLatenessEvaluateResponseDto {
+    @ApiProperty({
+        description: 'True when an escalation was created/processed',
+        example: true
+    })
+    escalated: boolean;
+
+    @ApiProperty({
+        description: 'Number of LATE events found in the window',
+        example: 4
+    })
+    count: number;
+
+    @ApiPropertyOptional({
+        description: 'Present and true if the repetition was already escalated (prevents duplicate escalations)',
+        example: false
+    })
+    alreadyEscalated?: boolean;
 }

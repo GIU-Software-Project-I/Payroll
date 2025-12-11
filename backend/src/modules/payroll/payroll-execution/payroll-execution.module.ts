@@ -1,8 +1,8 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 // import controller and services 
-import { PayrollExecutionController } from './controllers/payroll-execution.controller';
-import { PayrollExecutionService } from './services/payroll-execution.service';
+// import { PayrollExecutionController } from './controllers/payroll-execution.controller';
+// import { PayrollExecutionService } from './services/payroll-execution.service';
 // import schemas from payroll-configuration subsystem
 import { terminationAndResignationBenefits, terminationAndResignationBenefitsSchema } from '../payroll-configuration/models/terminationAndResignationBenefits';
 import { signingBonus, signingBonusSchema } from '../payroll-configuration/models/signingBonus.schema';
@@ -42,8 +42,8 @@ import { AuthModule } from '../../auth/auth-module';
     { name: employeePenalties.name, schema: employeePenaltiesSchema },
 
   ])],
-  controllers: [PayrollExecutionController],
-  providers: [PayrollExecutionService, PayCalculatorService],
-  exports: [PayrollExecutionService]
+  // controllers: [PayrollExecutionController],
+  // providers: [PayrollExecutionService, PayCalculatorService],
+  // exports: [PayrollExecutionService]
 })
 export class PayrollExecutionModule { }

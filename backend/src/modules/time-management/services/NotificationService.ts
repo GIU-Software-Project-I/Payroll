@@ -308,5 +308,56 @@ export class NotificationService {
             throw error;
         }
     }
-}
 
+    async findUsersByRole(roleName: string): Promise<any[]> {
+        try {
+            if (!this.connection.db) {
+                this.logger.warn('Database connection not available');
+                return [];
+            }
+
+            const ROLE = roleName;
+
+            // Probe employee_profiles to see if roles are present
+            const probe = await this.connection.db.collection('employee_profiles').findOne({});
+            if (probe && Object.prototype.hasOwnProperty.call(probe, 'roles')) {
+                const users = await this.connection.db
+                    .collection('employee_profiles')
+                    .find({ roles: { $in: [ROLE] }, status: 'ACTIVE' })
+                    .project({ _id: 1, workEmail: 1, roles: 1 })
+                    .toArray();
+
+                return users.map(u => ({ employeeProfileId: u._id, workEmail: u.workEmail, roles: u.roles }));
+            }
+
+            // Fallback to employee_system_roles collection
+            const roles = await this.connection.db
+                .collection('employee_system_roles')
+                .find({ roles: { $in: [ROLE] }, isActive: true })
+                .toArray();
+
+            if (!roles?.length) return [];
+
+            const employeeIds = Array.from(new Set(roles.map((r: any) => String(r.employeeProfileId)))).map(id => new Types.ObjectId(id));
+
+            const employees = await this.connection.db
+                .collection('employee_profiles')
+                .find({ _id: { $in: employeeIds }, status: 'ACTIVE' })
+                .project({ _id: 1, workEmail: 1, status: 1 })
+                .toArray();
+
+            const results = roles
+                .map((role: any) => {
+                    const emp = employees.find(e => String(e._id) === String(role.employeeProfileId));
+                    if (!emp) return null;
+                    return { employeeProfileId: role.employeeProfileId, roles: role.roles, workEmail: emp.workEmail };
+                })
+                .filter(Boolean);
+
+            return results;
+        } catch (error) {
+            this.logger.error('findUsersByRole failed', error);
+            return [];
+        }
+    }
+}

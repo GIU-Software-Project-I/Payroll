@@ -23,11 +23,9 @@ import {ShiftManagementService} from "./services/ShiftManagementService";
 import {HolidayService} from "./services/HolidayService";
 
 import {RepeatedLatenessService} from "./services/RepeatedLatenessService";
-import {TimeManagementController} from "./controllers/time-management.controller";
 import {HolidayController} from "./controllers/HolidayController";
 import {NotificationController} from "./controllers/NotificationController";
 import {AttendanceSyncController} from "./controllers/AttendanceSyncController";
-import {TimeManagementService} from "./services/time-management.service";
 import {ShiftExpiryScheduler} from "./services/ShiftExpiryScheduler";
 import {NotificationService} from "./services/NotificationService";
 import {AttendanceSyncService} from "./services/AttendanceSyncService";
@@ -35,24 +33,26 @@ import { EmployeeModule } from '../employee/employee.module';
 import {EmployeeProfile, EmployeeProfileSchema} from "../employee/models/employee/employee-profile.schema";
 
 @Module({
-    imports: [MongooseModule.forFeature([
-        { name: NotificationLog.name, schema: NotificationLogSchema },
-        { name: AttendanceCorrectionRequest.name, schema: AttendanceCorrectionRequestSchema },
-        { name: ShiftType.name, schema: ShiftTypeSchema },
-        { name: ScheduleRule.name, schema: ScheduleRuleSchema },
-        { name: AttendanceRecord.name, schema: AttendanceRecordSchema },
-        { name: TimeException.name, schema: TimeExceptionSchema },
-        { name: OvertimeRule.name, schema: OvertimeRuleSchema },
-        { name: Shift.name, schema: ShiftSchema },
-        { name: ShiftAssignment.name, schema: ShiftAssignmentSchema },
-        { name: LatenessRule.name, schema: latenessRuleSchema },
-        { name: Holiday.name, schema: HolidaySchema },
-        { name: EmployeeProfile.name, schema: EmployeeProfileSchema },
-    ]),
-    EmployeeModule
-    ],
-    controllers: [TimeManagementController,
-        AttendanceController,
+    imports:
+        [MongooseModule.forFeature([
+            { name: NotificationLog.name, schema: NotificationLogSchema },
+            { name: AttendanceCorrectionRequest.name, schema: AttendanceCorrectionRequestSchema },
+            { name: ShiftType.name, schema: ShiftTypeSchema },
+            { name: ScheduleRule.name, schema: ScheduleRuleSchema },
+            { name: AttendanceRecord.name, schema: AttendanceRecordSchema },
+            { name: TimeException.name, schema: TimeExceptionSchema },
+            { name: OvertimeRule.name, schema: OvertimeRuleSchema },
+            { name: Shift.name, schema: ShiftSchema },
+            { name: ShiftAssignment.name, schema: ShiftAssignmentSchema },
+            { name: LatenessRule.name, schema: latenessRuleSchema },
+            { name: Holiday.name, schema: HolidaySchema },
+            { name: 'EmployeeProfile', schema: EmployeeProfileSchema },
+
+
+        ]),
+            //AuthModule,
+        ],
+    controllers: [AttendanceController,
         TimeExceptionController,
         AttendanceCorrectionController,
         HolidayController,
@@ -60,8 +60,7 @@ import {EmployeeProfile, EmployeeProfileSchema} from "../employee/models/employe
         NotificationController,
         AttendanceSyncController],
 
-    providers: [TimeManagementService,
-        AttendanceService,
+    providers: [AttendanceService,
         TimeExceptionService,
         AttendanceCorrectionService,
         ShiftManagementService,

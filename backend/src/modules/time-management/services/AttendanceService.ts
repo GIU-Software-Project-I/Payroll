@@ -61,7 +61,9 @@ import {
 } from '../models/enums';
 import {HolidayService} from "./HolidayService";
 import {RepeatedLatenessService} from "./RepeatedLatenessService";
-import {EmployeeProfile, EmployeeProfileDocument} from "../../employee/models/employee/employee-profile.schema";
+import {ScheduleRule, ScheduleRuleDocument} from '../models/schedule-rule.schema';
+import {NotificationService} from './NotificationService';
+import {SystemRole} from "../../employee/enums/employee-profile.enums";
 
 
 
@@ -91,58 +93,25 @@ export class AttendanceService {
         @InjectModel(Shift.name)
         private readonly shiftModel: Model<ShiftDocument>,
 
+        @InjectModel(ScheduleRule.name)
+        private readonly scheduleRuleModel: Model<ScheduleRuleDocument>,
+
         @InjectModel(LatenessRule.name)
         private readonly latenessRuleModel: Model<LatenessRuleDocument>,
 
         @InjectModel(OvertimeRule.name)
         private readonly overtimeRuleModel: Model<OvertimeRuleDocument>,
 
-        @InjectModel(EmployeeProfile.name)
-        private readonly employeeModel: Model<EmployeeProfileDocument>,
-
         private readonly holidayService: HolidayService,
 
         private readonly repeatedLatenessService: RepeatedLatenessService,
+
+        private readonly notificationSvc: NotificationService,
     ) {}
 
     // ============================================================
     // UTILITIES
     // ============================================================
-
-    // Ensure that the provided employeeId corresponds to an existing EmployeeProfile.
-    // Accepts either an ObjectId string or an employeeNumber/workEmail fallback.
-    private async ensureEmployeeExists(employeeId: string) {
-        if (!employeeId) throw new BadRequestException('employeeId required');
-
-        let emp: any = null;
-
-        // Try as ObjectId first
-        try {
-            if (Types.ObjectId.isValid(employeeId)) {
-                emp = await this.employeeModel.findById(new Types.ObjectId(employeeId)).lean();
-            }
-        } catch (e) {
-            emp = null;
-        }
-
-        // Fallback: try matching common alternative keys (employeeNumber, workEmail)
-        if (!emp) {
-            try {
-                emp = await this.employeeModel.findOne({
-                    $or: [
-                        { employeeNumber: employeeId },
-                        { workEmail: employeeId },
-                        { _id: employeeId }
-                    ]
-                }).lean();
-            } catch (e) {
-                emp = null;
-            }
-        }
-
-        if (!emp) throw new NotFoundException('employee not found');
-        return emp;
-    }
 
     /**
      * Parse date string in format dd/mm/yyyy hh:mm
@@ -242,12 +211,29 @@ export class AttendanceService {
             reason: params.reason || 'Auto-created',
         } as Partial<TimeException>);
 
+        // If this exception references an attendance record, attach the exception id to that record
+        try {
+            if (params.attendanceRecordId) {
+                const att = await this.attendanceModel.findById(params.attendanceRecordId);
+                if (att) {
+                    att.exceptionIds = att.exceptionIds || [];
+                    // avoid duplicates
+                    const exists = att.exceptionIds.some(id => id?.toString?.() === (ex._id as any).toString());
+                    if (!exists) att.exceptionIds.push(ex._id as any);
+                    att.finalisedForPayroll = false;
+                    await att.save();
+                }
+            }
+        } catch (e) {
+            this.logger.warn('Failed to attach exception to attendance record', e);
+        }
+
         return ex.toObject() as TimeException;
     }
 
     /**
      * Validate if punch time is within assigned shift time range
-     * @param employeeId - employee ID
+     * @param employeeId - Employee ID
      * @param punchTime - Time of punch
      * @returns Validation result with shift info
      */
@@ -354,6 +340,37 @@ export class AttendanceService {
                 error: 'Shift details not found for your assignment.',
                 assignment: assignment as any
             };
+        }
+
+        // If assignment has a scheduleRuleId, enforce that the requested punch day is included in the schedule rule
+        try {
+            if (assignment.scheduleRuleId) {
+                const rule = await this.scheduleRuleModel.findById(assignment.scheduleRuleId).lean();
+                if (rule && rule.active && rule.pattern) {
+                    const pattern = (rule.pattern || '').toUpperCase();
+                    if (pattern.startsWith('WEEKLY:')) {
+                        const daysPart = pattern.split(':')[1] || '';
+                        const allowedDays = daysPart.split(',').map(d => d.trim().slice(0,3).toUpperCase()); // e.g., MON,TUE
+                        const dayNames = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+                        const today = dayNames[punchTime.getDay()];
+                        if (!allowedDays.includes(today)) {
+                            return {
+                                isValid: false,
+                                error: `You are not scheduled to work on this day according to your shift schedule (${rule.name}). Please contact your manager to request an exception.`,
+                                isRestDay: true,
+                            };
+                        }
+                    } else if (pattern.startsWith('DAILY')) {
+                        // daily schedule - allowed
+                    } else {
+                        // Unknown pattern (ROTATION, CUSTOM, etc.) - allow but log for audit
+                        this.logger.debug(`Unknown schedule rule pattern '${rule.pattern}' for assignment ${assignment._id} - allowing punch by default`);
+                    }
+                }
+            }
+        } catch (e) {
+            this.logger.warn('ScheduleRule lookup failed during punch validation', e);
+            // if schedule rule lookup fails, allow punch to avoid blocking due to DB errors
         }
 
         // Parse shift times (format: "HH:mm")
@@ -489,9 +506,6 @@ export class AttendanceService {
 
     async punchIn(dto: PunchInDto) {
         if (!dto.employeeId) throw new BadRequestException('employeeId required');
-        // Ensure employee exists before doing anything else
-        await this.ensureEmployeeExists(dto.employeeId);
-
 
         // 1) canonicalize timestamp - parse custom format if provided
         let now: Date;
@@ -629,8 +643,6 @@ export class AttendanceService {
 
     async punchOut(dto: PunchOutDto) {
         if (!dto.employeeId) throw new BadRequestException('employeeId required');
-        // Ensure employee exists before doing anything else
-        await this.ensureEmployeeExists(dto.employeeId);
 
         // 1) canonicalize timestamp - parse custom format if provided
         let now: Date;
@@ -777,34 +789,117 @@ export class AttendanceService {
         // 11) Recompute totals and side effects
         await this.recompute(attendance._id);
 
-        return (await this.attendanceModel.findById(attendance._id))!.toObject();
+        // After punch out: resolve any open MISSED_PUNCH exceptions for this attendance record
+        try {
+            const openMissed = await this.exceptionModel.find({ attendanceRecordId: attendance._id, type: TimeExceptionType.MISSED_PUNCH });
+            if (openMissed && openMissed.length) {
+                const idsToRemove = openMissed.map(m => m._id);
+                try {
+                    // Delete the exception documents from DB
+                    await this.exceptionModel.deleteMany({ _id: { $in: idsToRemove } });
+                } catch (e) {
+                    this.logger.warn('Failed to delete missed punch exceptions', e);
+                }
+
+                // Remove their ids from attendance.exceptionIds and save attendance
+                try {
+                    attendance.exceptionIds = (attendance.exceptionIds || []).filter(id => !idsToRemove.some(rid => String(rid) === String(id)));
+                    await attendance.save();
+                } catch (e) {
+                    this.logger.warn('Failed to remove deleted missed-punch ids from attendance', e);
+                }
+            }
+         } catch (e) {
+             this.logger.warn('Failed to lookup/resolve open MISSED_PUNCH exceptions on punchOut', e);
+         }
+
+         return (await this.attendanceModel.findById(attendance._id))!.toObject();
     }
 
 
     // ============================================================
     // CALCULATION LOGIC
     // ============================================================
-
-    computeTotalMinutes(rec: AttendanceRecord) {
+    computeTotalMinutes(rec: AttendanceRecord): number {
+        // 1. Create sorted copy of punches (original logic preserved)
         const punches = rec.punches
             ?.slice()
             .sort((a, b) => +new Date(a.time) - +new Date(b.time));
+
+        // 2. Return 0 if no punches (original logic preserved)
         if (!punches?.length) return 0;
 
         let total = 0;
         let i = 0;
 
+        // 3. Main loop - find IN-OUT pairs (original logic preserved with FIX)
         while (i < punches.length) {
             if (punches[i].type === PunchType.IN) {
-                const nextOut = punches.slice(i + 1).find((p) => p.type === PunchType.OUT);
-                if (!nextOut) break;
-                total +=
-                    new Date(nextOut.time).getTime() - new Date(punches[i].time).getTime();
-                i = punches.indexOf(nextOut) + 1;
-            } else i++;
+                // Find the NEXT OUT punch after this IN
+                let nextOutFound = false;
+
+                // Start searching from i+1 (FIX: don't use find() + indexOf combo)
+                for (let j = i + 1; j < punches.length; j++) {
+                    if (punches[j].type === PunchType.OUT) {
+                        // Calculate time difference between this IN and found OUT
+                        total += new Date(punches[j].time).getTime()
+                            - new Date(punches[i].time).getTime();
+
+                        // Move index to after this OUT (FIX: j not indexOf)
+                        i = j + 1;
+                        nextOutFound = true;
+                        break;
+                    }
+                }
+
+                // If no OUT found after this IN, move to next punch
+                if (!nextOutFound) {
+                    i++;
+                }
+            } else {
+                // Current punch is OUT, move to next
+                i++;
+            }
         }
 
+        // 4. Return rounded minutes (original logic preserved)
         return Math.round(total / 60000);
+    }
+
+    private async isWeeklyRest(employeeId: string | Types.ObjectId, date: Date): Promise<boolean> {
+        try {
+            const start = new Date(date); start.setHours(0,0,0,0);
+            const end = new Date(date); end.setHours(23,59,59,999);
+            const empOid = typeof employeeId === 'string' ? new Types.ObjectId(employeeId) : employeeId;
+
+            const assignment = await this.shiftAssignmentModel.findOne({
+                employeeId: empOid,
+                status: { $in: [ShiftAssignmentStatus.PENDING, ShiftAssignmentStatus.APPROVED] },
+                startDate: { $lte: end },
+                $or: [{ endDate: { $exists: false } }, { endDate: { $gte: start } }],
+            }).lean();
+
+            if (!assignment) return false;
+            if (!assignment.scheduleRuleId) return false;
+
+            const rule = await this.scheduleRuleModel.findById(assignment.scheduleRuleId).lean();
+            if (!rule || !rule.active || !rule.pattern) return false;
+
+            const pattern = (rule.pattern || '').toUpperCase();
+            if (pattern.startsWith('WEEKLY:')) {
+                const daysPart = pattern.split(':')[1] || '';
+                const allowedDays = daysPart.split(',').map(d => d.trim().slice(0,3).toUpperCase());
+                const dayNames = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+                const today = dayNames[date.getDay()];
+                return !allowedDays.includes(today);
+            }
+
+            // For non-weekly patterns we conservatively treat as not a weekly rest
+            return false;
+        } catch (e) {
+            this.logger.warn('isWeeklyRest check failed', e);
+            return false; // fail-open: don't block due to DB error
+        }
     }
 
     async computeLateness(record: AttendanceRecord) {
@@ -818,6 +913,9 @@ export class AttendanceService {
 
         // Holiday suppression: if date is holiday -> no lateness
         if (await this.holidayService.isHoliday(recDate)) return 0;
+
+        // Weekly rest suppression: if date is a weekly rest per assignment schedule -> no lateness
+        if (await this.isWeeklyRest(record.employeeId as any, recDate)) return 0;
 
         const start = new Date(recDate); start.setHours(0,0,0,0);
         const end = new Date(recDate); end.setHours(23,59,59,999);
@@ -855,6 +953,9 @@ export class AttendanceService {
 
         // Holiday suppression: if date is holiday -> no early-leave penalty
         if (await this.holidayService.isHoliday(recDate)) return 0;
+
+        // Weekly rest suppression: if date is a weekly rest per assignment schedule -> no early-leave penalty
+        if (await this.isWeeklyRest(record.employeeId as any, recDate)) return 0;
 
         const start = new Date(recDate); start.setHours(0,0,0,0);
         const end = new Date(recDate); end.setHours(23,59,59,999);
@@ -952,13 +1053,18 @@ export class AttendanceService {
             this.logger.warn('holidayService.isHoliday failed; defaulting to non-holiday', err);
             return false;
         });
+        const isWeeklyRest = await this.isWeeklyRest(att.employeeId as any, recDate).catch(err => {
+            this.logger.warn('isWeeklyRest failed; defaulting to false', err);
+            return false;
+        });
 
         if (inCount > outCount) {
             att.hasMissedPunch = true;
             att.finalisedForPayroll = false;
 
             // only auto-create MISSED_PUNCH exception if NOT a holiday
-            if (!isHoliday) {
+            // skip creating exceptions for weekly rest days as well
+            if (!isHoliday && !isWeeklyRest) {
                 try {
                     const ex = await this.createTimeExceptionAuto({
                         employeeId: att.employeeId,
@@ -969,6 +1075,33 @@ export class AttendanceService {
                     if (ex) {
                         att.exceptionIds = att.exceptionIds || [];
                         att.exceptionIds.push(new Types.ObjectId((ex as any)._id));
+
+                        // Send notifications: employee, department heads, payroll specialists
+                        try {
+                            // Notify employee
+                            await this.notificationModel.create({ to: att.employeeId as any, type: 'MISSED_PUNCH', message: `A missed punch was detected for attendance ${att._id}. Please complete your punches or request an exception.` });
+                        } catch (e) { this.logger.warn('Failed to notify employee of missed punch', e); }
+
+                        try {
+                            // Department heads
+                            const deptHeads = await this.notificationSvc.findUsersByRole(SystemRole.DEPARTMENT_HEAD);
+                            for (const dh of deptHeads) {
+                                try {
+                                    await this.notificationModel.create({ to: dh.employeeProfileId, type: 'MISSED_PUNCH_DEPT', message: `Employee ${att.employeeId} has a missed punch on attendance ${att._id}.` });
+                                } catch (e) { this.logger.warn('Failed to notify department head', e); }
+                            }
+                        } catch (e) { this.logger.warn('Failed to lookup department heads', e); }
+
+                        try {
+                            // Payroll specialists
+                            const payrolls = await this.notificationSvc.findUsersByRole(SystemRole.PAYROLL_SPECIALIST);
+                            for (const p of payrolls) {
+                                try {
+                                    await this.notificationModel.create({ to: p.employeeProfileId, type: 'MISSED_PUNCH_PAYROLL', message: `Employee ${att.employeeId} has a missed punch on attendance ${att._id}. Please review for payroll.` });
+                                } catch (e) { this.logger.warn('Failed to notify payroll specialist', e); }
+                            }
+                        } catch (e) { this.logger.warn('Failed to lookup payroll specialists', e); }
+
                     }
                 } catch (e) {
                     this.logger.warn('Failed to create MISSED_PUNCH exception', e);
@@ -1032,8 +1165,7 @@ export class AttendanceService {
 
         // 5) short time -> compute scheduled minutes and create SHORT_TIME if needed (skip on holiday)
         try {
-            if (!isHoliday) {
-                // find assignment for the record date
+            if (!isHoliday && !isWeeklyRest) {
                 const startOfDay = new Date(recDate); startOfDay.setHours(0,0,0,0);
                 const endOfDay = new Date(recDate); endOfDay.setHours(23,59,59,999);
 
@@ -1044,12 +1176,17 @@ export class AttendanceService {
                     $or: [{ endDate: { $exists: false } }, { endDate: { $gte: startOfDay } }],
                 });
 
-                if (assignment) {
-                    const shift = await this.shiftModel.findById(assignment.shiftId);
-                    if (shift) {
-                        const scheduledMinutes = this.minutesBetweenHHMM(shift.startTime, shift.endTime);
-                        const shortMinutes = Math.max(0, scheduledMinutes - att.totalWorkMinutes);
-                        if (shortMinutes > 0) {
+                if (!assignment) {
+                    // no assignment for the day -> nothing to check
+                } else {
+                    // Compute scheduled minutes for this attendance day and check if short-time still applies
+                    const scheduledMinutes = await this.scheduledMinutesForRecord(att.toObject() as AttendanceRecord);
+                    const shortMinutes = Math.max(0, scheduledMinutes - att.totalWorkMinutes);
+
+                    if (shortMinutes > 0) {
+                        // still short -> ensure an exception exists (create if missing)
+                        const existing = await this.exceptionModel.findOne({ attendanceRecordId: att._id, type: TimeExceptionType.SHORT_TIME });
+                        if (!existing) {
                             const ex = await this.createTimeExceptionAuto({
                                 employeeId: att.employeeId,
                                 attendanceRecordId: att._id,
@@ -1063,10 +1200,24 @@ export class AttendanceService {
                                 try { await this.notificationModel.create({ to: att.employeeId as any, type: 'SHORT_TIME', message: `Short time detected: ${shortMinutes} minutes` }); } catch (_) {}
                             }
                         }
+                    } else {
+                        // Not short anymore: delete any existing SHORT_TIME exceptions for this attendance
+                        try {
+                            const existing = await this.exceptionModel.find({ attendanceRecordId: att._id, type: TimeExceptionType.SHORT_TIME });
+                            if (existing && existing.length) {
+                                const idsToDelete = existing.map(e => e._id);
+                                await this.exceptionModel.deleteMany({ _id: { $in: idsToDelete } });
+                                // Remove references from attendance.exceptionIds
+                                att.exceptionIds = (att.exceptionIds || []).filter(id => !idsToDelete.some(d => String(d) === String(id)));
+                                // Recompute finalisedForPayroll: if there are no other open exceptions, allow finalisation
+                                const otherOpen = await this.exceptionModel.findOne({ attendanceRecordId: att._id, status: { $ne: TimeExceptionStatus.RESOLVED } });
+                                if (!otherOpen) att.finalisedForPayroll = true;
+                            }
+                        } catch (e) {
+                            this.logger.warn('Failed to remove SHORT_TIME exceptions when resolved', e);
+                        }
                     }
                 }
-            } else {
-                this.logger.debug(`Skipping SHORT_TIME check for attendance ${att._id} because it's a holiday`);
             }
         } catch (e) {
             this.logger.warn('SHORT_TIME detection failed during recompute', e);
@@ -1074,9 +1225,22 @@ export class AttendanceService {
 
         // 6) overtime detection (computeOvertime handles holiday logic for overtime requests)
         try {
-            await this.computeOvertime(att.toObject() as AttendanceRecord);
+            const overtimeMinutes = await this.computeOvertime(att);
+            if (overtimeMinutes > 0) {
+                const ex = await this.createTimeExceptionAuto({
+                    employeeId: att.employeeId,
+                    attendanceRecordId: att._id,
+                    type: TimeExceptionType.OVERTIME_REQUEST,
+                    reason: `Auto-detected overtime: ${overtimeMinutes} minutes`,
+                });
+                if (ex) {
+                    att.exceptionIds = att.exceptionIds || [];
+                    att.exceptionIds.push(new Types.ObjectId((ex as any)._id));
+                    att.finalisedForPayroll = false;
+                }
+            }
         } catch (e) {
-            this.logger.warn('computeOvertime failed during recompute', e);
+            this.logger.warn('computeOvertime/recompute OVERTIME handling failed', e);
         }
 
         // --- FINALISATION RULE ---
@@ -1325,7 +1489,7 @@ export class AttendanceService {
                 if (assignment) {
                     const shift = await this.shiftModel.findById(assignment.shiftId);
                     if (shift) {
-                        const scheduledMinutes = this.minutesBetweenHHMM(shift.startTime, shift.endTime);
+                        const scheduledMinutes = await this.scheduledMinutesForRecord(record.toObject() as AttendanceRecord);
                         const shortMinutes = Math.max(0, scheduledMinutes - record.totalWorkMinutes);
                         if (shortMinutes > 30) { // More than 30 min short
                             issues.push({
@@ -1515,4 +1679,50 @@ export class AttendanceService {
         return results;
     }
 
+    private async scheduledMinutesForRecord(att: AttendanceRecord): Promise<number> {
+        try {
+            const recDate = this.getRecordDate(att);
+            const dayStart = new Date(recDate); dayStart.setHours(0,0,0,0);
+            const dayEnd = new Date(recDate); dayEnd.setHours(23,59,59,999);
+
+            const assignment = await this.shiftAssignmentModel.findOne({
+                employeeId: new Types.ObjectId(att.employeeId as any),
+                status: { $in: [ShiftAssignmentStatus.PENDING, ShiftAssignmentStatus.APPROVED] },
+                startDate: { $lte: dayEnd },
+                $or: [{ endDate: { $exists: false } }, { endDate: { $gte: dayStart } }],
+            }).lean();
+
+            if (!assignment) return 0;
+
+            const shift = await this.shiftModel.findById(assignment.shiftId).lean();
+            if (!shift) return 0;
+
+            // Build scheduled start and end Date objects relative to recDate
+            const [sh, sm] = (shift.startTime || '00:00').split(':').map(Number);
+            const [eh, em] = (shift.endTime || '00:00').split(':').map(Number);
+
+            const scheduledStart = new Date(recDate);
+            scheduledStart.setHours(sh, sm, 0, 0);
+
+            const scheduledEnd = new Date(recDate);
+            scheduledEnd.setHours(eh, em, 0, 0);
+
+            // If shift ends before it starts, it means it goes to next day
+            if (scheduledEnd.getTime() <= scheduledStart.getTime()) {
+                scheduledEnd.setDate(scheduledEnd.getDate() + 1);
+            }
+
+            // Compute overlap between [scheduledStart, scheduledEnd] and the attendance day window [dayStart, dayEnd]
+            const overlapStart = new Date(Math.max(scheduledStart.getTime(), dayStart.getTime()));
+            const overlapEnd = new Date(Math.min(scheduledEnd.getTime(), dayEnd.getTime()));
+
+            if (overlapEnd.getTime() <= overlapStart.getTime()) return 0;
+
+            const minutes = Math.ceil((overlapEnd.getTime() - overlapStart.getTime()) / 60000);
+            return minutes;
+        } catch (e) {
+            this.logger.warn('scheduledMinutesForRecord failed', e);
+            return 0;
+        }
+    }
 }
