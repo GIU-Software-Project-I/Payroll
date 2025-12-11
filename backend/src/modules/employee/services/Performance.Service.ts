@@ -630,7 +630,7 @@ export class PerformanceService {
   // ============ PHASE 5: EMPLOYEE FEEDBACK ============
 
   /**
-   * REQ-OD-01: Employee acknowledges appraisal record
+   * REQ-OD-01: employee acknowledges appraisal record
    */
   async acknowledgeAppraisal(
     recordId: string,
@@ -671,7 +671,7 @@ export class PerformanceService {
   // ============ PHASE 6 & 7: DISPUTES ============
 
   /**
-   * REQ-AE-07: Employee files a dispute/objection
+   * REQ-AE-07: employee files a dispute/objection
    */
   async fileDispute(
     dto: FileAppraisalDisputeDto,

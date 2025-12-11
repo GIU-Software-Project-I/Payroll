@@ -25,27 +25,27 @@ import {
 import {
   Department,
   DepartmentDocument,
-} from '../models/Organization-Structure/department.schema';
+} from '../models/organization-structure/department.schema';
 import {
   Position,
   PositionDocument,
-} from '../models/Organization-Structure/position.schema';
+} from '../models/organization-structure/position.schema';
 import {
   PositionAssignment,
   PositionAssignmentDocument,
-} from '../models/Organization-Structure/position-assignment.schema';
+} from '../models/organization-structure/position-assignment.schema';
 import {
   StructureChangeRequest,
   StructureChangeRequestDocument,
-} from '../models/Organization-Structure/structure-change-request.schema';
+} from '../models/organization-structure/structure-change-request.schema';
 import {
   StructureApproval,
   StructureApprovalDocument,
-} from '../models/Organization-Structure/structure-approval.schema';
+} from '../models/organization-structure/structure-approval.schema';
 import {
   StructureChangeLog,
   StructureChangeLogDocument,
-} from '../models/Organization-Structure/structure-change-log.schema';
+} from '../models/organization-structure/structure-change-log.schema';
 
 @Injectable()
 export class OrganizationStructureService {

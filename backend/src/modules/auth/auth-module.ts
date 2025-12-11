@@ -3,18 +3,18 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { MongooseModule } from '@nestjs/mongoose';
 
-import { BlacklistedToken, BlacklistedTokenSchema } from "../token/blacklisted-token.schema";
-import { EmployeeModule } from "../../employee/modules/employee.module";
-import { EmployeeProfile, EmployeeProfileSchema } from "../../employee/models/Employee/employee-profile.schema";
-import { EmployeeSystemRole, EmployeeSystemRoleSchema } from "../../employee/models/Employee/employee-system-role.schema";
-import { Candidate, CandidateSchema } from "../../employee/models/Employee/Candidate.Schema";
-import { AuthService } from "../services/authentication-service";
-import { JwtStrategy } from "../token/JWT-Strategies";
+import { BlacklistedToken, BlacklistedTokenSchema } from "./token/blacklisted-token.schema";
+import { EmployeeModule } from "../employee/employee.module";
+import { EmployeeProfile, EmployeeProfileSchema } from "../employee/models/employee/employee-profile.schema";
+import { EmployeeSystemRole, EmployeeSystemRoleSchema } from "../employee/models/employee/employee-system-role.schema";
+import { Candidate, CandidateSchema } from "../employee/models/employee/Candidate.Schema";
+import { AuthService } from "./services/authentication-service";
+import { JwtStrategy } from "./token/jwt-strategies";
 
-import { AuthController } from "../controller/auth-controller";
-import { AuthorizationGuard } from "../guards/authorization-guard";
-import { EmployeeAuthService } from "../services/employee-auth.service";
-import {AuthenticationGuard} from "../guards/authentication-guard";
+import { AuthController } from "./controller/auth-controller";
+import { AuthorizationGuard } from "./guards/authorization-guard";
+import { EmployeeAuthService } from "./services/employee-auth.service";
+import {AuthenticationGuard} from "./guards/authentication-guard";
 
 @Module({
     imports: [

@@ -45,7 +45,7 @@ async function main() {
   async function upsertEmployee({ employeeNumber, firstName, lastName, nationalId, workEmail, personalEmail, mobilePhone, password, dateOfHire }) {
     const existing = await empColl.findOne({ $or: [{ workEmail }, { personalEmail }, { nationalId }] });
     if (existing) {
-      console.log('Employee already exists for', workEmail || personalEmail || nationalId, ' ->', existing._id.toString());
+      console.log('employee already exists for', workEmail || personalEmail || nationalId, ' ->', existing._id.toString());
       return existing;
     }
 

@@ -2,7 +2,7 @@ import { IsMongoId, IsNotEmpty, IsDateString, IsOptional, IsString } from 'class
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class ScheduleAccessRevocationDto {
-    @ApiProperty({ description: 'Employee ID', example: '507f1f77bcf86cd799439011' })
+    @ApiProperty({ description: 'employee ID', example: '507f1f77bcf86cd799439011' })
     @IsMongoId()
     @IsNotEmpty()
     employeeId: string;

@@ -838,7 +838,7 @@ No response body
 **Success Response (201 Created):**
 ```json
 {
-  "message": "Backup created successfully",
+  "message": "backup created successfully",
   "filename": "payroll-config-backup-2024-01-15.tar.gz",
   "path": "/path/to/backups/payroll-config-backup-2024-01-15.tar.gz",
   "size": 1024000,
@@ -851,7 +851,7 @@ No response body
   ```json
   {
     "statusCode": 400,
-    "message": "Backup failed: [error message]",
+    "message": "backup failed: [error message]",
     "error": "Bad Request"
   }
   ```

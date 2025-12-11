@@ -8,15 +8,15 @@ import { PayrollConfigurationModule } from './modules/payroll/payroll-configurat
 import {TimeManagementModule} from "./modules/time-management/time-management.module";
 import { PayrollTrackingModule } from './modules/payroll/payroll-tracking/payroll-tracking.module';
 
-import { OrganizationStructureModule } from "./modules/employee/modules/organization-structure.module";
-import { EmployeeModule } from "./modules/employee/modules/employee.module";
-import { PerformanceModule } from "./modules/employee/modules/performance.module";
-import { LeavesModule } from "./modules/leaves/modules/leaves.module";
-import { AuthModule } from "./modules/auth/module/auth-module";
+import { OrganizationStructureModule } from "./modules/employee/controllers/organization-structure.module";
+import { EmployeeModule } from "./modules/employee/employee.module";
+import { PerformanceModule } from "./modules/employee/performance.module";
+import { LeavesModule } from "./modules/leaves/leaves.module";
+import { AuthModule } from "./modules/auth/auth-module";
 import {AuthorizationGuard} from "./modules/auth/guards/authorization-guard";
 import {AuthenticationGuard} from "./modules/auth/guards/authentication-guard";
-import {BackupModule} from "./modules/payroll/payroll-configuration/backup/Backup-Module";
-import {RecruitmentModule} from "./modules/recruitment/module/recruitment.module";
+import {BackupModule} from "./modules/payroll/payroll-configuration/backup/backup-module";
+import {RecruitmentModule} from "./modules/recruitment/recruitment.module";
 
 
 

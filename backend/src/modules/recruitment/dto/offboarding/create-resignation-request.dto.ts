@@ -2,7 +2,7 @@ import { IsNotEmpty, IsString, IsDateString, IsMongoId, IsOptional } from 'class
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateResignationRequestDto {
-    @ApiProperty({ description: 'Employee ID submitting resignation', example: '507f1f77bcf86cd799439011' })
+    @ApiProperty({ description: 'employee ID submitting resignation', example: '507f1f77bcf86cd799439011' })
     //@IsMongoId()
     @IsNotEmpty()
     employeeId: string;
@@ -12,7 +12,7 @@ export class CreateResignationRequestDto {
     @IsNotEmpty()
     reason: string;
 
-    @ApiPropertyOptional({ description: 'Employee comments', example: 'Thank you for the opportunity' })
+    @ApiPropertyOptional({ description: 'employee comments', example: 'Thank you for the opportunity' })
     @IsString()
     @IsOptional()
     employeeComments?: string;

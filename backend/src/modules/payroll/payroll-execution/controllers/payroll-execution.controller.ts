@@ -13,10 +13,10 @@ import { BonusStatus } from '../enums/payroll-execution-enum';
 import { BenefitStatus } from '../enums/payroll-execution-enum';
 import { AuthenticationGuard } from '../../../auth/guards/authentication-guard';
 import { AuthorizationGuard } from '../../../auth/guards/authorization-guard';
-import { Roles } from '../../../auth/decorators/Roles-Decorator';
-import { CurrentUser } from '../../../auth/decorators/Current-User';
+import { Roles } from '../../../auth/decorators/roles-decorator';
+import { CurrentUser } from '../../../auth/decorators/current-user';
 import { SystemRole } from '../../../employee/enums/employee-profile.enums';
-import type { JwtPayload } from '../../../auth/token/JWT-Payload';
+import type { JwtPayload } from '../../../auth/token/jwt-payload';
 import { TerminationBenefitEditDto } from '../dto/termination-benefit-edit.dto';
 
 @Controller('payroll-execution')

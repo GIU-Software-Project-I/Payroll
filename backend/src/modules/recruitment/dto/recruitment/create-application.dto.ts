@@ -73,7 +73,7 @@ export class UpdateApplicationStatusDto {
 
 export class AssignHrDto {
     @ApiProperty({ 
-        description: 'HR Employee ID to assign', 
+        description: 'HR employee ID to assign',
         example: '507f1f77bcf86cd799439013' 
     })
     @IsMongoId()

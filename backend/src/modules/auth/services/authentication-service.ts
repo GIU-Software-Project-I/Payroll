@@ -13,8 +13,8 @@ import { EmployeeAuthService } from './employee-auth.service';
 
 import { BlacklistedToken, BlackListedTokenDocument } from '../token/blacklisted-token.schema';
 import { SystemRole } from '../../employee/enums/employee-profile.enums';
-import {RegisterEmployeeDto} from "../dto/RegisterEmployee.dto";
-import {RegisterCandidateDto} from "../dto/RegisterCandidate.dto";
+import {RegisterEmployeeDto} from "../dto/register-employee-dto";
+import {RegisterCandidateDto} from "../dto/register-candidate-dto";
 
 type SafeEmployee = {
     _id: string;
@@ -74,7 +74,7 @@ export class AuthService {
         const roles = dto.roles || [SystemRole.DEPARTMENT_EMPLOYEE];
 
         return {
-            message: 'Employee registered successfully',
+            message: 'employee registered successfully',
             employee: this.toSafeEmployee(employee, roles),
         };
     }

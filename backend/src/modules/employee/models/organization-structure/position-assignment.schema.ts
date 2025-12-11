@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
-import { EmployeeProfile } from '../../models/Employee/employee-profile.schema';
+import { EmployeeProfile } from '../employee/employee-profile.schema';
 
 export type PositionAssignmentDocument = HydratedDocument<PositionAssignment>;
 

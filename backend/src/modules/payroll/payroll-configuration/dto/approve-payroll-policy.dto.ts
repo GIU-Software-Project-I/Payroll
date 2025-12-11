@@ -10,5 +10,5 @@ import { IsNotEmpty, IsString } from 'class-validator';
 export class ApprovePayrollPolicyDto {
   @IsNotEmpty()
   @IsString()
-  approvedBy: string; // Employee ID of the Payroll Manager approving/rejecting
+  approvedBy: string; // employee ID of the Payroll Manager approving/rejecting
 }

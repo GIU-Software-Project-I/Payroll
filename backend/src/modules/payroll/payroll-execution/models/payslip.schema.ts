@@ -6,7 +6,7 @@ import { terminationAndResignationBenefits, terminationAndResignationBenefitsSch
 import { taxRules, taxRulesSchema } from '../../payroll-configuration/models/taxRules.schema';
 import { insuranceBrackets, insuranceBracketsSchema } from '../../payroll-configuration/models/insuranceBrackets.schema';
 import { employeePenalties, employeePenaltiesSchema } from './employeePenalties.schema';
-import {  EmployeeProfile as Employee} from '../../../employee/models/Employee/employee-profile.schema';
+import {  EmployeeProfile as Employee} from '../../../employee/models/employee/employee-profile.schema';
 import { refundDetails, refundDetailsSchema } from '../../payroll-tracking/models/refunds.schema';
 import { payrollRuns } from './payrollRuns.schema';
 import { PaySlipPaymentStatus } from '../enums/payroll-execution-enum';

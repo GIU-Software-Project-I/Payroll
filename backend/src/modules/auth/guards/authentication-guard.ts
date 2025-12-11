@@ -6,7 +6,7 @@ import {
 import { AuthGuard as NestAuthGuard } from '@nestjs/passport';
 import type { Request } from 'express';
 import { Reflector } from '@nestjs/core';
-import { IS_PUBLIC_KEY } from '../decorators/Public-Decorator';
+import { IS_PUBLIC_KEY } from '../decorators/public-decorator';
 import { AuthService } from '../services/authentication-service';
 
 

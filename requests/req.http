@@ -43,7 +43,7 @@ Accept: application/json
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTJkMDNjZDk4NGM5Y2FkZDZjNTViNDMiLCJlbWFpbCI6InBheXJvbGwuc3BlY0BleGFtcGxlLmNvbSIsInJvbGVzIjpbIlBheXJvbGwgU3BlY2lhbGlzdCJdLCJ1c2VyVHlwZSI6ImVtcGxveWVlIiwiaWF0IjoxNzY0NTU4OTkzLCJleHAiOjE3NjUxNjM3OTN9.-KqNawlAREw3CvydZYCYBdAV6AKV-GLStfQR8nN39Po
 
 ###
-# 2b) Register Employee (admin only) — example body. Use Authorization: Bearer <ADMIN_TOKEN>
+# 2b) Register employee (admin only) — example body. Use Authorization: Bearer <ADMIN_TOKEN>
 POST http://localhost:8000/auth/register-employee
 Content-Type: application/json
 # Authorization: Bearer {{ACCESS_TOKEN}}

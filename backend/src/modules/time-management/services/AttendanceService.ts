@@ -61,7 +61,7 @@ import {
 } from '../models/enums';
 import {HolidayService} from "./HolidayService";
 import {RepeatedLatenessService} from "./RepeatedLatenessService";
-import {EmployeeProfile, EmployeeProfileDocument} from "../../employee/models/Employee/employee-profile.schema";
+import {EmployeeProfile, EmployeeProfileDocument} from "../../employee/models/employee/employee-profile.schema";
 
 
 
@@ -140,7 +140,7 @@ export class AttendanceService {
             }
         }
 
-        if (!emp) throw new NotFoundException('Employee not found');
+        if (!emp) throw new NotFoundException('employee not found');
         return emp;
     }
 
@@ -247,7 +247,7 @@ export class AttendanceService {
 
     /**
      * Validate if punch time is within assigned shift time range
-     * @param employeeId - Employee ID
+     * @param employeeId - employee ID
      * @param punchTime - Time of punch
      * @returns Validation result with shift info
      */

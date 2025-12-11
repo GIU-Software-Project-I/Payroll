@@ -104,7 +104,7 @@ export class OnboardingController {
         summary: 'ONB-004: View onboarding tracker',
         description: 'New Hire views their onboarding steps in a tracker. BR 11(a, b): Workflow with department-specific tasks.',
     })
-    @ApiParam({ name: 'employeeId', description: 'Employee ID' })
+    @ApiParam({ name: 'employeeId', description: 'employee ID' })
     @ApiResponse({ status: 200, description: 'Onboarding tracker details' })
     @ApiResponse({ status: 404, description: 'Onboarding not found' })
     async getOnboardingByEmployeeId(@Param('employeeId') employeeId: string) {
@@ -150,7 +150,7 @@ export class OnboardingController {
         summary: 'ONB-005: Get pending tasks with reminders',
         description: 'New Hire receives reminders for pending and overdue tasks. BR 12: Track reminders and task assignments.',
     })
-    @ApiParam({ name: 'employeeId', description: 'Employee ID' })
+    @ApiParam({ name: 'employeeId', description: 'employee ID' })
     @ApiResponse({ status: 200, description: 'Pending and overdue tasks' })
     @ApiResponse({ status: 404, description: 'Onboarding not found' })
     async getPendingTasks(@Param('employeeId') employeeId: string) {
@@ -223,7 +223,7 @@ export class OnboardingController {
     @Post('reserve-equipment')
     @ApiOperation({
         summary: 'ONB-012: Reserve equipment and resources',
-        description: 'HR Employee reserves equipment, desk and access cards for new hires. BR 9(c): Auto Admin tasks for workspace, ID badge.',
+        description: 'HR employee reserves equipment, desk and access cards for new hires. BR 9(c): Auto Admin tasks for workspace, ID badge.',
     })
     @ApiBody({ type: ReserveEquipmentDto })
     @ApiResponse({ status: 200, description: 'Equipment and resources reserved successfully' })

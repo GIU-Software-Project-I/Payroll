@@ -19,7 +19,7 @@ import {
 } from "../dto/performance/appraisal-assignment.dto";
 import {SubmitAppraisalRecordDto} from "../dto/performance/appraisal-record.dto";
 import {FileAppraisalDisputeDto, ResolveAppraisalDisputeDto} from "../dto/performance/appraisal-dispute.dto";
-import {PerformanceService} from "../Services/Performance.Service";
+import {PerformanceService} from "../services/Performance.Service";
 
 
 
@@ -284,7 +284,7 @@ export class PerformanceController {
 
   /**
    * POST /performance/records/:recordId/acknowledge
-   * REQ-OD-01: Employee acknowledges appraisal record
+   * REQ-OD-01: employee acknowledges appraisal record
    */
   @Post('records/:recordId/acknowledge')
   @HttpCode(HttpStatus.OK)
@@ -315,7 +315,7 @@ export class PerformanceController {
 
   /**
    * POST /performance/disputes
-   * REQ-AE-07: Employee files a dispute/objection
+   * REQ-AE-07: employee files a dispute/objection
    */
   @Post('disputes')
   @HttpCode(HttpStatus.CREATED)
