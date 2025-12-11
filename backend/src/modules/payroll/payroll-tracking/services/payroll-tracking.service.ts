@@ -20,7 +20,7 @@ export class PayrollTrackingService {
     @InjectModel(EmployeeProfile.name) private employeeModel: Model<EmployeeProfile>,
   ) {}
 
-  // ========== employee Self-Service Methods ==========
+  // ========== Employee Self-Service Methods ==========
 
   // REQ-PY-1: View and download payslip
   async getEmployeePayslips(employeeId: string) {
@@ -87,7 +87,7 @@ export class PayrollTrackingService {
   async getBaseSalary(employeeId: string) {
     const employee = await this.employeeModel.findById(employeeId).exec();
     if (!employee) {
-      throw new NotFoundException('employee not found');
+      throw new NotFoundException('Employee not found');
     }
     
     // Derive contract/work type with sensible defaults
@@ -1026,4 +1026,99 @@ export class PayrollTrackingService {
       throw new NotFoundException('Refund not found');
     }
   }
+
+// Add these methods to your existing PayrollTrackingService class:
+
+// REQ-PY-16: Dispute payroll errors
+async createDispute(employeeId: string, createDisputeDto: any) {
+  // Generate dispute ID
+  const latestDispute = await this.disputesModel.findOne()
+    .sort({ createdAt: -1 })
+    .exec();
+  
+  let nextNumber = 1;
+  if (latestDispute && latestDispute.disputeId) {
+    const match = latestDispute.disputeId.match(/DISP-(\d+)/);
+    if (match) {
+      nextNumber = parseInt(match[1]) + 1;
+    }
+  }
+  
+  const disputeId = `DISP-${nextNumber.toString().padStart(4, '0')}`;
+  
+  const dispute = new this.disputesModel({
+    disputeId,
+    employeeId: new Types.ObjectId(employeeId),
+    ...createDisputeDto,
+    payslipId: new Types.ObjectId(createDisputeDto.payslipId),
+    status: DisputeStatus.UNDER_REVIEW
+  });
+  
+  return dispute.save();
+}
+
+// REQ-PY-17: Submit expense reimbursement claims
+async createClaim(employeeId: string, createClaimDto: any) {
+  // Generate claim ID
+  const latestClaim = await this.claimsModel.findOne()
+    .sort({ createdAt: -1 })
+    .exec();
+  
+  let nextNumber = 1;
+  if (latestClaim && latestClaim.claimId) {
+    const match = latestClaim.claimId.match(/CLAIM-(\d+)/);
+    if (match) {
+      nextNumber = parseInt(match[1]) + 1;
+    }
+  }
+  
+  const claimId = `CLAIM-${nextNumber.toString().padStart(4, '0')}`;
+  
+  const claim = new this.claimsModel({
+    claimId,
+    employeeId: new Types.ObjectId(employeeId),
+    ...createClaimDto,
+    status: ClaimStatus.UNDER_REVIEW
+  });
+  
+  return claim.save();
+}
+
+// REQ-PY-18: Track the approval and payment status of my claims, disputes
+  async trackClaimsAndDisputes(employeeId: string) {
+    const [claimsList, disputesList] = await Promise.all([
+      this.claimsModel
+        .find({ employeeId: new Types.ObjectId(employeeId) })
+        .sort({ createdAt: -1 })
+        .exec(),
+      this.disputesModel
+        .find({ employeeId: new Types.ObjectId(employeeId) })
+        .sort({ createdAt: -1 })
+        .exec(),
+    ]);
+
+    return {
+      claims: claimsList.map((claim) => ({
+        id: claim._id,
+        claimId: claim.claimId,
+        description: claim.description,
+        claimType: (claim as any).claimType,
+        amount: claim.amount,
+        approvedAmount: claim.approvedAmount,
+        status: claim.status,
+        createdAt: (claim as any).createdAt,
+        updatedAt: (claim as any).updatedAt,
+      })),
+      disputes: disputesList.map((dispute) => ({
+        id: dispute._id,
+        disputeId: dispute.disputeId,
+        description: dispute.description,
+        payslipId: dispute.payslipId,
+        status: dispute.status,
+        createdAt: (dispute as any).createdAt,
+        updatedAt: (dispute as any).updatedAt,
+      })),
+    };
+  }
+
 }
