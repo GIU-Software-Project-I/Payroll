@@ -8,11 +8,8 @@ export class Calendar {
   @Prop({ required: true })
   year: number;
 
-  @Prop({
-    type: [{ type: Types.ObjectId, ref: 'Holiday' }],
-    default: [],
-  })
-  holidays: Types.ObjectId[];
+@Prop({ type: [Date], default: [] })
+holidays: Date[];
 
   @Prop({
     type: [{ from: Date, to: Date, reason: String }],
