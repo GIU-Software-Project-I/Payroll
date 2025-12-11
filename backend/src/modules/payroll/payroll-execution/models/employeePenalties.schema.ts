@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory, } from '@nestjs/mongoose';
 import mongoose, { HydratedDocument } from 'mongoose';
-import {  EmployeeProfile as Employee} from '../../../employee/models/Employee/employee-profile.schema';
+import {  EmployeeProfile as Employee} from '../../../employee/models/employee/employee-profile.schema';
 
 
 export type penaltyDocument = HydratedDocument<penalty>

@@ -1,9 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { EmployeeProfile, EmployeeProfileDocument } from '../models/Employee/employee-profile.schema';
-import { EmployeeProfileChangeRequest, EmployeeProfileChangeRequestDocument } from '../models/Employee/ep-change-request.schema';
-import { EmployeeSystemRole, EmployeeSystemRoleDocument } from '../models/Employee/employee-system-role.schema';
+import { EmployeeProfile, EmployeeProfileDocument } from '../models/employee/employee-profile.schema';
+import { EmployeeProfileChangeRequest, EmployeeProfileChangeRequestDocument } from '../models/employee/ep-change-request.schema';
+import { EmployeeSystemRole, EmployeeSystemRoleDocument } from '../models/employee/employee-system-role.schema';
 import { UpdateContactInfoDto } from '../dto/employee-profile/update-contact-info.dto';
 import { UpdateBioDto } from '../dto/employee-profile/update-bio.dto';
 import { CreateCorrectionRequestDto } from '../dto/employee-profile/create-correction-request.dto';
@@ -36,7 +36,7 @@ export class EmployeeProfileService {
             .populate('accessProfileId');
 
         if (!profile) {
-            throw new NotFoundException('Employee profile not found');
+            throw new NotFoundException('employee profile not found');
         }
         return profile;
     }
@@ -45,7 +45,7 @@ export class EmployeeProfileService {
     async updateContactInfo(userId: string, dto: UpdateContactInfoDto): Promise<EmployeeProfile> {
         const profile = await this.employeeProfileModel.findById(userId);
         if (!profile) {
-            throw new NotFoundException('Employee profile not found');
+            throw new NotFoundException('employee profile not found');
         }
 
         if (dto.mobilePhone) profile.mobilePhone = dto.mobilePhone;
@@ -64,7 +64,7 @@ export class EmployeeProfileService {
     async updateBio(userId: string, dto: UpdateBioDto): Promise<EmployeeProfile> {
         const profile = await this.employeeProfileModel.findById(userId);
         if (!profile) {
-            throw new NotFoundException('Employee profile not found');
+            throw new NotFoundException('employee profile not found');
         }
 
         if (dto.biography !== undefined) profile.biography = dto.biography;
@@ -78,7 +78,7 @@ export class EmployeeProfileService {
     async createCorrectionRequest(userId: string, dto: CreateCorrectionRequestDto): Promise<EmployeeProfileChangeRequest> {
         const profile = await this.employeeProfileModel.findById(userId);
         if (!profile) {
-            throw new NotFoundException('Employee profile not found');
+            throw new NotFoundException('employee profile not found');
         }
 
         const request = new this.changeRequestModel({
@@ -163,7 +163,7 @@ export class EmployeeProfileService {
             .populate('accessProfileId');
 
         if (!profile) {
-            throw new NotFoundException('Employee profile not found');
+            throw new NotFoundException('employee profile not found');
         }
         return profile;
     }
@@ -171,7 +171,7 @@ export class EmployeeProfileService {
     async adminUpdateProfile(id: string, dto: AdminUpdateProfileDto, userId?: string): Promise<EmployeeProfile> {
         const profile = await this.employeeProfileModel.findById(id);
         if (!profile) {
-            throw new NotFoundException('Employee profile not found');
+            throw new NotFoundException('employee profile not found');
         }
 
         // Update Position
@@ -189,7 +189,7 @@ export class EmployeeProfileService {
             profile.supervisorPositionId = new Types.ObjectId(dto.supervisorPositionId);
         }
 
-        // Update Status (BR 3j: Employee status definition for system access control)
+        // Update Status (BR 3j: employee status definition for system access control)
         if (dto.status && dto.status !== profile.status) {
             profile.status = dto.status;
             profile.statusEffectiveFrom = new Date();
@@ -244,7 +244,7 @@ export class EmployeeProfileService {
     async adminDeactivateEmployee(id: string, userId?: string): Promise<EmployeeProfile> {
         const profile = await this.employeeProfileModel.findById(id);
         if (!profile) {
-            throw new NotFoundException('Employee profile not found');
+            throw new NotFoundException('employee profile not found');
         }
 
         profile.status = EmployeeStatus.TERMINATED;
@@ -261,7 +261,7 @@ export class EmployeeProfileService {
     async adminAssignRole(id: string, dto: AdminAssignRoleDto, userId?: string): Promise<EmployeeProfile> {
         const profile = await this.employeeProfileModel.findById(id);
         if (!profile) {
-            throw new NotFoundException('Employee profile not found');
+            throw new NotFoundException('employee profile not found');
         }
 
         const role = await this.systemRoleModel.findById(dto.accessProfileId);

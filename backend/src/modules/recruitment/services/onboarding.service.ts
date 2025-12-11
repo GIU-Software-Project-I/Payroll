@@ -33,7 +33,7 @@ export class OnboardingService {
      * Triggered by offer acceptance
      */
     async createOnboarding(dto: CreateOnboardingDto): Promise<Onboarding> {
-        // TODO: Validate employee exists in Employee Profile module
+        // TODO: Validate employee exists in employee Profile module
 
         // Validate contract exists
         const contract = await this.contractModel.findById(dto.contractId).exec();
@@ -86,7 +86,7 @@ export class OnboardingService {
      * detail to be able create an employee profile.
      *
      * BR 17(a, b): Uses signed contract data from Recruitment
-     * Outputs to Employee Profile (EP)
+     * Outputs to employee Profile (EP)
      */
     async getContractDetails(contractId: string): Promise<Contract> {
         const contract = await this.contractModel
@@ -104,7 +104,7 @@ export class OnboardingService {
             throw new BadRequestException('Contract must be fully signed before creating employee profile');
         }
 
-        // TODO: This contract data should be used to create Employee Profile in Employee module
+        // TODO: This contract data should be used to create employee Profile in employee module
         // TODO: Extract: role, grossSalary, signingBonus, benefits, acceptanceDate
 
         return contract;
@@ -282,7 +282,7 @@ export class OnboardingService {
 
         const saved = await document.save();
 
-        // TODO: Store documents in Employee Profile (EP)
+        // TODO: Store documents in employee Profile (EP)
         // TODO: Trigger verification workflow in HR
 
         return saved;
@@ -330,7 +330,7 @@ export class OnboardingService {
      * BR 9(b): Auto onboarding tasks for IT (email, laptop, system access)
      */
     async provisionSystemAccess(dto: ProvisionAccessDto): Promise<{ success: boolean; employeeId: string; message: string; provisionedAt: Date; }> {
-        // TODO: Validate employee exists in Employee Profile module
+        // TODO: Validate employee exists in employee Profile module
 
         // TODO: Integration with IT/Access Systems
         // TODO: Create email account
@@ -351,7 +351,7 @@ export class OnboardingService {
     // ============================================================
 
     /**
-     * ONB-012: As a HR Employee, I want to reserve and track equipment,
+     * ONB-012: As a HR employee, I want to reserve and track equipment,
      * desk and access cards for new hires, so resources are ready on Day 1.
      *
      * BR 9(c): Auto onboarding tasks for Admin (workspace, ID badge)
@@ -440,7 +440,7 @@ export class OnboardingService {
         return {
             success: true,
             contractId: dto.contractId,
-            message: 'Payroll initiation triggered successfully. Employee added to current payroll cycle.',
+            message: 'Payroll initiation triggered successfully. employee added to current payroll cycle.',
             triggeredAt: new Date(),
         };
     }
@@ -510,7 +510,7 @@ export class OnboardingService {
             throw new BadRequestException('Cannot cancel completed onboarding');
         }
 
-        // TODO: Integration with Employee Profile module
+        // TODO: Integration with employee Profile module
         // TODO: Terminate/deactivate employee profile
         // TODO: Revoke any provisioned access
         // TODO: Cancel equipment reservations

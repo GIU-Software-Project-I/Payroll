@@ -20,7 +20,7 @@ import {
   UpdatePositionDto,
   UpdateStructureRequestDto,
 } from '../dto/organization-structure';
-import {OrganizationStructureService} from "../Services/Organization-Structure.Service";
+import {OrganizationStructureService} from "../services/Organization-Structure.Service";
 
 
 @Controller('organization-structure')

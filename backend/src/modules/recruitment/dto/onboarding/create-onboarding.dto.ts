@@ -4,7 +4,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { CreateOnboardingTaskDto } from './create-onboarding-task.dto';
 
 export class CreateOnboardingDto {
-    @ApiProperty({ description: 'Employee ID', example: '507f1f77bcf86cd799439011' })
+    @ApiProperty({ description: 'employee ID', example: '507f1f77bcf86cd799439011' })
     @IsMongoId()
     @IsNotEmpty()
     employeeId: string;

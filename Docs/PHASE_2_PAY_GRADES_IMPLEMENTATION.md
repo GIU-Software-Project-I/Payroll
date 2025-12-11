@@ -193,8 +193,8 @@ Content-Type: application/json
   baseSalary: number;         // Base salary (min: 6000)
   grossSalary: number;       // Gross salary = Base + Allowances (min: 6000)
   status: ConfigStatus;      // draft | approved | rejected (default: draft)
-  createdBy: ObjectId;       // Employee ID who created
-  approvedBy?: ObjectId;      // Employee ID who approved (Payroll Manager)
+  createdBy: ObjectId;       // employee ID who created
+  approvedBy?: ObjectId;      // employee ID who approved (Payroll Manager)
   approvedAt?: Date;         // Approval timestamp
   createdAt: Date;           // Auto-generated
   updatedAt: Date;           // Auto-generated

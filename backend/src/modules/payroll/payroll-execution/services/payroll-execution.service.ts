@@ -13,8 +13,8 @@ import { PayCalculatorService } from '../services/payCalculator.service';
 import { TimeManagementService } from '../../../time-management/services/time-management.service';
 import { LeavesService } from '../../../leaves/services/leaves.service';
 
-import { EmployeeSystemRole, EmployeeSystemRoleDocument } from '../../../employee/models/Employee/employee-system-role.schema';
-import {EmployeeProfileService} from "../../../employee/Services/Employee-Profile.Service";
+import { EmployeeSystemRole, EmployeeSystemRoleDocument } from '../../../employee/models/employee/employee-system-role.schema';
+import {EmployeeProfileService} from "../../../employee/services/Employee-Profile.Service";
 
 @Injectable()
 export class PayrollExecutionService {

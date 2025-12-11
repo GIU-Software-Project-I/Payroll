@@ -18,7 +18,7 @@ import {
 export class PayrollTrackingController {
   constructor(private readonly payrollTrackingService: PayrollTrackingService) {}
 
-  // ========== Employee Self-Service Endpoints ==========
+  // ========== employee Self-Service Endpoints ==========
 
   @Get('employee/:employeeId/payslips')
   async getEmployeePayslips(@Param('employeeId') employeeId: string) {

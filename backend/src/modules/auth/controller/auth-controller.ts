@@ -1,15 +1,15 @@
 import {Controller, Post, Body, HttpCode, HttpStatus, Req, Res, UseGuards, InternalServerErrorException, Patch, Param,} from '@nestjs/common';
 import type { Response } from 'express';
-import { Public } from '../decorators/Public-Decorator';
-import { Roles } from '../decorators/Roles-Decorator';
+import { Public } from '../decorators/public-decorator';
+import { Roles } from '../decorators/roles-decorator';
 import { AuthService } from '../services/authentication-service';
 
 import { AuthenticationGuard} from '../guards/authentication-guard';
 import { AuthorizationGuard } from '../guards/authorization-guard';
 import { SystemRole } from '../../employee/enums/employee-profile.enums';
-import {RegisterEmployeeDto} from "../dto/RegisterEmployee.dto";
-import {RegisterCandidateDto} from "../dto/RegisterCandidate.dto";
-import {LoginDto} from "../dto/Login";
+import {RegisterEmployeeDto} from "../dto/register-employee-dto";
+import {RegisterCandidateDto} from "../dto/register-candidate-dto";
+import {LoginDto} from "../dto/login";
 import { ApiTags, ApiBody, ApiOperation, ApiConsumes } from '@nestjs/swagger';
 
 

@@ -247,11 +247,11 @@ export class AttendanceSyncService {
             });
 
             if (leaveRecord) {
-                // Employee has approved leave on this date
+                // employee has approved leave on this date
                 const workMinutes = record.totalWorkMinutes || 0;
 
                 if (workMinutes > 0) {
-                    // Employee worked on a leave day - mark as conflict
+                    // employee worked on a leave day - mark as conflict
                     this.logger.warn(`Conflict detected: Employee ${record.employeeId} has approved leave but also attendance on ${date.toISOString()}`);
 
                     // Create conflict record
@@ -426,7 +426,7 @@ export class AttendanceSyncService {
                     {
                         $set: {
                             status: 'CANCELLED',
-                            cancellationReason: 'Employee was present - attendance takes precedence',
+                            cancellationReason: 'employee was present - attendance takes precedence',
                             cancelledBy: resolution.resolvedBy,
                             cancelledAt: new Date(),
                         }
@@ -441,7 +441,7 @@ export class AttendanceSyncService {
                     {
                         $set: {
                             invalidated: true,
-                            invalidationReason: 'Employee on approved leave',
+                            invalidationReason: 'employee on approved leave',
                             invalidatedBy: resolution.resolvedBy,
                             invalidatedAt: new Date(),
                         }

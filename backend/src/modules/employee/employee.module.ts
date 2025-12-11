@@ -1,22 +1,22 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 
-import { Candidate, CandidateSchema } from '../models/Employee/Candidate.Schema';
-import { EmployeeProfile, EmployeeProfileSchema } from '../models/Employee/employee-profile.schema';
+import { Candidate, CandidateSchema } from './models/employee/Candidate.Schema';
+import { EmployeeProfile, EmployeeProfileSchema } from './models/employee/employee-profile.schema';
 import {
   EmployeeSystemRole,
   EmployeeSystemRoleSchema,
-} from '../models/Employee/employee-system-role.schema';
+} from './models/employee/employee-system-role.schema';
 import {
   EmployeeQualification,
   EmployeeQualificationSchema,
-} from '../models/Employee/qualification.schema';
+} from './models/employee/qualification.schema';
 import {EmployeeProfileChangeRequest,
   EmployeeProfileChangeRequestSchema
-} from "../models/Employee/ep-change-request.schema";
-import { OrganizationStructureModule } from './organization-structure.module';
-import {EmployeeProfileController} from "../Controllers/Employee-Profile.Controller";
-import {EmployeeProfileService} from "../Services/Employee-Profile.Service";
+} from "./models/employee/ep-change-request.schema";
+import { OrganizationStructureModule } from './controllers/organization-structure.module';
+import {EmployeeProfileController} from "./controllers/employee-profile.controller";
+import {EmployeeProfileService} from "./services/Employee-Profile.Service";
 
 
 @Module({

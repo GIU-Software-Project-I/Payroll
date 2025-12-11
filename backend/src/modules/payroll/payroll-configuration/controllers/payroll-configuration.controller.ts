@@ -678,28 +678,28 @@ export class PayrollConfigurationController {
     }
 
     // ========== MANOS' BACKUP ENDPOINTS ==========
-    @Post('backup/create')
-    @HttpCode(HttpStatus.CREATED)
-    createBackup(
-        @Body() body?: { name?: string; oplog?: boolean; dumpDbUsersAndRoles?: boolean },
-    ) {
-        return this.payrollConfigService.createBackup({
-            name: body?.name || 'payroll-config-backup',
-            oplog: body?.oplog ?? false,
-            dumpDbUsersAndRoles: body?.dumpDbUsersAndRoles ?? false,
-        });
-    }
-
-    @Get('backup/list')
-    listBackups() {
-        return this.payrollConfigService.listBackups();
-    }
-
-    @Delete('backup/:filename')
-    @HttpCode(HttpStatus.OK)
-    deleteBackup(@Param('filename') filename: string) {
-        return this.payrollConfigService.deleteBackup(filename);
-    }
+    // @Post('backup/create')
+    // @HttpCode(HttpStatus.CREATED)
+    // createBackup(
+    //     @Body() body?: { name?: string; oplog?: boolean; dumpDbUsersAndRoles?: boolean },
+    // ) {
+    //     return this.payrollConfigService.createBackup({
+    //         name: body?.name || 'payroll-config-backup',
+    //         oplog: body?.oplog ?? false,
+    //         dumpDbUsersAndRoles: body?.dumpDbUsersAndRoles ?? false,
+    //     });
+    // }
+    //
+    // @Get('backup/list')
+    // listBackups() {
+    //     return this.payrollConfigService.listBackups();
+    // }
+    //
+    // @Delete('backup/:filename')
+    // @HttpCode(HttpStatus.OK)
+    // deleteBackup(@Param('filename') filename: string) {
+    //     return this.payrollConfigService.deleteBackup(filename);
+    // }
 }
 
 
@@ -1289,9 +1289,9 @@ export class PayrollConfigurationController {
 //
 //   // ==================== BACKUP ENDPOINTS ====================
 //   /**
-//    * PHASE 3 - REQ-PY-16: System Backup Configuration
+//    * PHASE 3 - REQ-PY-16: System backup Configuration
 //    * Create backup of payroll configuration & tables
-//    * @param body - Backup options (name, oplog, dumpDbUsersAndRoles)
+//    * @param body - backup options (name, oplog, dumpDbUsersAndRoles)
 //    */
 //   @Post('backup/create')
 //   @HttpCode(HttpStatus.CREATED)
@@ -1306,7 +1306,7 @@ export class PayrollConfigurationController {
 //   }
 //
 //   /**
-//    * PHASE 3 - REQ-PY-16: System Backup Configuration
+//    * PHASE 3 - REQ-PY-16: System backup Configuration
 //    * List all backups
 //    */
 //   @Get('backup/list')
@@ -1315,9 +1315,9 @@ export class PayrollConfigurationController {
 //   }
 //
 //   /**
-//    * PHASE 3 - REQ-PY-16: System Backup Configuration
+//    * PHASE 3 - REQ-PY-16: System backup Configuration
 //    * Delete a backup
-//    * @param filename - Backup filename to delete
+//    * @param filename - backup filename to delete
 //    */
 //   @Delete('backup/:filename')
 //   @HttpCode(HttpStatus.NO_CONTENT)

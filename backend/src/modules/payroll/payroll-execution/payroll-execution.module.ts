@@ -22,11 +22,11 @@ import { PayrollConfigurationModule } from '../payroll-configuration/payroll-con
 // import time-management module
 import { TimeManagementModule } from '../../time-management/time-management.module';
 // import employee module
-import { EmployeeModule } from '../../employee/modules/employee.module';
+import { EmployeeModule } from '../../employee/employee.module';
 // import leaves module
-import { LeavesModule } from '../../leaves/modules/leaves.module';
+import { LeavesModule } from '../../leaves/leaves.module';
 // import auth module for guards/services
-import { AuthModule } from '../../auth/module/auth-module';
+import { AuthModule } from '../../auth/auth-module';
 
 @Module({
   imports: [forwardRef(() => PayrollTrackingModule), PayrollConfigurationModule, TimeManagementModule, EmployeeModule, LeavesModule, AuthModule,

@@ -3,7 +3,7 @@ import { TerminationInitiation } from '../../enums/termination-initiation.enum';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateTerminationRequestDto {
-    @ApiProperty({ description: 'Employee ID being terminated', example: '507f1f77bcf86cd799439011' })
+    @ApiProperty({ description: 'employee ID being terminated', example: '507f1f77bcf86cd799439011' })
     //@IsMongoId()
     @IsNotEmpty()
     employeeId: string;
@@ -18,7 +18,7 @@ export class CreateTerminationRequestDto {
     @IsNotEmpty()
     reason: string;
 
-    @ApiPropertyOptional({ description: 'Employee comments', example: 'I understand the decision' })
+    @ApiPropertyOptional({ description: 'employee comments', example: 'I understand the decision' })
     @IsString()
     @IsOptional()
     employeeComments?: string;

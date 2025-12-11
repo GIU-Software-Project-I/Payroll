@@ -31,8 +31,8 @@ import {TimeManagementService} from "./services/time-management.service";
 import {ShiftExpiryScheduler} from "./services/ShiftExpiryScheduler";
 import {NotificationService} from "./services/NotificationService";
 import {AttendanceSyncService} from "./services/AttendanceSyncService";
-import { EmployeeModule } from '../employee/modules/employee.module';
-import {EmployeeProfile, EmployeeProfileSchema} from "../employee/models/Employee/employee-profile.schema";
+import { EmployeeModule } from '../employee/employee.module';
+import {EmployeeProfile, EmployeeProfileSchema} from "../employee/models/employee/employee-profile.schema";
 
 @Module({
     imports: [MongooseModule.forFeature([

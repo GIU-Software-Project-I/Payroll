@@ -43,7 +43,7 @@ export class CreateOfferDto {
     candidateId: string;
 
     @ApiPropertyOptional({ 
-        description: 'HR Employee creating the offer', 
+        description: 'HR employee creating the offer',
         example: '507f1f77bcf86cd799439013' 
     })
     @IsMongoId()

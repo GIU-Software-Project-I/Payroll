@@ -1089,7 +1089,7 @@ export class PayrollConfigurationService {
     } = {}): Promise<any> {
         // Import backup service dynamically to avoid circular dependencies
         // In production, this should use a proper backup service
-        const {BackupService} = await import('../backup/Backup-Service.js');
+        const {BackupService} = await import('../backup/backup-service.js');
         const backupService = new BackupService();
 
         try {
@@ -1111,7 +1111,7 @@ export class PayrollConfigurationService {
      * List all backups
      */
     async listBackups(): Promise<any[]> {
-        const {BackupService} = await import('../backup/Backup-Service.js');
+        const {BackupService} = await import('../backup/backup-service.js');
         const backupService = new BackupService();
 
         try {
@@ -1128,7 +1128,7 @@ export class PayrollConfigurationService {
      * Delete a backup
      */
     async deleteBackup(filename: string): Promise<void> {
-        const {BackupService} = await import('../backup/Backup-Service.js');
+        const {BackupService} = await import('../backup/backup-service.js');
         const backupService = new BackupService();
 
         try {
@@ -1210,7 +1210,7 @@ export class PayrollConfigurationService {
     }
 
 
-        async rejectPayGrade(id: string, approveDto: ApproveConfigDto) {
+    async rejectPayGrade(id: string, approveDto: ApproveConfigDto) {
         const payGrade = await this.findOnePayGrade(id);
         if (payGrade.status !== ConfigStatus.DRAFT) {
             throw new BadRequestException('Only DRAFT configurations can be rejected');

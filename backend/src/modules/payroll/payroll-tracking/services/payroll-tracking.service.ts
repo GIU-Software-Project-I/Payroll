@@ -7,7 +7,7 @@ import { refunds, refundsDocument } from '../models/refunds.schema';
 
 import { ClaimStatus, DisputeStatus, RefundStatus } from '../enums/payroll-tracking-enum';
 import {paySlip, PayslipDocument} from "../../payroll-execution/models/payslip.schema";
-import {EmployeeProfile} from "../../../employee/models/Employee/employee-profile.schema";
+import {EmployeeProfile} from "../../../employee/models/employee/employee-profile.schema";
 import {ContractType, WorkType} from "../../../employee/enums/employee-profile.enums";
 
 @Injectable()
@@ -20,7 +20,7 @@ export class PayrollTrackingService {
     @InjectModel(EmployeeProfile.name) private employeeModel: Model<EmployeeProfile>,
   ) {}
 
-  // ========== Employee Self-Service Methods ==========
+  // ========== employee Self-Service Methods ==========
 
   // REQ-PY-1: View and download payslip
   async getEmployeePayslips(employeeId: string) {
@@ -87,7 +87,7 @@ export class PayrollTrackingService {
   async getBaseSalary(employeeId: string) {
     const employee = await this.employeeModel.findById(employeeId).exec();
     if (!employee) {
-      throw new NotFoundException('Employee not found');
+      throw new NotFoundException('employee not found');
     }
     
     // Derive contract/work type with sensible defaults

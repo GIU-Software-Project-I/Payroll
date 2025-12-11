@@ -10,8 +10,8 @@ import { disputes, disputesSchema } from './models/disputes.schema';
 import {PayrollExecutionModule} from "../payroll-execution/payroll-execution.module";
 import {paySlip, paySlipSchema} from "../payroll-execution/models/payslip.schema";
 import {PayrollConfigurationModule} from "../payroll-configuration/payroll-configuration.module";
-import {EmployeeModule} from "../../employee/modules/employee.module";
-import {EmployeeProfile, EmployeeProfileSchema} from "../../employee/models/Employee/employee-profile.schema";
+import {EmployeeModule} from "../../employee/employee.module";
+import {EmployeeProfile, EmployeeProfileSchema} from "../../employee/models/employee/employee-profile.schema";
 // import payroll-execution module & schemas
 
 

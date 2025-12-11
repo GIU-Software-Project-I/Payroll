@@ -41,7 +41,7 @@ export class OffboardingService {
      * OFF-001: As an HR Manager, I want to initiate termination reviews based on
      * warnings and performance data / manager requests, so that exits are justified.
      *
-     * BR 4: Employee separation needs an effective date and a clearly stated
+     * BR 4: employee separation needs an effective date and a clearly stated
      * and identified reason for exit. Termination reviews based on performance
      * must follow due process.
      *
@@ -63,7 +63,7 @@ export class OffboardingService {
             throw new ConflictException('An active termination request already exists for this employee');
         }
 
-        // TODO: Validate employee exists in Employee Profile module
+        // TODO: Validate employee exists in employee Profile module
         // TODO: Fetch performance warnings/low scores from Performance Management module
 
         const terminationRequest = new this.terminationRequestModel({
@@ -203,19 +203,19 @@ export class OffboardingService {
 
     // ============================================================
     // Requirement: Termination & Resignation Initiation
-    // OFF-018, OFF-019: Employee resignation requests
+    // OFF-018, OFF-019: employee resignation requests
     // ============================================================
 
     /**
-     * OFF-018: As an Employee, I want to be able to request a Resignation
+     * OFF-018: As an employee, I want to be able to request a Resignation
      * request with reasoning.
      *
-     * OFF-019: As an Employee, I want to be able to track my resignation
+     * OFF-019: As an employee, I want to be able to track my resignation
      * request status.
      *
-     * BR 6: Employee separation can be triggered by resignation.
+     * BR 6: employee separation can be triggered by resignation.
      * A clearly identified offboarding approval workflow should be identified
-     * (e.g., Employee resigning > Line Manager > Financial approval > HR processing/approval).
+     * (e.g., employee resigning > Line Manager > Financial approval > HR processing/approval).
      */
     async createResignationRequest(dto: CreateResignationRequestDto): Promise<TerminationRequest> {
         // Validate contract exists
@@ -234,7 +234,7 @@ export class OffboardingService {
             throw new ConflictException('An active resignation/termination request already exists');
         }
 
-        // TODO: Validate employee exists in Employee Profile module
+        // TODO: Validate employee exists in employee Profile module
 
         const resignationRequest = new this.terminationRequestModel({
             employeeId: new Types.ObjectId(dto.employeeId),
@@ -249,7 +249,7 @@ export class OffboardingService {
         const saved = await resignationRequest.save();
 
         // TODO: Trigger offboarding approval workflow
-        // Employee resigning > Line Manager > Financial approval > HR processing/approval
+        // employee resigning > Line Manager > Financial approval > HR processing/approval
 
         return saved;
     }
@@ -525,7 +525,7 @@ export class OffboardingService {
         revokedAt: Date;
     }> {
         // Validate employee exists
-        // TODO: Validate employee exists in Employee Profile module
+        // TODO: Validate employee exists in employee Profile module
 
         // TODO: Verify termination request exists and is approved
         const terminationRequest = await this.terminationRequestModel
@@ -610,7 +610,7 @@ export class OffboardingService {
         // TODO: Fetch employee leave balance
         // TODO: Calculate unused annual leave encashment
 
-        // TODO: Integration with Employee Profile
+        // TODO: Integration with employee Profile
         // TODO: Fetch employee benefits information
 
         // TODO: Integration with Payroll Module

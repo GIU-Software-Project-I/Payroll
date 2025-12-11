@@ -6,7 +6,7 @@ import { CreateCorrectionRequestDto } from '../dto/employee-profile/create-corre
 import { AdminUpdateProfileDto } from '../dto/employee-profile/admin-update-profile.dto';
 import { AdminAssignRoleDto } from '../dto/employee-profile/admin-assign-role.dto';
 import { ProfileChangeStatus, EmployeeStatus } from '../enums/employee-profile.enums';
-import {EmployeeProfileService} from "../Services/Employee-Profile.Service";
+import {EmployeeProfileService} from "../services/Employee-Profile.Service";
 
 
 // Mock AuthGuard - Replace with actual AuthGuard from your auth module
@@ -173,7 +173,7 @@ export class EmployeeProfileController {
     /**
      * US-EP-05: Deactivate employee profile upon termination/resignation
      * PATCH /employee-profile/:id/deactivate
-     * BR 3j: Employee status controls system access
+     * BR 3j: employee status controls system access
      * BR 20: Automatic synchronization to Payroll (block payment) and Time Management
      */
     @Patch(':id/deactivate')

@@ -19,9 +19,9 @@ This document explains:
 
 ```
 backup/
-├── Backup-Service.ts      # Core backup service (mongodump wrapper)
-├── Backup-Controller.ts   # REST API endpoints (standalone)
-└── Backup-Module.ts      # NestJS module definition
+├── backup-service.ts      # Core backup service (mongodump wrapper)
+├── backup-controller.ts   # REST API endpoints (standalone)
+└── backup-module.ts      # NestJS module definition
 ```
 
 ### Architecture Diagram
@@ -82,7 +82,7 @@ backup/
 
 ## 📁 File Breakdown
 
-### 1. **Backup-Service.ts** - Core Backup Logic
+### 1. **backup-service.ts** - Core Backup Logic
 
 **Purpose:** Handles all backup operations using MongoDB's `mongodump` tool
 
@@ -117,7 +117,7 @@ async cleanupOldBackups(): Promise<void>
 
 ---
 
-### 2. **Backup-Controller.ts** - Standalone REST API
+### 2. **backup-controller.ts** - Standalone REST API
 
 **Purpose:** Provides REST endpoints for backup operations (originally designed as standalone)
 
@@ -134,7 +134,7 @@ async cleanupOldBackups(): Promise<void>
 
 ---
 
-### 3. **Backup-Module.ts** - NestJS Module
+### 3. **backup-module.ts** - NestJS Module
 
 **Purpose:** Defines the backup module with dependencies
 
@@ -256,7 +256,7 @@ async createBackup(options: {
   dumpDbUsersAndRoles?: boolean;
 } = {}): Promise<any> {
   // Dynamic import to avoid circular dependencies
-  const { BackupService } = await import('./backup/Backup-Service');
+  const { BackupService } = await import('./backup/backup-Service');
   const backupService = new BackupService(null as any); // Audit service is optional
 
   try {
@@ -332,7 +332,7 @@ DELETE /payroll-configuration/backup/payroll-config-backup_2024-01-15_10-30-00
 **Response:**
 ```json
 {
-  "message": "Backup deleted successfully"
+  "message": "backup deleted successfully"
 }
 ```
 
@@ -345,7 +345,7 @@ DELETE /payroll-configuration/backup/payroll-config-backup_2024-01-15_10-30-00
 The backup service uses the following environment variables:
 
 ```bash
-# Backup directory (default: ./backups)
+# backup directory (default: ./backups)
 BACKUP_DIR=./backups
 
 # MongoDB connection URI
@@ -361,7 +361,7 @@ When creating a backup, you can specify options:
 
 ```typescript
 interface BackupOptions {
-  name?: string;              // Backup name prefix (default: "backup")
+  name?: string;              // backup name prefix (default: "backup")
   oplog?: boolean;            // Include oplog (for replica sets)
   dumpDbUsersAndRoles?: boolean; // Include users and roles
 }
@@ -541,7 +541,7 @@ DELETE /payroll-configuration/backup/backup_2024-01-10_08-00-00
    - Should add authentication/authorization guards
 
 2. **Standalone Controller (Unused):**
-   - `Backup-Controller.ts` has authentication (`JwtAuthGuard`, `RolesGuard`)
+   - `backup-controller.ts` has authentication (`JwtAuthGuard`, `RolesGuard`)
    - Requires ADMIN role
    - Not currently used
 
@@ -574,7 +574,7 @@ Each backup includes comprehensive metadata:
 
 ```typescript
 interface BackupMetadata {
-  filename: string;                    // Backup directory name
+  filename: string;                    // backup directory name
   timestamp: Date;                     // When backup was created
   size: number;                        // Total size in bytes
   path: string;                        // Full path to backup
@@ -594,7 +594,7 @@ interface BackupMetadata {
 
 The backup module includes support for scheduled backups via `CronBackupService`:
 
-**Note:** The cron service is referenced in `Backup-Module.ts` but implementation details are in a separate scheduler module.
+**Note:** The cron service is referenced in `backup-module.ts` but implementation details are in a separate scheduler module.
 
 **Example Cron Configuration:**
 ```typescript

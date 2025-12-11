@@ -2,13 +2,13 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
-import { EmployeeProfile, EmployeeProfileDocument } from '../../employee/models/Employee/employee-profile.schema';
-import { EmployeeSystemRole, EmployeeSystemRoleDocument } from '../../employee/models/Employee/employee-system-role.schema';
-import { Candidate, CandidateDocument } from '../../employee/models/Employee/Candidate.Schema';
+import { EmployeeProfile, EmployeeProfileDocument } from '../../employee/models/employee/employee-profile.schema';
+import { EmployeeSystemRole, EmployeeSystemRoleDocument } from '../../employee/models/employee/employee-system-role.schema';
+import { Candidate, CandidateDocument } from '../../employee/models/employee/Candidate.Schema';
 
 import { SystemRole } from '../../employee/enums/employee-profile.enums';
-import {RegisterEmployeeDto} from "../dto/RegisterEmployee.dto";
-import {RegisterCandidateDto} from "../dto/RegisterCandidate.dto";
+import {RegisterEmployeeDto} from "../dto/register-employee-dto";
+import {RegisterCandidateDto} from "../dto/register-candidate-dto";
 
 @Injectable()
 export class EmployeeAuthService {
@@ -54,7 +54,7 @@ export class EmployeeAuthService {
 
     const existingByEmpNumber = await this.employeeModel.findOne({ employeeNumber: dto.employeeNumber }).exec();
     if (existingByEmpNumber) {
-      throw new BadRequestException('Employee number already in use');
+      throw new BadRequestException('employee number already in use');
     }
 
     const existingByNationalId = await this.employeeModel.findOne({ nationalId: dto.nationalId }).exec();

@@ -27,7 +27,7 @@ export class OffboardingController {
     @Post('termination-requests')
     @ApiOperation({
         summary: 'OFF-001: Create termination request',
-        description: 'HR Manager initiates termination reviews based on warnings and performance data / manager requests. BR 4: Employee separation needs an effective date and a clearly stated reason for exit.',
+        description: 'HR Manager initiates termination reviews based on warnings and performance data / manager requests. BR 4: employee separation needs an effective date and a clearly stated reason for exit.',
     })
     @ApiBody({ type: CreateTerminationRequestDto })
     @ApiResponse({ status: 201, description: 'Termination request created successfully' })
@@ -135,13 +135,13 @@ export class OffboardingController {
 
     // ============================================================
     // Requirement: Termination & Resignation Initiation
-    // OFF-018, OFF-019: Employee resignation requests
+    // OFF-018, OFF-019: employee resignation requests
     // ============================================================
 
     @Post('resignation-requests')
     @ApiOperation({
         summary: 'OFF-018: Create resignation request',
-        description: 'Employee submits resignation request with reasoning. BR 6: Employee separation can be triggered by resignation with identified approval workflow (Employee > Line Manager > Financial approval > HR processing/approval).',
+        description: 'employee submits resignation request with reasoning. BR 6: employee separation can be triggered by resignation with identified approval workflow (employee > Line Manager > Financial approval > HR processing/approval).',
     })
     @ApiBody({ type: CreateResignationRequestDto })
     @ApiResponse({ status: 201, description: 'Resignation request created successfully' })
@@ -154,9 +154,9 @@ export class OffboardingController {
     @Get('resignation-requests/employee/:employeeId')
     @ApiOperation({
         summary: 'OFF-019: Track resignation request status',
-        description: 'Employee tracks their resignation request status',
+        description: 'employee tracks their resignation request status',
     })
-    @ApiParam({ name: 'employeeId', description: 'Employee ID' })
+    @ApiParam({ name: 'employeeId', description: 'employee ID' })
     @ApiResponse({ status: 200, description: 'List of resignation requests for the employee' })
     async getResignationRequestByEmployeeId(@Param('employeeId') employeeId: string) {
         return this.offboardingService.getResignationRequestByEmployeeId(employeeId);

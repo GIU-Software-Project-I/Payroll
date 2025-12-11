@@ -152,7 +152,7 @@ export class AttendanceSyncController {
                 summary: 'Cancel leave, keep attendance',
                 value: {
                     action: 'KEEP_ATTENDANCE',
-                    note: 'Employee was present, verified by manager',
+                    note: 'employee was present, verified by manager',
                     resolvedBy: '674c1a1b2c3d4e5f6a7b8c8a'
                 }
             },
@@ -168,7 +168,7 @@ export class AttendanceSyncController {
                 summary: 'Convert to half-day leave',
                 value: {
                     action: 'CONVERT_TO_HALF_DAY',
-                    note: 'Employee worked half day',
+                    note: 'employee worked half day',
                     resolvedBy: '674c1a1b2c3d4e5f6a7b8c8a'
                 }
             }
