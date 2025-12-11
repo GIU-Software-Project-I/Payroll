@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import {MongooseModule} from "@nestjs/mongoose";
 
-import {LeavesService} from "./services/leaves.service";
+import {UnifiedLeaveService} from "./services/leaves.service";
 import {LeaveRequest, LeaveRequestSchema} from "./models/leave-request.schema";
 import {LeavePolicy, LeavePolicySchema} from "./models/leave-policy.schema";
 import {LeaveEntitlement, LeaveEntitlementSchema} from "./models/leave-entitlement.schema";
@@ -9,7 +9,7 @@ import {LeaveCategory, LeaveCategorySchema} from "./models/leave-category.schema
 import {LeaveAdjustment, LeaveAdjustmentSchema} from "./models/leave-adjustment.schema";
 import {Calendar, CalendarSchema} from "./models/calendar.schema";
 import {Attachment, AttachmentSchema} from "./models/attachment.schema";
-import {LeavesController} from "./controllers/leaves.controller";
+import {UnifiedLeaveController} from "./controllers/leaves.controller";
 import {LeaveType, LeaveTypeSchema} from "./models/leave-type.schema";
 import {EmployeeModule} from "../employee/employee.module";
 
@@ -27,8 +27,8 @@ import {EmployeeModule} from "../employee/employee.module";
       EmployeeModule,
       // TimeManagementModule
   ],
-  controllers: [LeavesController],
-  providers: [LeavesService],
-  exports:[LeavesService]
+  controllers: [UnifiedLeaveController],
+  providers: [UnifiedLeaveService],
+  exports:[UnifiedLeaveService]
 })
 export class LeavesModule {}

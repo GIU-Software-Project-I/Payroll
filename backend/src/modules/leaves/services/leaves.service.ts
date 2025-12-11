@@ -1,60 +1,1313 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+  Logger,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { LeaveRequest, LeaveRequestDocument } from '../models/leave-request.schema';
-import { LeaveType, LeaveTypeDocument } from '../models/leave-type.schema';
+import { LeaveTypeDocument } from '../models/leave-type.schema';
+import { LeaveCategoryDocument } from '../models/leave-category.schema';
+import { LeaveRequestDocument } from '../models/leave-request.schema';
+import { LeaveEntitlementDocument } from '../models/leave-entitlement.schema';
+import { LeaveAdjustmentDocument } from '../models/leave-adjustment.schema';
+import { CalendarDocument } from '../models/calendar.schema';
+import { AttachmentDocument } from '../models/attachment.schema';
+import { LeaveStatus } from '../enums/leave-status.enum';
+import { AccrualMethod } from '../enums/accrual-method.enum';
+import { RoundingRule } from '../enums/rounding-rule.enum';
+import { LeavePolicyDocument } from '../models/leave-policy.schema';
 
 @Injectable()
-export class LeavesService {
-	constructor(
-		@InjectModel(LeaveRequest.name) private readonly leaveRequestModel: Model<LeaveRequestDocument>,
-		@InjectModel(LeaveType.name) private readonly leaveTypeModel: Model<LeaveTypeDocument>,
-	) {}
+export class UnifiedLeaveService {
+  private readonly logger = new Logger(UnifiedLeaveService.name);
 
-	/**
-	 * Returns the number of unpaid leave days for the employee within the date range.
-	 * Counts only APPROVED leave requests whose LeaveType.paid === false and which overlap the period.
-	 */
-	async getUnpaidLeaveDays(employeeId: string, startDate: Date, endDate: Date): Promise<number> {
-		if (!employeeId) throw new BadRequestException('employeeId required');
-		const empOid = typeof employeeId === 'string' ? new Types.ObjectId(employeeId) : employeeId;
+  constructor(
+    @InjectModel('LeaveType')
+    private leaveTypeModel: Model<LeaveTypeDocument>,
+    @InjectModel('LeaveRequest')
+    private leaveRequestModel: Model<LeaveRequestDocument>,
+    @InjectModel('LeaveEntitlement')
+    private entitlementModel: Model<LeaveEntitlementDocument>,
+    @InjectModel('LeaveAdjustment')
+    private adjustmentModel: Model<LeaveAdjustmentDocument>,
+    @InjectModel('Calendar')
+    private calendarModel: Model<CalendarDocument>,
+    @InjectModel('Attachment')
+    private attachmentModel: Model<AttachmentDocument>,
+    @InjectModel('LeaveCategory')
+    private leaveCategoryModel: Model<LeaveCategoryDocument>,
+    @InjectModel('LeavePolicy')
+    private policyModel: Model<LeavePolicyDocument>,
+  ) {}
 
-		// Find approved leave requests for employee overlapping range
-		const requests = await this.leaveRequestModel.find({
-			employeeId: empOid,
-			status: 'approved',
-			$or: [
-				{ 'dates.from': { $lte: endDate }, 'dates.to': { $gte: startDate } },
-			],
-		}).lean().exec();
+  // --------------------------------------------------------------------------------
+  // Policy / Types / Categories
+  // --------------------------------------------------------------------------------
 
-		if (!requests || requests.length === 0) return 0;
+  // REQ-011: Track sick leave usage over last N years (default 3)
+  async getLeaveUsageLastYears(
+    employeeId: string,
+    leaveTypeId: string,
+    years: number = 3,
+  ) {
+    const end = new Date();
+    const start = new Date();
+    start.setFullYear(end.getFullYear() - years);
 
-		// For each request, check its leave type to see if unpaid
-		let totalUnpaid = 0;
-		for (const r of requests) {
-			try {
-				const lt = await this.leaveTypeModel.findById(r.leaveTypeId).lean().exec();
-				if (!lt) continue;
-				if (lt.paid === false) {
-					// compute overlap days between r.dates and [startDate,endDate]
-					const from = r.dates?.from ? new Date(r.dates.from) : null;
-					const to = r.dates?.to ? new Date(r.dates.to) : null;
-					if (!from || !to) continue;
-					const overlapStart = from > startDate ? from : startDate;
-					const overlapEnd = to < endDate ? to : endDate;
-					if (overlapEnd >= overlapStart) {
-						const ms = overlapEnd.getTime() - overlapStart.getTime();
-						// inclusive days: add 1 day
-						const days = Math.floor(ms / (1000 * 60 * 60 * 24)) + 1;
-						totalUnpaid += days;
-					}
-				}
-			} catch (e) {
-				continue;
-			}
-		}
+    const [agg] = await this.leaveRequestModel.aggregate([
+      {
+        $match: {
+          employeeId: new Types.ObjectId(employeeId),
+          leaveTypeId: new Types.ObjectId(leaveTypeId),
+          status: LeaveStatus.APPROVED,
+          'dates.from': { $gte: start, $lte: end },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalDays: { $sum: '$durationDays' },
+        },
+      },
+    ]);
 
-		return totalUnpaid;
-	}
+    const totalDays = agg?.totalDays ?? 0;
+    const maxAllowed = 360;
+
+    return {
+      employeeId,
+      leaveTypeId,
+      periodStart: start,
+      periodEnd: end,
+      totalDays,
+      maxAllowed,
+      remainingAllowed: Math.max(0, maxAllowed - totalDays),
+    };
+  }
+
+  // REQ-011: count how many times an employee took a specific leave
+  async getLeaveCountForType(employeeId: string, leaveTypeId: string) {
+    const count = await this.leaveRequestModel.countDocuments({
+      employeeId: new Types.ObjectId(employeeId),
+      leaveTypeId: new Types.ObjectId(leaveTypeId),
+      status: LeaveStatus.APPROVED,
+    });
+
+    return { employeeId, leaveTypeId, count };
+  }
+
+  // REQ-006 Create and Manage Leave Types
+  async createLeaveType(dto: any) {
+    const exists = await this.leaveTypeModel.findOne({ code: dto.code });
+    if (exists) throw new ConflictException('Leave type code already exists');
+    return new this.leaveTypeModel(dto).save();
+  }
+
+  async getAllLeaveTypes() {
+    return this.leaveTypeModel.find().lean();
+  }
+
+  async getLeaveType(id: string) {
+    const doc = await this.leaveTypeModel.findById(id).lean();
+    if (!doc) throw new NotFoundException('Leave type not found');
+    return doc;
+  }
+
+  async updateLeaveType(id: string, dto: any) {
+    const updated = await this.leaveTypeModel
+      .findByIdAndUpdate(id, dto, { new: true })
+      .lean();
+    if (!updated) throw new NotFoundException('Leave type not found');
+    return updated;
+  }
+
+  async deleteLeaveType(id: string) {
+    const deleted = await this.leaveTypeModel.findByIdAndDelete(id);
+    if (!deleted) throw new NotFoundException('Leave type not found');
+    return { success: true };
+  }
+
+  // REQ-010, REQ-011 Categories
+  async createCategory(dto: any) {
+    return this.leaveCategoryModel.create(dto);
+  }
+
+  async getAllCategories() {
+    return this.leaveCategoryModel.find().lean();
+  }
+
+  async getCategory(id: string) {
+    return this.leaveCategoryModel.findById(id).lean();
+  }
+
+  async updateCategory(id: string, dto: any) {
+    return this.leaveCategoryModel
+      .findByIdAndUpdate(id, dto, { new: true })
+      .lean();
+  }
+
+  async deleteCategory(id: string) {
+    const deleted = await this.leaveCategoryModel.findByIdAndDelete(id);
+    if (!deleted) throw new NotFoundException('Category not found');
+    return { success: true };
+  }
+
+  // --------------------------------------------------------------------------------
+  // Eligibility rules (REQ-007)
+  // --------------------------------------------------------------------------------
+
+  async checkEligibility(employeeProfile: any, leaveTypeId: string) {
+    const leaveType = (await this.leaveTypeModel
+      .findById(leaveTypeId)
+      .lean()) as any;
+    if (!leaveType) throw new BadRequestException('Invalid leave type');
+
+    if (leaveType.eligibility?.minTenureDays) {
+      const hireDate = new Date(employeeProfile.hireDate);
+      const days = Math.floor(
+        (Date.now() - hireDate.getTime()) / (1000 * 60 * 60 * 24),
+      );
+      if (days < leaveType.eligibility.minTenureDays) {
+        return { ok: false, reason: 'Minimum tenure not met' };
+      }
+    }
+
+    if (
+      leaveType.eligibility?.employmentTypes &&
+      leaveType.eligibility.employmentTypes.length
+    ) {
+      if (
+        !leaveType.eligibility.employmentTypes.includes(
+          employeeProfile.employmentType,
+        )
+      ) {
+        return { ok: false, reason: 'Employment type not eligible' };
+      }
+    }
+
+    return { ok: true };
+  }
+
+  // --------------------------------------------------------------------------------
+  // Calendar helpers (REQ-010)
+  // --------------------------------------------------------------------------------
+
+  async addHoliday(year: number, date: Date, reason?: string) {
+    let doc = await this.calendarModel.findOne({ year });
+    if (!doc)
+      doc = await this.calendarModel.create({
+        year,
+        holidays: [],
+        blockedPeriods: [],
+      });
+    doc.holidays.push(date);
+    return doc.save();
+  }
+
+  async addBlockedPeriod(year: number, from: Date, to: Date, reason: string) {
+    let doc = await this.calendarModel.findOne({ year });
+    if (!doc)
+      doc = await this.calendarModel.create({
+        year,
+        holidays: [],
+        blockedPeriods: [],
+      });
+    doc.blockedPeriods.push({ from, to, reason });
+    return doc.save();
+  }
+
+  async getCalendar(year: number) {
+    return this.calendarModel.findOne({ year }).lean();
+  }
+
+  private async isHoliday(date: Date): Promise<boolean> {
+    const year = date.getFullYear();
+    const doc = await this.calendarModel.findOne({ year }).lean();
+    if (!doc) return false;
+
+    return (doc.holidays || []).some(
+      (d: any) => new Date(d).toDateString() === date.toDateString(),
+    );
+  }
+
+  private async isBlockedPeriod(date: Date): Promise<boolean> {
+    const year = date.getFullYear();
+    const doc = await this.calendarModel.findOne({ year }).lean();
+    if (!doc) return false;
+
+    for (const p of doc.blockedPeriods || []) {
+      const from = new Date(p.from);
+      const to = new Date(p.to);
+      if (date >= from && date <= to) return true;
+    }
+    return false;
+  }
+
+  // REQ-005 / REQ-010: working duration = exclude weekends + public holidays
+  private async _calculateWorkingDuration(
+    employeeId: string,
+    from: Date,
+    to: Date,
+  ) {
+    let count = 0;
+
+    for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
+      const day = new Date(d);
+
+      const dayOfWeek = day.getDay();
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      if (isWeekend) continue;
+
+      const holiday = await this.isHoliday(day);
+      if (holiday) continue;
+
+      count++;
+    }
+
+    return count;
+  }
+
+  // --------------------------------------------------------------------------------
+  // Leave Request lifecycle (REQ-015 .. REQ-031)
+  // --------------------------------------------------------------------------------
+
+  async createLeaveRequest(dto: {
+    employeeId: string;
+    leaveTypeId: string;
+    from: Date;
+    to: Date;
+    justification?: string;
+    attachmentId?: string;
+    employeeProfile?: any;
+    postLeave?: boolean;
+  }) {
+    if (!dto.employeeId || !dto.leaveTypeId || !dto.from || !dto.to) {
+      throw new BadRequestException('Missing fields');
+    }
+
+    const leaveType = await this.leaveTypeModel
+      .findById(dto.leaveTypeId)
+      .lean();
+    if (!leaveType) {
+      throw new BadRequestException('Invalid leave type');
+    }
+
+    if (dto.employeeProfile) {
+      const elig = await this.checkEligibility(
+        dto.employeeProfile,
+        dto.leaveTypeId,
+      );
+      if (!elig.ok) {
+        throw new BadRequestException(`Ineligible: ${elig.reason}`);
+      }
+    }
+
+    if (leaveType.requiresAttachment && !dto.attachmentId) {
+      throw new BadRequestException(
+        'Attachment is required for this leave type',
+      );
+    }
+
+    if (dto.attachmentId) {
+      const attachment = await this.attachmentModel
+        .findById(dto.attachmentId)
+        .lean();
+      if (!attachment) {
+        throw new BadRequestException('Attachment not found');
+      }
+    }
+
+    const fromDate = new Date(dto.from);
+    const toDate = new Date(dto.to);
+
+    if (dto.postLeave) {
+      const MAX_POST_LEAVE_DAYS = 30;
+      const now = new Date();
+      const diffMs = now.getTime() - toDate.getTime();
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      if (diffDays > MAX_POST_LEAVE_DAYS) {
+        throw new BadRequestException(
+          `Post-leave requests must be submitted within ${MAX_POST_LEAVE_DAYS} days after leave end`,
+        );
+      }
+    }
+
+    const overlap = await this.leaveRequestModel
+      .findOne({
+        employeeId: new Types.ObjectId(dto.employeeId),
+        status: { $in: [LeaveStatus.APPROVED] },
+        $or: [
+          { 'dates.from': { $lte: toDate }, 'dates.to': { $gte: fromDate } },
+          { 'dates.from': { $lte: fromDate }, 'dates.to': { $gte: fromDate } },
+        ],
+      })
+      .lean();
+
+    if (overlap) {
+      throw new BadRequestException('Overlapping approved leave exists');
+    }
+
+    for (
+      let d = new Date(fromDate);
+      d <= toDate;
+      d.setDate(d.getDate() + 1)
+    ) {
+      const day = new Date(d);
+      if (await this.isBlockedPeriod(day)) {
+        throw new BadRequestException(
+          'Requested dates fall within a blocked period',
+        );
+      }
+    }
+
+    const duration = await this._calculateWorkingDuration(
+      dto.employeeId,
+      fromDate,
+      toDate,
+    );
+
+    if (leaveType.maxDurationDays && duration > leaveType.maxDurationDays) {
+      throw new BadRequestException(
+        `Requested duration (${duration} days) exceeds the maximum allowed for this leave type (${leaveType.maxDurationDays} days)`,
+      );
+    }
+
+    if (leaveType.code !== 'UNPAID') {
+      const entitlement = await this.entitlementModel
+        .findOne({
+          employeeId: new Types.ObjectId(dto.employeeId),
+          leaveTypeId: new Types.ObjectId(dto.leaveTypeId),
+        })
+        .lean();
+
+      if (entitlement) {
+        const yearly = entitlement.yearlyEntitlement ?? 0;
+        const carryForward = entitlement.carryForward ?? 0;
+        const taken = entitlement.taken ?? 0;
+        const pending = entitlement.pending ?? 0;
+
+        const remaining =
+          entitlement.remaining ??
+          yearly + carryForward - taken - pending;
+
+        if (duration > remaining) {
+          throw new BadRequestException(
+            `Requested duration (${duration} days) exceeds remaining entitlement (${remaining} days) for this leave type`,
+          );
+        }
+      }
+    }
+
+    const payload: any = {
+      employeeId: new Types.ObjectId(dto.employeeId),
+      leaveTypeId: new Types.ObjectId(dto.leaveTypeId),
+      dates: { from: fromDate, to: toDate },
+      durationDays: duration,
+      justification: dto.justification,
+      attachmentId: dto.attachmentId
+        ? new Types.ObjectId(dto.attachmentId)
+        : undefined,
+      approvalFlow: [
+        { role: 'manager', status: 'pending' },
+        { role: 'hr', status: 'pending' },
+      ],
+      status: LeaveStatus.PENDING,
+      irregularPatternFlag: false,
+      postLeave: !!dto.postLeave,
+    };
+
+    const created = new this.leaveRequestModel(payload);
+    await created.save();
+
+    this.logger.log(
+      `Leave request ${created._id} created for employee ${dto.employeeId}`,
+    );
+    return created;
+  }
+
+  async getAllRequests() {
+    return this.leaveRequestModel.find().lean();
+  }
+
+  async getRequest(id: string) {
+    return this.leaveRequestModel.findById(id).lean();
+  }
+
+  async updateRequest(id: string, dto: Partial<any>) {
+    const leave = await this.leaveRequestModel.findById(id);
+    if (!leave) throw new NotFoundException('Leave request not found');
+    if (leave.status !== LeaveStatus.PENDING) {
+      throw new BadRequestException('Only pending requests can be modified');
+    }
+
+    if (dto.from && dto.to) {
+      const from = new Date(dto.from);
+      const to = new Date(dto.to);
+
+      const overlap = await this.leaveRequestModel
+        .findOne({
+          _id: { $ne: leave._id },
+          employeeId: leave.employeeId,
+          status: { $in: [LeaveStatus.APPROVED] },
+          $or: [{ 'dates.from': { $lte: to }, 'dates.to': { $gte: from } }],
+        })
+        .lean();
+
+      if (overlap) {
+        throw new BadRequestException(
+          'New dates overlap an approved leave',
+        );
+      }
+
+      const duration = await this._calculateWorkingDuration(
+        leave.employeeId.toString(),
+        from,
+        to,
+      );
+
+      const leaveType = await this.leaveTypeModel
+        .findById(leave.leaveTypeId)
+        .lean();
+      if (!leaveType) {
+        throw new BadRequestException('Invalid leave type for this request');
+      }
+
+      if (leaveType.maxDurationDays && duration > leaveType.maxDurationDays) {
+        throw new BadRequestException(
+          `Requested duration (${duration} days) exceeds the maximum allowed for this leave type (${leaveType.maxDurationDays} days)`,
+        );
+      }
+
+      leave.dates = { from, to };
+      leave.durationDays = duration;
+    }
+
+    if (dto.justification) {
+      leave.justification = dto.justification;
+    }
+    if (dto.attachmentId) {
+      leave.attachmentId = new Types.ObjectId(dto.attachmentId);
+    }
+
+    return leave.save();
+  }
+
+  // REQ-018 Cancel Pending Request (+ REQ-029 reversal if approved)
+  async cancelRequest(id: string, employeeId: string) {
+    const leave = await this.leaveRequestModel.findById(id);
+    if (!leave) throw new NotFoundException('Leave request not found');
+
+    if (leave.employeeId.toString() !== employeeId) {
+      throw new BadRequestException('Unauthorized');
+    }
+
+    if (leave.status === LeaveStatus.PENDING) {
+      leave.status = LeaveStatus.CANCELLED;
+      await leave.save();
+      return leave;
+    }
+
+    if (leave.status === LeaveStatus.APPROVED) {
+      // 1) mark cancelled
+      leave.status = LeaveStatus.CANCELLED;
+      await leave.save();
+
+      // 2) reverse entitlement usage (if exists)
+      const ent = await this.entitlementModel.findOne({
+        employeeId: leave.employeeId,
+        leaveTypeId: leave.leaveTypeId,
+      });
+
+      if (ent) {
+        ent.taken = Math.max(
+          0,
+          (ent.taken || 0) - (leave.durationDays || 0),
+        );
+        ent.remaining = (ent.remaining || 0) + (leave.durationDays || 0);
+        await ent.save();
+      }
+
+      // 3) payroll sync reversal (no transaction)
+      await this.syncCancellation(
+        leave.employeeId.toString(),
+        leave._id.toString(),
+        leave.durationDays || 0,
+      );
+
+      return leave;
+    }
+
+    throw new BadRequestException(
+      'Request cannot be cancelled in current state',
+    );
+  }
+
+  async managerApprove(id: string, managerId: string) {
+    const leave = await this.leaveRequestModel.findById(id);
+    if (!leave) throw new NotFoundException('Not found');
+
+    if (leave.status !== LeaveStatus.PENDING) {
+      throw new BadRequestException(
+        'Only pending requests can be approved by manager',
+      );
+    }
+
+    if (!leave.approvalFlow || !Array.isArray(leave.approvalFlow)) {
+      leave.approvalFlow = [] as any;
+    }
+
+    leave.approvalFlow[0] = {
+      role: 'manager',
+      status: 'approved',
+      decidedBy: new Types.ObjectId(managerId),
+      decidedAt: new Date(),
+    } as any;
+
+    leave.status = LeaveStatus.PENDING;
+    await leave.save();
+    return leave;
+  }
+
+  async managerReject(id: string, managerId: string) {
+    const leave = await this.leaveRequestModel.findById(id);
+    if (!leave) throw new NotFoundException('Not found');
+
+    if (leave.status !== LeaveStatus.PENDING) {
+      throw new BadRequestException(
+        'Only pending requests can be rejected by manager',
+      );
+    }
+
+    if (!leave.approvalFlow || !Array.isArray(leave.approvalFlow)) {
+      leave.approvalFlow = [] as any;
+    }
+
+    leave.approvalFlow[0] = {
+      role: 'manager',
+      status: 'rejected',
+      decidedBy: new Types.ObjectId(managerId),
+      decidedAt: new Date(),
+    } as any;
+
+    leave.status = LeaveStatus.REJECTED;
+    await leave.save();
+    return leave;
+  }
+
+  // REQ-025 HR Finalize (approve/reject) – no sessions
+  async hrFinalize(
+    id: string,
+    hrId: string,
+    decision: 'approve' | 'reject',
+  ) {
+    const leave = await this.leaveRequestModel.findById(id);
+    if (!leave) throw new NotFoundException('Not found');
+
+    if (leave.status !== LeaveStatus.PENDING) {
+      throw new BadRequestException(
+        'Only pending requests can be finalized by HR',
+      );
+    }
+
+    if (!leave.approvalFlow || !Array.isArray(leave.approvalFlow)) {
+      leave.approvalFlow = [] as any;
+    }
+
+    // ensure HR slot
+    if (!leave.approvalFlow[1]) {
+      leave.approvalFlow[1] = {
+        role: 'hr',
+        status: 'pending',
+      } as any;
+    }
+
+    leave.approvalFlow[1] = {
+      role: 'hr',
+      status: decision === 'approve' ? 'approved' : 'rejected',
+      decidedBy: new Types.ObjectId(hrId),
+      decidedAt: new Date(),
+    } as any;
+
+    leave.status =
+      decision === 'approve'
+        ? LeaveStatus.APPROVED
+        : LeaveStatus.REJECTED;
+
+    // Reject path: simple save, no entitlement/payroll logic
+    if (decision === 'reject') {
+      await leave.save();
+      return leave;
+    }
+
+    // Approve path: update entitlement + payroll (no transaction)
+    const ent = await this.entitlementModel.findOne({
+      employeeId: leave.employeeId,
+      leaveTypeId: leave.leaveTypeId,
+    });
+
+    if (ent) {
+      ent.taken = (ent.taken || 0) + (leave.durationDays || 0);
+      ent.remaining = Math.max(
+        0,
+        (ent.remaining || 0) - (leave.durationDays || 0),
+      );
+      await ent.save();
+    } else {
+      await this.entitlementModel.create({
+        employeeId: leave.employeeId,
+        leaveTypeId: leave.leaveTypeId,
+        yearlyEntitlement: 0,
+        accruedActual: 0,
+        accruedRounded: 0,
+        carryForward: 0,
+        taken: leave.durationDays || 0,
+        pending: 0,
+        remaining: -(leave.durationDays || 0),
+        lastAccrualDate: null,
+        nextResetDate: null,
+      });
+    }
+
+    await this.payrollNotifyAfterApproval(leave);
+    await leave.save();
+    return leave;
+  }
+
+  private async payrollNotifyAfterApproval(leave: LeaveRequestDocument) {
+    try {
+      await this.payrollSyncLeave(leave.employeeId.toString(), {
+        leaveRequestId: leave._id.toString(),
+        leaveTypeId: leave.leaveTypeId.toString(),
+        durationDays: leave.durationDays,
+        isPaid: (leave as any).isPaid !== false,
+        from: leave.dates.from,
+        to: leave.dates.to,
+      });
+    } catch (err) {
+      this.logger.warn('Payroll sync failed for leave ' + leave._id);
+    }
+  }
+
+  // --------------------------------------------------------------------------------
+  // Entitlements & Adjustments (REQ-008, REQ-013)
+  // --------------------------------------------------------------------------------
+
+  async assignEntitlement(
+    employeeId: string,
+    leaveTypeId: string,
+    yearlyEntitlement: number,
+  ) {
+    const filter = {
+      employeeId: new Types.ObjectId(employeeId),
+      leaveTypeId: new Types.ObjectId(leaveTypeId),
+    };
+    const update = {
+      yearlyEntitlement,
+      remaining: yearlyEntitlement,
+      lastAccrualDate: new Date(),
+    };
+    return this.entitlementModel
+      .findOneAndUpdate(filter, update, { upsert: true, new: true })
+      .lean();
+  }
+
+  // no sessions: simple create + update
+  async manualEntitlementAdjustment(
+    employeeId: string,
+    leaveTypeId: string,
+    amount: number,
+    type: 'add' | 'deduct',
+    reason: string,
+    hrUserId: string,
+  ) {
+    await this.adjustmentModel.create({
+      employeeId: new Types.ObjectId(employeeId),
+      leaveTypeId: new Types.ObjectId(leaveTypeId),
+      adjustmentType: type,
+      amount,
+      reason,
+      hrUserId: new Types.ObjectId(hrUserId),
+      createdAt: new Date(),
+    });
+
+    const incValue = type === 'add' ? amount : -amount;
+
+    const updated = await this.entitlementModel.findOneAndUpdate(
+      {
+        employeeId: new Types.ObjectId(employeeId),
+        leaveTypeId: new Types.ObjectId(leaveTypeId),
+      } ,
+      { $inc: { remaining: incValue } },
+      { new: true },
+    );
+
+    if (!updated) {
+      throw new NotFoundException(
+        'Entitlement not found for employee + leaveType',
+      );
+    }
+
+    return updated;
+  }
+
+  async getEntitlements(employeeId: string) {
+    return this.entitlementModel.find({ employeeId }).lean();
+  }
+
+  async createEntitlement(dto: any) {
+    return this.entitlementModel.create(dto);
+  }
+
+  async createAdjustment(dto: any) {
+    return this.manualEntitlementAdjustment(
+      dto.employeeId,
+      dto.leaveTypeId,
+      dto.amount,
+      dto.adjustmentType,
+      dto.reason,
+      dto.hrUserId,
+    );
+  }
+
+  // --------------------------------------------------------------------------------
+  // Balance views and history (REQ-031, REQ-032, REQ-033)
+  // --------------------------------------------------------------------------------
+
+  async getEmployeeBalances(employeeId: string) {
+    if (!employeeId) throw new BadRequestException('employeeId required');
+
+    const entitlements = await this.entitlementModel
+      .find({ employeeId: new Types.ObjectId(employeeId) })
+      .lean();
+
+    const results = await Promise.all(
+      entitlements.map(async (ent: any) => {
+        const takenAgg = await this.leaveRequestModel.aggregate([
+          {
+            $match: {
+              employeeId: new Types.ObjectId(employeeId),
+              leaveTypeId: new Types.ObjectId(ent.leaveTypeId),
+              status: { $in: [LeaveStatus.APPROVED] },
+            },
+          },
+          { $group: { _id: null, takenDays: { $sum: '$durationDays' } } },
+        ]);
+
+        const pendingAgg = await this.leaveRequestModel.aggregate([
+          {
+            $match: {
+              employeeId: new Types.ObjectId(employeeId),
+              leaveTypeId: new Types.ObjectId(ent.leaveTypeId),
+              status: LeaveStatus.PENDING,
+            },
+          },
+          { $group: { _id: null, pendingDays: { $sum: '$durationDays' } } },
+        ]);
+
+        const takenFromRequests = takenAgg[0]?.takenDays ?? 0;
+        const pendingFromRequests = pendingAgg[0]?.pendingDays ?? 0;
+
+        const taken = (ent.taken ?? 0) + takenFromRequests;
+        const pending = Math.max(ent.pending ?? 0, pendingFromRequests);
+        const accrued =
+          ent.accruedRounded ??
+          ent.accruedActual ??
+          ent.yearlyEntitlement ??
+          0;
+        const carryForward = ent.carryForward ?? 0;
+        const remaining =
+          ent.remaining ?? accrued + carryForward - taken - pending;
+
+        return {
+          leaveTypeId: ent.leaveTypeId,
+          yearlyEntitlement: ent.yearlyEntitlement ?? 0,
+          accrued,
+          taken,
+          pending,
+          carryForward,
+          remaining,
+          usedRounded: Math.round(taken),
+          lastAccrualDate: ent.lastAccrualDate ?? null,
+        };
+      }),
+    );
+
+    return results;
+  }
+
+  async getEmployeeHistory(
+    employeeId: string,
+    opts: {
+      leaveTypeId?: string;
+      status?: string;
+      from?: string;
+      to?: string;
+      page?: number;
+      limit?: number;
+      sort?: string;
+    } = {},
+  ) {
+    if (!employeeId) throw new BadRequestException('employeeId required');
+
+    const q: any = { employeeId: new Types.ObjectId(employeeId) };
+    if (opts.leaveTypeId)
+      q.leaveTypeId = new Types.ObjectId(opts.leaveTypeId);
+    if (opts.status) q.status = opts.status;
+    if (opts.from || opts.to) {
+      q['dates.from'] = {};
+      if (opts.from) q['dates.from'].$gte = new Date(opts.from);
+      if (opts.to) q['dates.from'].$lte = new Date(opts.to);
+    }
+
+    const page = Math.max(1, opts.page ?? 1);
+    const limit = Math.max(1, opts.limit ?? 20);
+    const sort = opts.sort ?? '-dates.from';
+
+    const docs = await this.leaveRequestModel
+      .find(q)
+      .sort(sort)
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+    const total = await this.leaveRequestModel.countDocuments(q);
+    return { data: docs, page, limit, total };
+  }
+
+  async recalcEmployee(employeeId: string) {
+    const entitlements = await this.entitlementModel.find({
+      employeeId: new Types.ObjectId(employeeId),
+    });
+    for (const e of entitlements) {
+      e.remaining =
+        (e.yearlyEntitlement || 0) +
+        (e.carryForward || 0) -
+        (e.taken || 0);
+      await e.save();
+    }
+    return { ok: true, processed: entitlements.length };
+  }
+
+  // --------------------------------------------------------------------------------
+  // Manager views & admin filters (REQ-034, REQ-035, REQ-039)
+  // --------------------------------------------------------------------------------
+
+  async teamBalances(
+    managerId: string,
+    opts: { department?: string; leaveTypeId?: string } = {},
+  ) {
+    const employees = await this.leaveRequestModel
+      .distinct('employeeId', {
+        'approvalFlow.0.decidedBy': new Types.ObjectId(managerId),
+      })
+      .catch(() => []);
+
+    if (!employees || employees.length === 0) return [];
+
+    const result = await Promise.all(
+      (employees as Types.ObjectId[]).map(async (empId: any) => {
+        const balances = await this.getEmployeeBalances(empId.toString());
+        return { employeeId: empId.toString(), balances };
+      }),
+    );
+    return result;
+  }
+
+  async teamRequests(
+    managerId: string,
+    opts: {
+      leaveTypeId?: string;
+      status?: string;
+      department?: string;
+      from?: string;
+      to?: string;
+      page?: number;
+      limit?: number;
+      sort?: string;
+    } = {},
+  ) {
+    const q: any = {};
+    if (opts.leaveTypeId)
+      q.leaveTypeId = new Types.ObjectId(opts.leaveTypeId);
+    if (opts.status) q.status = opts.status;
+    if (opts.from || opts.to) {
+      q['dates.from'] = {};
+      if (opts.from) q['dates.from'].$gte = new Date(opts.from);
+      if (opts.to) q['dates.from'].$lte = new Date(opts.to);
+    }
+
+    q['approvalFlow.0.decidedBy'] = new Types.ObjectId(managerId);
+
+    const page = Math.max(1, opts.page ?? 1);
+    const limit = Math.max(1, opts.limit ?? 20);
+    const sort = opts.sort ?? '-dates.from';
+
+    const docs = await this.leaveRequestModel
+      .find(q)
+      .sort(sort)
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+    const total = await this.leaveRequestModel.countDocuments(q);
+    return { data: docs, page, limit, total };
+  }
+
+  async irregularPatterns(
+    managerId: string,
+    opts: { department?: string } = {},
+  ) {
+    const threshold = 3;
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    const docs = await this.leaveRequestModel.aggregate([
+      {
+        $match: {
+          'dates.from': { $gte: sixMonthsAgo },
+          leaveTypeCategory: 'Sick',
+        },
+      },
+      { $group: { _id: '$employeeId', cnt: { $sum: 1 } } },
+      { $match: { cnt: { $gte: threshold } } },
+    ]);
+
+    return docs;
+  }
+
+  // --------------------------------------------------------------------------------
+  // Accruals & Carry-forward (REQ-003, REQ-040, REQ-041, REQ-042)
+  // --------------------------------------------------------------------------------
+
+  private applyRounding(value: number, mode: RoundingRule): number {
+    if (mode === RoundingRule.NONE) return value;
+    if (mode === RoundingRule.ROUND) return Math.round(value);
+    if (mode === RoundingRule.ROUND_UP) return Math.ceil(value);
+    if (mode === RoundingRule.ROUND_DOWN) return Math.floor(value);
+    return value;
+  }
+
+  async runAccrual(
+    referenceDate?: string,
+    method: AccrualMethod = AccrualMethod.MONTHLY,
+    roundingRule: RoundingRule = RoundingRule.ROUND,
+  ) {
+    const ref = referenceDate ? new Date(referenceDate) : new Date();
+
+    const entitlements = await this.entitlementModel.find();
+    for (const e of entitlements) {
+      if (!e.yearlyEntitlement) continue;
+
+      let delta = 0;
+      const yearly = e.yearlyEntitlement || 0;
+
+      switch (method) {
+        case AccrualMethod.MONTHLY:
+          delta = yearly / 12;
+          break;
+        case AccrualMethod.YEARLY:
+          delta = yearly;
+          break;
+        case AccrualMethod.PER_TERM:
+          delta = yearly / 3;
+          break;
+        default:
+          delta = yearly / 12;
+      }
+
+      const serviceDays = await this.calculateServiceDays(
+        e.employeeId.toString(),
+        e.lastAccrualDate ?? new Date(ref.getFullYear(), 0, 1),
+        ref,
+      );
+      if (serviceDays <= 0) continue;
+
+      e.accruedActual = (e.accruedActual || 0) + delta;
+      e.accruedRounded = this.applyRounding(e.accruedActual, roundingRule);
+
+      const taken = e.taken || 0;
+      const pending = e.pending || 0;
+      const carryForward = e.carryForward || 0;
+      e.remaining = e.accruedRounded + carryForward - taken - pending;
+      e.lastAccrualDate = ref;
+      await e.save();
+    }
+
+    return {
+      ok: true,
+      processed: entitlements.length,
+      referenceDate: ref,
+      method,
+      roundingRule,
+    };
+  }
+
+  async carryForward(
+    referenceDate?: string,
+    capDays?: number,
+    expiryMonths?: number,
+  ) {
+    const ref = referenceDate ? new Date(referenceDate) : new Date();
+    const entitlements = await this.entitlementModel.find();
+
+    const defaultCap = 45;
+    const defaultExpiryMonths = 12;
+
+    for (const e of entitlements) {
+      if (!e.carryForward || e.carryForward <= 0) continue;
+
+      const cap = capDays ?? defaultCap;
+      const monthsToAdd = expiryMonths ?? defaultExpiryMonths;
+
+      const toCarry = Math.min(e.carryForward, cap);
+      e.remaining = (e.remaining || 0) + toCarry;
+      e.carryForward = 0;
+
+      const expiryDate = new Date(ref);
+      expiryDate.setMonth(expiryDate.getMonth() + monthsToAdd);
+      (e as any).carryForwardExpiry = expiryDate;
+
+      await e.save();
+    }
+
+    return {
+      ok: true,
+      processed: entitlements.length,
+      referenceDate: ref,
+      capDays: capDays ?? defaultCap,
+      expiryMonths: expiryMonths ?? defaultExpiryMonths,
+    };
+  }
+
+  async resetLeaveYear(
+    strategy: 'hireDate' | 'calendarYear' | 'custom',
+    referenceDate?: Date,
+  ) {
+    const entitlements = await this.entitlementModel.find();
+    for (const e of entitlements) {
+      e.remaining =
+        (e.yearlyEntitlement || 0) +
+        (e.carryForward || 0) -
+        (e.taken || 0);
+      e.accruedActual = 0;
+      e.accruedRounded = 0;
+      await e.save();
+    }
+    return { ok: true, processed: entitlements.length };
+  }
+
+  async calculateServiceDays(
+    employeeId: string,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<number> {
+    if (!startDate || !endDate) return 0;
+    const totalDays = Math.ceil(
+      (new Date(endDate).getTime() - new Date(startDate).getTime()) /
+        (1000 * 60 * 60 * 24),
+    );
+
+    const unpaidRequests = await this.leaveRequestModel
+      .find({
+        employeeId: new Types.ObjectId(employeeId),
+        status: { $in: [LeaveStatus.APPROVED] },
+        'dates.from': { $lte: endDate },
+        'dates.to': { $gte: startDate },
+      })
+      .lean();
+
+    let unpaidDays = 0;
+    for (const period of unpaidRequests) {
+      const overlapStart = new Date(
+        Math.max(
+          new Date(period.dates.from).getTime(),
+          startDate.getTime(),
+        ),
+      );
+      const overlapEnd = new Date(
+        Math.min(
+          new Date(period.dates.to).getTime(),
+          endDate.getTime(),
+        ),
+      );
+      if (overlapStart <= overlapEnd) {
+        const days =
+          Math.ceil(
+            (overlapEnd.getTime() - overlapStart.getTime()) /
+              (1000 * 60 * 60 * 24),
+          ) + 1;
+        unpaidDays += days;
+      }
+    }
+    return Math.max(0, totalDays - unpaidDays);
+  }
+
+  // --------------------------------------------------------------------------------
+  // Payroll integration (REQ-042)
+  // --------------------------------------------------------------------------------
+
+  async payrollSyncBalance(employeeId: string, balanceData?: any) {
+    this.logger.log(
+      `Payroll sync: Updating balances for employee ${employeeId}`,
+    );
+    return { ok: true, employeeId, syncedAt: new Date(), balanceData };
+  }
+
+  async payrollSyncLeave(
+    employeeId: string,
+    leaveData: {
+      leaveRequestId: string;
+      leaveTypeId: string;
+      durationDays: number;
+      isPaid: boolean;
+      from: Date;
+      to: Date;
+    },
+  ) {
+    this.logger.log(
+      `Payroll sync: Leave approved for ${employeeId}, duration: ${leaveData.durationDays} days`,
+    );
+    return {
+      ok: true,
+      employeeId,
+      leaveRequestId: leaveData.leaveRequestId,
+      syncedAt: new Date(),
+    };
+  }
+
+  async calculateUnpaidDeduction(
+    employeeId: string,
+    baseSalary: number,
+    workDaysInMonth: number,
+    unpaidLeaveDays: number,
+  ) {
+    const dailyRate = baseSalary / workDaysInMonth;
+    const deductionAmount = dailyRate * unpaidLeaveDays;
+    return {
+      deductionAmount: Math.round(deductionAmount * 100) / 100,
+      formula: `(${baseSalary} / ${workDaysInMonth}) × ${unpaidLeaveDays}`,
+    };
+  }
+
+  async calculateEncashment(
+    employeeId: string,
+    dailySalaryRate: number,
+    unusedLeaveDays: number,
+    maxEncashableDays = 30,
+  ) {
+    const daysEncashed = Math.min(unusedLeaveDays, maxEncashableDays);
+    const encashmentAmount = dailySalaryRate * daysEncashed;
+    return {
+      encashmentAmount: Math.round(encashmentAmount * 100) / 100,
+      daysEncashed,
+      formula: `${dailySalaryRate} × ${daysEncashed}`,
+    };
+  }
+
+  async syncCancellation(
+    employeeId: string,
+    leaveRequestId: string,
+    daysToRestore: number,
+  ) {
+    this.logger.log(
+      `Payroll sync: Leave cancelled for ${employeeId}, restoring ${daysToRestore} days`,
+    );
+    return {
+      ok: true,
+      employeeId,
+      leaveRequestId,
+      daysRestored: daysToRestore,
+      syncedAt: new Date(),
+    };
+  }
+
+  async payrollSyncLeaveWrapper(employeeId: string, leaveData: any) {
+    return this.payrollSyncLeave(employeeId, leaveData);
+  }
+
+  // --------------------------------------------------------------------------------
+  // Attachments (REQ-016, REQ-028)
+  // --------------------------------------------------------------------------------
+
+  async saveAttachment(dto: any) {
+    return this.attachmentModel.create(dto);
+  }
+
+  async validateMedicalAttachment(id: string) {
+    const attachment = await this.attachmentModel.findById(id);
+    if (!attachment) throw new NotFoundException('Attachment not found');
+    const type = (attachment.fileType || '').toLowerCase();
+    if (!type.includes('pdf') && !type.includes('image')) {
+      throw new BadRequestException('Invalid medical document');
+    }
+    return attachment;
+  }
+
+  // --------------------------------------------------------------------------------
+  // Misc / Analytics / Bulk (REQ-027, REQ-039)
+  // --------------------------------------------------------------------------------
+
+  async bulkProcessRequests(
+    requestIds: string[],
+    action: 'approve' | 'reject',
+    actorId: string,
+  ) {
+    const results: string[] = [];
+
+    for (const id of requestIds) {
+      const reqDoc = await this.leaveRequestModel.findById(id);
+      if (!reqDoc) continue;
+
+      if (!reqDoc.approvalFlow || !Array.isArray(reqDoc.approvalFlow)) {
+        reqDoc.approvalFlow = [] as any;
+      }
+
+      if (action === 'approve') {
+        reqDoc.approvalFlow[0] = {
+          role: 'manager',
+          status: 'approved',
+          decidedBy: new Types.ObjectId(actorId),
+          decidedAt: new Date(),
+        } as any;
+        reqDoc.status = LeaveStatus.PENDING;
+      } else {
+        reqDoc.approvalFlow[0] = {
+          role: 'manager',
+          status: 'rejected',
+          decidedBy: new Types.ObjectId(actorId),
+          decidedAt: new Date(),
+        } as any;
+        reqDoc.status = LeaveStatus.REJECTED;
+      }
+
+      await reqDoc.save();
+      results.push(reqDoc._id.toString());
+    }
+
+    return { ok: true, processed: results.length, ids: results };
+  }
+
+  async flagIrregular(requestId: string, flag: boolean, reason?: string) {
+    const leave = await this.leaveRequestModel.findById(requestId);
+    if (!leave) throw new NotFoundException('Leave request not found');
+    leave.irregularPatternFlag = !!flag;
+    if (reason) {
+      this.logger.log(
+        `Irregular flag reason for ${requestId}: ${reason}`,
+      );
+    }
+    return leave.save();
+  }
+
+  async calculateServiceDaysWrapper(
+    employeeId: string,
+    startDate: Date,
+    endDate: Date,
+  ) {
+    return this.calculateServiceDays(employeeId, startDate, endDate);
+  }
+
+  private async _notifyStakeholdersOnFinalization(leave: any) {
+    this.logger.log(`Notify stakeholders for leave ${leave._id}`);
+  }
 }
