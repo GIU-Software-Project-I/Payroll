@@ -68,6 +68,8 @@ import {EmployeeProfile, EmployeeProfileSchema} from "../employee/models/employe
         ShiftExpiryScheduler,
         RepeatedLatenessService,
         NotificationService,
-        AttendanceSyncService]
+        AttendanceSyncService],
+    
+    exports: [NotificationService]
 })
 export class TimeManagementModule {}

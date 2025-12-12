@@ -13,7 +13,9 @@ import {employeePayrollDetails, employeePayrollDetailsSchema} from "../payroll-e
 import {PayrollConfigurationModule} from "../payroll-configuration/payroll-configuration.module";
 import {EmployeeModule} from "../../employee/employee.module";
 import {EmployeeProfile, EmployeeProfileSchema} from "../../employee/models/employee/employee-profile.schema";
+import {Department, DepartmentSchema} from "../../employee/models/organization-structure/department.schema";
 import {LeavesModule} from "../../leaves/leaves.module";
+import {TimeManagementModule} from "../../time-management/time-management.module";
 // import payroll-execution module & schemas
 
 
@@ -22,6 +24,7 @@ import {LeavesModule} from "../../leaves/leaves.module";
     PayrollConfigurationModule,
       EmployeeModule,
       LeavesModule,
+      TimeManagementModule,
     forwardRef(() => PayrollExecutionModule),
     MongooseModule.forFeature([
       { name: refunds.name, schema: refundsSchema },
@@ -30,6 +33,7 @@ import {LeavesModule} from "../../leaves/leaves.module";
       { name: paySlip.name, schema: paySlipSchema },
       { name: employeePayrollDetails.name, schema: employeePayrollDetailsSchema },
       { name: EmployeeProfile.name, schema: EmployeeProfileSchema},
+      { name: Department.name, schema: DepartmentSchema},
     ]),
   ],
   controllers: [PayrollTrackingController],

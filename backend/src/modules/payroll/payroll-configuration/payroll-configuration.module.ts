@@ -19,6 +19,7 @@ import { terminationAndResignationBenefits, terminationAndResignationBenefitsSch
 import { payGrade, payGradeSchema } from './models/payGrades.schema';
 import {RecruitmentModule} from "../../recruitment/recruitment.module";
 import { EmployeeProfile, EmployeeProfileSchema } from '../../employee/models/employee/employee-profile.schema';
+import { AuthModule } from '../../auth/auth-module';
 
 
 
@@ -29,6 +30,7 @@ import { EmployeeProfile, EmployeeProfileSchema } from '../../employee/models/em
     EmployeeModule,
     OrganizationStructureModule,
     RecruitmentModule,
+    AuthModule,
     MongooseModule.forFeature([
       { name: allowance.name, schema: allowanceSchema },
       { name: signingBonus.name, schema: signingBonusSchema },
