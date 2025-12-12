@@ -60,7 +60,7 @@ export class OrganizationStructureService {
         @InjectModel(StructureChangeRequest.name) private changeRequestModel: Model<StructureChangeRequestDocument>,
         @InjectModel(StructureApproval.name) private approvalModel: Model<StructureApprovalDocument>,
         @InjectModel(StructureChangeLog.name) private changeLogModel: Model<StructureChangeLogDocument>,
-    ) {}
+    ) { }
 
     private validateObjectId(id: string, fieldName: string): void {
         if (!Types.ObjectId.isValid(id)) {
@@ -139,6 +139,8 @@ export class OrganizationStructureService {
         });
 
         return department;
+
+
     }
 
     async getDepartmentById(id: string): Promise<Department> {

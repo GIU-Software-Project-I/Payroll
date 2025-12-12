@@ -12,6 +12,12 @@ async function bootstrap() {
 
     const app = await NestFactory.create(AppModule);
 
+    // Debug Logger
+    app.use((req, res, next) => {
+        console.log(`Incoming Request: ${req.method} ${req.url}`);
+        next();
+    });
+
     app.use(cookieParser());
 
     // Note: `whitelist:true` removes properties that don't have class-validator decorators.
@@ -21,7 +27,7 @@ async function bootstrap() {
     app.useGlobalPipes(new ValidationPipe({ whitelist: false, transform: true }));
 
     app.enableCors({
-        origin: ['http://localhost:3999', 'http://localhost:3000', 'http://localhost:5000'],
+        origin: '*', // Relaxed for debugging
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization'],
@@ -31,15 +37,15 @@ async function bootstrap() {
         .setTitle('HR System API')
         .setDescription('API documentation — limited to safe public models (no secrets).')
         .setVersion('1.0')
-        .addBearerAuth({type: 'http', scheme: 'bearer', bearerFormat: 'JWT', in: 'header',}, 'access-token',).build();
+        .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT', in: 'header', }, 'access-token',).build();
 
     const document = SwaggerModule.createDocument(app, config, {});
 
     SwaggerModule.setup('api', app, document);
 
-     const port = Number(process.env.PORT) || 8000;
+    const port = Number(process.env.PORT) || 8000;
 
-     await app.listen(port);
+    await app.listen(port);
 
     console.log(`Application running on http://localhost:${port}`);
 
