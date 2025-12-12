@@ -28,10 +28,12 @@ import {OnboardingService} from "./services/onboarding.service";
 
 // Shared Module
 import { SharedModule } from "../shared/shared.module";
+import {AuthModule} from "../auth/auth-module";
 
 
 @Module({
     imports: [
+        AuthModule,
         MongooseModule.forFeature([
             // Recruitment Models
             { name: JobTemplate.name, schema: JobTemplateSchema },
@@ -49,6 +51,7 @@ import { SharedModule } from "../shared/shared.module";
             { name: TerminationRequest.name, schema: TerminationRequestSchema },
         ]),
         SharedModule,
+
     ],
     controllers: [RecruitmentController, OnboardingController, OffboardingController],
     providers: [RecruitmentService, OnboardingService, OffboardingService],

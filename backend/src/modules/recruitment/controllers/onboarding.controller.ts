@@ -1,10 +1,17 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { OnboardingService } from '../services/onboarding.service';
 import {CreateOnboardingDto, CreateOnboardingTaskDto, UpdateTaskStatusDto, UploadDocumentDto, ReserveEquipmentDto, ProvisionAccessDto, TriggerPayrollInitiationDto, ScheduleAccessRevocationDto, CancelOnboardingDto,} from '../dto/onboarding';
+import { AuthenticationGuard } from '../../auth/guards/authentication-guard';
+import { AuthorizationGuard } from '../../auth/guards/authorization-guard';
+import { Roles } from '../../auth/decorators/roles-decorator';
+import { Public } from '../../auth/decorators/public-decorator';
+import { SystemRole } from '../../employee/enums/employee-profile.enums';
 
 @ApiTags('Onboarding')
+@ApiBearerAuth('access-token')
 @Controller('onboarding')
+@UseGuards(AuthenticationGuard, AuthorizationGuard)
 export class OnboardingController {
     constructor(private readonly onboardingService: OnboardingService) {}
 
@@ -13,6 +20,7 @@ export class OnboardingController {
     // ============================================================
 
     @Post('upload-contract')
+    @Public()
     @ApiOperation({
         summary: 'Candidate upload signed contract and forms',
         description: 'As a Candidate, I want to upload signed contract and candidate required forms and templates to initiate the onboarding process.',
@@ -28,6 +36,7 @@ export class OnboardingController {
     // ============================================================
 
     @Post()
+    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({
         summary: 'ONB-001: Create onboarding checklist',
         description: 'HR Manager creates onboarding task checklists for new hires. BR 8, 11: Customizable checklists with department-specific tasks.',
@@ -41,6 +50,7 @@ export class OnboardingController {
     }
 
     @Get()
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({
         summary: 'Get all onboarding checklists',
         description: 'HR Manager views all onboarding checklists',
@@ -51,6 +61,7 @@ export class OnboardingController {
     }
 
     @Get(':id')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER, SystemRole.DEPARTMENT_EMPLOYEE)
     @ApiOperation({
         summary: 'Get onboarding by ID',
         description: 'Retrieve specific onboarding checklist with full details',
@@ -63,6 +74,7 @@ export class OnboardingController {
     }
 
     @Post(':id/tasks')
+    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({
         summary: 'Add task to onboarding checklist',
         description: 'Add a new task to existing onboarding checklist',
@@ -83,6 +95,7 @@ export class OnboardingController {
     // ============================================================
 
     @Get('contracts/:contractId')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({
         summary: 'ONB-002: Get signed contract details',
         description: 'HR Manager accesses signed contract detail to create employee profile. BR 17(a, b): Uses contract data from Recruitment.',
@@ -96,6 +109,7 @@ export class OnboardingController {
     }
 
     @Post('contracts/:contractId/create-employee')
+    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     @ApiOperation({
         summary: 'ONB-002: Create employee profile from signed contract',
         description: 'HR Manager creates employee profile from signed contract details. BR 17(a, b): Extracts role, salary, benefits from contract.',
@@ -113,6 +127,7 @@ export class OnboardingController {
     // ============================================================
 
     @Get('employee/:employeeId')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER, SystemRole.DEPARTMENT_EMPLOYEE)
     @ApiOperation({
         summary: 'ONB-004: View onboarding tracker',
         description: 'New Hire views their onboarding steps in a tracker. BR 11(a, b): Workflow with department-specific tasks.',
@@ -125,6 +140,7 @@ export class OnboardingController {
     }
 
     @Get(':id/progress')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER, SystemRole.DEPARTMENT_EMPLOYEE)
     @ApiOperation({
         summary: 'Get onboarding progress',
         description: 'View progress statistics for onboarding checklist',
@@ -137,6 +153,7 @@ export class OnboardingController {
     }
 
     @Patch(':id/tasks/:taskName/status')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER, SystemRole.DEPARTMENT_EMPLOYEE)
     @ApiOperation({
         summary: 'Update task status',
         description: 'Update status of individual onboarding task',
@@ -159,6 +176,7 @@ export class OnboardingController {
     // ============================================================
 
     @Get('employee/:employeeId/pending-tasks')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER, SystemRole.DEPARTMENT_EMPLOYEE)
     @ApiOperation({
         summary: 'ONB-005: Get pending tasks with reminders',
         description: 'New Hire receives reminders for pending and overdue tasks. BR 12: Track reminders and task assignments.',
@@ -175,6 +193,7 @@ export class OnboardingController {
     // ============================================================
 
     @Post('documents')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER, SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.JOB_CANDIDATE)
     @ApiOperation({
         summary: 'ONB-007: Upload compliance documents',
         description: 'New Hire uploads documents (ID, contracts, certifications). BR 7: Documents collected before first working day.',
@@ -186,6 +205,7 @@ export class OnboardingController {
     }
 
     @Get('documents/owner/:ownerId')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER, SystemRole.DEPARTMENT_EMPLOYEE)
     @ApiOperation({
         summary: 'Get documents by owner',
         description: 'Retrieve all documents uploaded by employee/candidate',
@@ -197,6 +217,7 @@ export class OnboardingController {
     }
 
     @Patch(':id/tasks/:taskName/document')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({
         summary: 'Link document to task',
         description: 'Associate uploaded document with onboarding task',
@@ -219,6 +240,7 @@ export class OnboardingController {
     // ============================================================
 
     @Post('provision-access')
+    @Roles(SystemRole.SYSTEM_ADMIN, SystemRole.HR_ADMIN)
     @ApiOperation({
         summary: 'ONB-009: Provision system access',
         description: 'System Admin provisions system access (payroll, email, internal systems). BR 9(b): Auto IT tasks for email, laptop, system access.',
@@ -234,6 +256,7 @@ export class OnboardingController {
     // ============================================================
 
     @Post('reserve-equipment')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     @ApiOperation({
         summary: 'ONB-012: Reserve equipment and resources',
         description: 'HR employee reserves equipment, desk and access cards for new hires. BR 9(c): Auto Admin tasks for workspace, ID badge.',
@@ -249,6 +272,7 @@ export class OnboardingController {
     // ============================================================
 
     @Post('schedule-access-revocation')
+    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     @ApiOperation({
         summary: 'ONB-013: Schedule automated access revocation',
         description: 'HR Manager schedules automated account provisioning and revocation. BR 9(b): IT allocation automated. Links to Offboarding (OFF-007).',
@@ -264,6 +288,7 @@ export class OnboardingController {
     // ============================================================
 
     @Post('trigger-payroll-initiation')
+    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_MANAGER)
     @ApiOperation({
         summary: 'ONB-018: Trigger payroll initiation',
         description: 'HR Manager triggers automatic payroll initiation based on contract signing. BR 9(a): Auto HR tasks for payroll & benefits. REQ-PY-23.',
@@ -280,6 +305,7 @@ export class OnboardingController {
     // ============================================================
 
     @Post('contracts/:contractId/process-signing-bonus')
+    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_MANAGER)
     @ApiOperation({
         summary: 'ONB-019: Process signing bonus',
         description: 'HR Manager processes signing bonuses from contract. BR 9(a): Bonuses as distinct payroll components. REQ-PY-27.',
@@ -297,6 +323,7 @@ export class OnboardingController {
     // ============================================================
 
     @Delete(':id/cancel')
+    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     @ApiOperation({
         summary: 'Cancel onboarding (No-Show)',
         description: 'BR20: System allows onboarding cancellation/termination of employee profile in case of no-show.',
@@ -313,4 +340,3 @@ export class OnboardingController {
         return this.onboardingService.cancelOnboarding(id, dto);
     }
 }
-

@@ -20,17 +20,21 @@ async function bootstrap() {
 
     app.use(cookieParser());
 
-    // Note: `whitelist:true` removes properties that don't have class-validator decorators.
-    // Many DTOs in this codebase rely on plain objects, so disable whitelist to avoid
-    // unintentionally stripping incoming JSON. Consider adding class-validator
-    // decorators to DTOs and re-enabling whitelist for stricter validation.
     app.useGlobalPipes(new ValidationPipe({ whitelist: false, transform: true }));
 
     app.enableCors({
-        origin: '*', // Relaxed for debugging
+        origin: (origin, callback) => {
+            // Allow requests with no origin (like mobile apps or curl requests)
+            if (!origin) return callback(null, true);
+            // Allow any localhost origin during development
+            if (origin.startsWith('http://localhost:4000')) {
+                return callback(null, true);
+            }
+            callback(new Error('Not allowed by CORS'));
+        },
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
     });
 
     const config = new DocumentBuilder()

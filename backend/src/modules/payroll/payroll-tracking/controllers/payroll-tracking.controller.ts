@@ -1,7 +1,7 @@
 // Note: In a real application, you would implement proper guards
 // @UseGuards(JwtAuthGuard, RolesGuard)
 
-import {Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put, Query, Res} from "@nestjs/common";
+import {Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put, Query, Res, UseGuards} from "@nestjs/common";
 import type { Response } from 'express';
 
 import {PayrollTrackingService} from "../services/payroll-tracking.service";
@@ -13,19 +13,26 @@ import {
     UpdateDisputeDto,
     UpdateRefundDto
 } from "../dtos";
+import { AuthenticationGuard } from '../../../auth/guards/authentication-guard';
+import { AuthorizationGuard } from '../../../auth/guards/authorization-guard';
+import { Roles } from '../../../auth/decorators/roles-decorator';
+import { SystemRole } from '../../../employee/enums/employee-profile.enums';
 
 @Controller('payroll/tracking')
+@UseGuards(AuthenticationGuard, AuthorizationGuard)
 export class PayrollTrackingController {
   constructor(private readonly payrollTrackingService: PayrollTrackingService) {}
 
   // ========== Employee Self-Service Endpoints ==========
 
   @Get('employee/:employeeId/payslips')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER)
   async getEmployeePayslips(@Param('employeeId') employeeId: string) {
     return this.payrollTrackingService.getEmployeePayslips(employeeId);
   }
 
   @Get('payslip/:payslipId/employee/:employeeId')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER)
   async getPayslipDetails(
     @Param('payslipId') payslipId: string,
     @Param('employeeId') employeeId: string
@@ -34,6 +41,7 @@ export class PayrollTrackingController {
   }
 
   @Get('payslip/:payslipId/employee/:employeeId/download')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER)
   async downloadPayslip(
     @Param('payslipId') payslipId: string,
     @Param('employeeId') employeeId: string,
@@ -75,21 +83,25 @@ export class PayrollTrackingController {
   }
 
   @Get('employee/:employeeId/base-salary')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER)
   async getBaseSalary(@Param('employeeId') employeeId: string) {
     return this.payrollTrackingService.getBaseSalary(employeeId);
   }
 
   @Get('employee/:employeeId/leave-compensation')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER)
   async getLeaveCompensation(@Param('employeeId') employeeId: string) {
     return this.payrollTrackingService.getLeaveCompensation(employeeId);
   }
 
   @Get('employee/:employeeId/transportation')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER)
   async getTransportationCompensation(@Param('employeeId') employeeId: string) {
     return this.payrollTrackingService.getTransportationCompensation(employeeId);
   }
 
   @Get('employee/:employeeId/tax-deductions')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER)
   async getTaxDeductions(
     @Param('employeeId') employeeId: string,
     @Query('payslipId') payslipId?: string
@@ -98,6 +110,7 @@ export class PayrollTrackingController {
   }
 
   @Get('employee/:employeeId/insurance-deductions')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER)
   async getInsuranceDeductions(
     @Param('employeeId') employeeId: string,
     @Query('payslipId') payslipId?: string
@@ -106,6 +119,7 @@ export class PayrollTrackingController {
   }
 
   @Get('employee/:employeeId/misconduct-deductions')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER)
   async getMisconductDeductions(
     @Param('employeeId') employeeId: string,
     @Query('payslipId') payslipId?: string
@@ -114,6 +128,7 @@ export class PayrollTrackingController {
   }
 
   @Get('employee/:employeeId/unpaid-leave-deductions')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER)
   async getUnpaidLeaveDeductions(
     @Param('employeeId') employeeId: string,
     @Query('payslipId') payslipId?: string,
@@ -128,11 +143,13 @@ export class PayrollTrackingController {
   }
 
   @Get('employee/:employeeId/salary-history')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER)
   async getSalaryHistory(@Param('employeeId') employeeId: string) {
     return this.payrollTrackingService.getSalaryHistory(employeeId);
   }
 
   @Get('employee/:employeeId/employer-contributions')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER)
   async getEmployerContributions(
     @Param('employeeId') employeeId: string,
     @Query('payslipId') payslipId?: string
@@ -141,6 +158,7 @@ export class PayrollTrackingController {
   }
 
   @Get('employee/:employeeId/tax-documents')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER)
   async getTaxDocuments(
     @Param('employeeId') employeeId: string,
     @Query('year') year?: number
@@ -149,6 +167,7 @@ export class PayrollTrackingController {
   }
 
   @Get('employee/:employeeId/tax-documents/:year/download')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER)
   async downloadAnnualTaxStatement(
     @Param('employeeId') employeeId: string,
     @Param('year') year: string,
@@ -212,6 +231,7 @@ export class PayrollTrackingController {
 
   @Post('employee/:employeeId/disputes')
   @HttpCode(HttpStatus.CREATED)
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async createDispute(
     @Param('employeeId') employeeId: string,
     @Body() createDisputeDto: CreateDisputeDto
@@ -226,6 +246,7 @@ export class PayrollTrackingController {
 
   @Post('employee/:employeeId/claims')
   @HttpCode(HttpStatus.CREATED)
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async createClaim(
     @Param('employeeId') employeeId: string,
     @Body() createClaimDto: CreateClaimDto
@@ -239,6 +260,7 @@ export class PayrollTrackingController {
   }
 
   @Get('employee/:employeeId/track-requests')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER)
   async trackClaimsAndDisputes(@Param('employeeId') employeeId: string) {
     return {
       employeeId,
@@ -251,6 +273,7 @@ export class PayrollTrackingController {
   // ========== Operational Reports Endpoints ==========
 
   @Get('reports/department-payroll')
+  @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER, SystemRole.FINANCE_STAFF)
   async generateDepartmentPayrollReport(
     @Query('departmentId') departmentId?: string,
     @Query('startDate') startDate?: string,
@@ -262,6 +285,7 @@ export class PayrollTrackingController {
   }
 
   @Get('reports/payroll-summary')
+  @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER, SystemRole.FINANCE_STAFF)
   async generatePayrollSummary(
     @Query('type') type: 'monthly' | 'yearly',
     @Query('period') period?: string
@@ -270,6 +294,7 @@ export class PayrollTrackingController {
   }
 
   @Get('reports/compliance')
+  @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER, SystemRole.FINANCE_STAFF)
   async generateComplianceReport(
     @Query('type') type: string,
     @Query('year') year?: number
@@ -280,6 +305,7 @@ export class PayrollTrackingController {
   // ========== Disputes and Claims Approval Endpoints ==========
 
   @Put('disputes/:disputeId/review')
+  @Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async reviewDispute(
     @Param('disputeId') disputeId: string,
     @Query('specialistId') specialistId: string,
@@ -290,6 +316,7 @@ export class PayrollTrackingController {
   }
 
   @Put('disputes/:disputeId/confirm')
+  @Roles(SystemRole.PAYROLL_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async confirmDisputeApproval(
     @Param('disputeId') disputeId: string,
     @Query('managerId') managerId: string,
@@ -300,11 +327,13 @@ export class PayrollTrackingController {
   }
 
   @Get('disputes/approved')
+  @Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.FINANCE_STAFF)
   async getApprovedDisputes(@Query('financeStaffId') financeStaffId?: string) {
     return this.payrollTrackingService.getApprovedDisputes(financeStaffId);
   }
 
   @Put('claims/:claimId/review')
+  @Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async reviewClaim(
     @Param('claimId') claimId: string,
     @Query('specialistId') specialistId: string,
@@ -321,6 +350,7 @@ export class PayrollTrackingController {
   }
 
   @Put('claims/:claimId/confirm')
+  @Roles(SystemRole.PAYROLL_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async confirmClaimApproval(
     @Param('claimId') claimId: string,
     @Query('managerId') managerId: string,
@@ -331,6 +361,7 @@ export class PayrollTrackingController {
   }
 
   @Get('claims/approved')
+  @Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.FINANCE_STAFF)
   async getApprovedClaims(@Query('financeStaffId') financeStaffId?: string) {
     return this.payrollTrackingService.getApprovedClaims(financeStaffId);
   }
@@ -339,6 +370,7 @@ export class PayrollTrackingController {
 
   @Post('refunds/dispute/:disputeId')
   @HttpCode(HttpStatus.CREATED)
+  @Roles(SystemRole.PAYROLL_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.FINANCE_STAFF)
   async generateDisputeRefund(
     @Param('disputeId') disputeId: string,
     @Query('financeStaffId') financeStaffId: string,
@@ -354,6 +386,7 @@ export class PayrollTrackingController {
 
   @Post('refunds/claim/:claimId')
   @HttpCode(HttpStatus.CREATED)
+  @Roles(SystemRole.PAYROLL_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.FINANCE_STAFF)
   async generateClaimRefund(
     @Param('claimId') claimId: string,
     @Query('financeStaffId') financeStaffId: string,
@@ -368,11 +401,13 @@ export class PayrollTrackingController {
   }
 
   @Get('refunds/pending')
+  @Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.FINANCE_STAFF)
   async getPendingRefunds() {
     return this.payrollTrackingService.getPendingRefunds();
   }
 
   @Put('refunds/:refundId/mark-paid')
+  @Roles(SystemRole.PAYROLL_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.FINANCE_STAFF)
   async markRefundAsPaid(
     @Param('refundId') refundId: string,
     @Body() body: { payrollRunId: string }
@@ -383,6 +418,7 @@ export class PayrollTrackingController {
   // ========== CRUD Endpoints for Claims, Disputes, Refunds ==========
 
   @Get('claims')
+  @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER)
   async getAllClaims(
     @Query('status') status?: string,
     @Query('employeeId') employeeId?: string
@@ -391,11 +427,13 @@ export class PayrollTrackingController {
   }
 
   @Get('claims/:id')
+  @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER, SystemRole.DEPARTMENT_EMPLOYEE)
   async getClaimById(@Param('id') id: string) {
     return this.payrollTrackingService.getClaimById(id);
   }
 
   @Put('claims/:id')
+  @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER)
   async updateClaim(
     @Param('id') id: string,
     @Body() updateClaimDto: UpdateClaimDto
@@ -405,11 +443,13 @@ export class PayrollTrackingController {
 
   @Delete('claims/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @Roles(SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_MANAGER)
   async deleteClaim(@Param('id') id: string) {
     await this.payrollTrackingService.deleteClaimById(id);
   }
 
   @Get('disputes')
+  @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER)
   async getAllDisputes(
     @Query('status') status?: string,
     @Query('employeeId') employeeId?: string
@@ -418,11 +458,13 @@ export class PayrollTrackingController {
   }
 
   @Get('disputes/:id')
+  @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER, SystemRole.DEPARTMENT_EMPLOYEE)
   async getDisputeById(@Param('id') id: string) {
     return this.payrollTrackingService.getDisputeById(id);
   }
 
   @Put('disputes/:id')
+  @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER)
   async updateDispute(
     @Param('id') id: string,
     @Body() updateDisputeDto: UpdateDisputeDto
@@ -432,11 +474,13 @@ export class PayrollTrackingController {
 
   @Delete('disputes/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @Roles(SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_MANAGER)
   async deleteDispute(@Param('id') id: string) {
     await this.payrollTrackingService.deleteDisputeById(id);
   }
 
   @Get('refunds')
+  @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER, SystemRole.FINANCE_STAFF)
   async getAllRefunds(
     @Query('status') status?: string,
     @Query('employeeId') employeeId?: string
@@ -445,11 +489,13 @@ export class PayrollTrackingController {
   }
 
   @Get('refunds/:id')
+  @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER, SystemRole.FINANCE_STAFF, SystemRole.DEPARTMENT_EMPLOYEE)
   async getRefundById(@Param('id') id: string) {
     return this.payrollTrackingService.getRefundById(id);
   }
 
   @Put('refunds/:id')
+  @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_MANAGER, SystemRole.FINANCE_STAFF)
   async updateRefund(
     @Param('id') id: string,
     @Body() updateRefundDto: UpdateRefundDto
@@ -459,6 +505,7 @@ export class PayrollTrackingController {
 
   @Delete('refunds/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @Roles(SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_MANAGER)
   async deleteRefund(@Param('id') id: string) {
     await this.payrollTrackingService.deleteRefundById(id);
   }
