@@ -5,4 +5,3 @@ export * from './update-dispute.dto';
 export * from './create-refund.dto';
 export * from './update-refund.dto';
 export * from './generate-report.dto';
-export * from './pagination.dto';

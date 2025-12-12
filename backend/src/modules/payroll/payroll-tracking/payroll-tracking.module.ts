@@ -9,23 +9,27 @@ import { claims, claimsSchema } from './models/claims.schema';
 import { disputes, disputesSchema } from './models/disputes.schema';
 import {PayrollExecutionModule} from "../payroll-execution/payroll-execution.module";
 import {paySlip, paySlipSchema} from "../payroll-execution/models/payslip.schema";
+import {employeePayrollDetails, employeePayrollDetailsSchema} from "../payroll-execution/models/employeePayrollDetails.schema";
 import {PayrollConfigurationModule} from "../payroll-configuration/payroll-configuration.module";
 import {EmployeeModule} from "../../employee/employee.module";
 import {EmployeeProfile, EmployeeProfileSchema} from "../../employee/models/employee/employee-profile.schema";
-// import payroll-execution requirements module & schemas
+import {LeavesModule} from "../../leaves/leaves.module";
+// import payroll-execution module & schemas
 
 
 @Module({
   imports: [
     PayrollConfigurationModule,
       EmployeeModule,
+      LeavesModule,
     forwardRef(() => PayrollExecutionModule),
     MongooseModule.forFeature([
       { name: refunds.name, schema: refundsSchema },
       { name: claims.name, schema: claimsSchema },
       { name: disputes.name, schema: disputesSchema },
       { name: paySlip.name, schema: paySlipSchema },
-        { name: EmployeeProfile.name, schema: EmployeeProfileSchema},
+      { name: employeePayrollDetails.name, schema: employeePayrollDetailsSchema },
+      { name: EmployeeProfile.name, schema: EmployeeProfileSchema},
     ]),
   ],
   controllers: [PayrollTrackingController],
