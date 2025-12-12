@@ -13,7 +13,12 @@ import {
     ValidationPipe,
     Put,
     BadRequestException,
+    UseGuards,
 } from '@nestjs/common';
+import { AuthenticationGuard } from '../../../auth/guards/authentication-guard';
+import { AuthorizationGuard } from '../../../auth/guards/authorization-guard';
+import { Roles } from '../../../auth/decorators/roles-decorator';
+import { SystemRole } from '../../../employee/enums/employee-profile.enums';
 import { PayrollConfigurationService } from '../services/payroll-configuration.service';
 import { CreatePayrollPolicyDto } from '../dto/create-payroll-policy.dto';
 import { UpdatePayrollPolicyDto } from '../dto/update-payroll-policy.dto';
@@ -47,6 +52,7 @@ import { CreatePayGradeDto } from '../dto/create-paygrade.dto';
 import { UpdatePayGradeDto } from '../dto/update-paygrade.dto';
 
 @Controller('payroll-configuration-requirements')
+@UseGuards(AuthenticationGuard, AuthorizationGuard)
 @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
 export class PayrollConfigurationController {
     constructor(
@@ -55,6 +61,7 @@ export class PayrollConfigurationController {
 
     // ========== LAMA'S TAX RULES ENDPOINTS ==========
     @Post('tax-rules')
+    @Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.LEGAL_POLICY_ADMIN)
     @HttpCode(HttpStatus.CREATED)
     createTaxRule(@Body() dto: CreateTaxRuleDto) {
         return this.payrollConfigService.createTaxRule(dto);
@@ -73,24 +80,28 @@ export class PayrollConfigurationController {
     }
 
     @Patch('tax-rules/:id')
+    @Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.LEGAL_POLICY_ADMIN)
     @HttpCode(HttpStatus.OK)
     updateLegalRule(@Param('id') id: string, @Body() dto: UpdateTaxRuleDto) {
         return this.payrollConfigService.updateLegalRule(id, dto);
     }
 
     @Patch('tax-rules/:id/approve')
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     approveTaxRule(@Param('id') id: string, @Body() dto: ApproveTaxRuleDto) {
         return this.payrollConfigService.approveTaxRule(id, dto);
     }
 
     @Delete('tax-rules/:id')
+    @Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.LEGAL_POLICY_ADMIN)
     @HttpCode(HttpStatus.OK)
     deleteTaxRule(@Param('id') id: string) {
         return this.payrollConfigService.deleteTaxRule(id);
     }
 
     @Patch('tax-rules/:id/reject')
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     rejectTaxRule(@Param('id') id: string, @Body() dto: ApproveTaxRuleDto) {
         return this.payrollConfigService.rejectTaxRule(id, dto);
@@ -98,6 +109,7 @@ export class PayrollConfigurationController {
 
     // ========== LAMA'S INSURANCE BRACKETS ENDPOINTS ==========
     @Post('insurance-brackets')
+    @Roles(SystemRole.PAYROLL_SPECIALIST)
     @HttpCode(HttpStatus.CREATED)
     createInsurance(@Body() dto: CreateInsuranceDto) {
         return this.payrollConfigService.createInsuranceBracket(dto);
@@ -116,24 +128,28 @@ export class PayrollConfigurationController {
     }
 
     @Patch('insurance-brackets/:id')
+    @Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.HR_MANAGER)
     @HttpCode(HttpStatus.OK)
     updateInsurance(@Param('id') id: string, @Body() dto: UpdateInsuranceDto) {
         return this.payrollConfigService.updateInsuranceBracket(id, dto);
     }
 
     @Patch('insurance-brackets/:id/approve')
+    @Roles(SystemRole.HR_MANAGER)
     @HttpCode(HttpStatus.OK)
     approveInsurance(@Param('id') id: string, @Body() dto: ApproveInsuranceDto) {
         return this.payrollConfigService.approveInsuranceBracket(id, dto);
     }
 
     @Delete('insurance-brackets/:id')
+    @Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.HR_MANAGER)
     @HttpCode(HttpStatus.OK)
     deleteInsurance(@Param('id') id: string) {
         return this.payrollConfigService.deleteInsuranceBracket(id);
     }
 
     @Patch('insurance-brackets/:id/reject')
+    @Roles(SystemRole.HR_MANAGER)
     @HttpCode(HttpStatus.OK)
     rejectInsurance(@Param('id') id: string, @Body() dto: ApproveInsuranceDto) {
         return this.payrollConfigService.rejectInsuranceBracket(id, dto);
@@ -160,6 +176,7 @@ export class PayrollConfigurationController {
 
     // ========== DAREEN'S PAYROLL POLICIES ENDPOINTS ==========
     @Post('policies')
+    @Roles(SystemRole.PAYROLL_SPECIALIST)
     @HttpCode(HttpStatus.CREATED)
     async create(@Body() createDto: CreatePayrollPolicyDto) {
         const policy = await this.payrollConfigService.create(createDto);
@@ -193,6 +210,7 @@ export class PayrollConfigurationController {
     }
 
     @Patch('policies/:id')
+    @Roles(SystemRole.PAYROLL_SPECIALIST)
     @HttpCode(HttpStatus.OK)
     async update(
         @Param('id') id: string,
@@ -207,6 +225,7 @@ export class PayrollConfigurationController {
     }
 
     @Delete('policies/:id')
+    @Roles(SystemRole.PAYROLL_SPECIALIST)
     @HttpCode(HttpStatus.OK)
     async remove(@Param('id') id: string) {
         const result = await this.payrollConfigService.remove(id);
@@ -217,6 +236,7 @@ export class PayrollConfigurationController {
     }
 
     @Patch('policies/:id/approve')
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     async approve(
         @Param('id') id: string,
@@ -231,6 +251,7 @@ export class PayrollConfigurationController {
     }
 
     @Patch('policies/:id/reject')
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     async reject(
         @Param('id') id: string,
@@ -246,6 +267,7 @@ export class PayrollConfigurationController {
 
     // ========== DAREEN'S PAY TYPES ENDPOINTS ==========
     @Post('pay-types')
+    @Roles(SystemRole.PAYROLL_SPECIALIST)
     @HttpCode(HttpStatus.CREATED)
     async createPayType(@Body() createDto: CreatePayTypeDto) {
         const payType = await this.payrollConfigService.createPayType(createDto);
@@ -279,6 +301,7 @@ export class PayrollConfigurationController {
     }
 
     @Patch('pay-types/:id')
+    @Roles(SystemRole.PAYROLL_SPECIALIST)
     @HttpCode(HttpStatus.OK)
     async updatePayType(
         @Param('id') id: string,
@@ -293,6 +316,7 @@ export class PayrollConfigurationController {
     }
 
     @Delete('pay-types/:id')
+    @Roles(SystemRole.PAYROLL_SPECIALIST)
     @HttpCode(HttpStatus.OK)
     async removePayType(@Param('id') id: string) {
         const result = await this.payrollConfigService.removePayType(id);
@@ -303,6 +327,7 @@ export class PayrollConfigurationController {
     }
 
     @Patch('pay-types/:id/approve')
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     async approvePayType(
         @Param('id') id: string,
@@ -317,6 +342,7 @@ export class PayrollConfigurationController {
     }
 
     @Patch('pay-types/:id/reject')
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     async rejectPayType(
         @Param('id') id: string,
@@ -332,6 +358,7 @@ export class PayrollConfigurationController {
 
     // ========== DAREEN'S ALLOWANCE ENDPOINTS ==========
     @Post('allowances')
+    @Roles(SystemRole.PAYROLL_SPECIALIST)
     @HttpCode(HttpStatus.CREATED)
     async createAllowance(@Body() createDto: CreateAllowanceDto) {
         const allowance = await this.payrollConfigService.createAllowance(createDto);
@@ -365,6 +392,7 @@ export class PayrollConfigurationController {
     }
 
     @Patch('allowances/:id')
+    @Roles(SystemRole.PAYROLL_SPECIALIST)
     @HttpCode(HttpStatus.OK)
     async updateAllowance(
         @Param('id') id: string,
@@ -379,6 +407,7 @@ export class PayrollConfigurationController {
     }
 
     @Delete('allowances/:id')
+    @Roles(SystemRole.PAYROLL_SPECIALIST)
     @HttpCode(HttpStatus.OK)
     async removeAllowance(@Param('id') id: string) {
         const result = await this.payrollConfigService.removeAllowance(id);
@@ -389,6 +418,7 @@ export class PayrollConfigurationController {
     }
 
     @Patch('allowances/:id/approve')
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     async approveAllowance(
         @Param('id') id: string,
@@ -403,6 +433,7 @@ export class PayrollConfigurationController {
     }
 
     @Patch('allowances/:id/reject')
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     async rejectAllowance(
         @Param('id') id: string,
@@ -418,6 +449,7 @@ export class PayrollConfigurationController {
 
     // ========== DAREEN'S SIGNING BONUS ENDPOINTS ==========
     @Post('signing-bonuses')
+    @Roles(SystemRole.PAYROLL_SPECIALIST)
     @HttpCode(HttpStatus.CREATED)
     async createSigningBonus(@Body() createDto: CreateSigningBonusDto) {
         const signingBonus = await this.payrollConfigService.createSigningBonus(createDto);
@@ -451,6 +483,7 @@ export class PayrollConfigurationController {
     }
 
     @Patch('signing-bonuses/:id')
+    @Roles(SystemRole.PAYROLL_SPECIALIST)
     @HttpCode(HttpStatus.OK)
     async updateSigningBonus(
         @Param('id') id: string,
@@ -465,6 +498,7 @@ export class PayrollConfigurationController {
     }
 
     @Delete('signing-bonuses/:id')
+    @Roles(SystemRole.PAYROLL_SPECIALIST)
     @HttpCode(HttpStatus.OK)
     async removeSigningBonus(@Param('id') id: string) {
         const result = await this.payrollConfigService.removeSigningBonus(id);
@@ -475,6 +509,7 @@ export class PayrollConfigurationController {
     }
 
     @Patch('signing-bonuses/:id/approve')
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     async approveSigningBonus(
         @Param('id') id: string,
@@ -489,6 +524,7 @@ export class PayrollConfigurationController {
     }
 
     @Patch('signing-bonuses/:id/reject')
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     async rejectSigningBonus(
         @Param('id') id: string,
@@ -504,6 +540,7 @@ export class PayrollConfigurationController {
 
     // ========== DAREEN'S TERMINATION BENEFITS ENDPOINTS ==========
     @Post('termination-benefits')
+    @Roles(SystemRole.PAYROLL_SPECIALIST)
     @HttpCode(HttpStatus.CREATED)
     async createTerminationBenefit(@Body() createDto: CreateTerminationBenefitDto) {
         const benefit = await this.payrollConfigService.createTerminationBenefit(createDto);
@@ -537,6 +574,7 @@ export class PayrollConfigurationController {
     }
 
     @Patch('termination-benefits/:id')
+    @Roles(SystemRole.PAYROLL_SPECIALIST)
     @HttpCode(HttpStatus.OK)
     async updateTerminationBenefit(
         @Param('id') id: string,
@@ -551,6 +589,7 @@ export class PayrollConfigurationController {
     }
 
     @Delete('termination-benefits/:id')
+    @Roles(SystemRole.PAYROLL_SPECIALIST)
     @HttpCode(HttpStatus.OK)
     async removeTerminationBenefit(@Param('id') id: string) {
         const result = await this.payrollConfigService.removeTerminationBenefit(id);
@@ -561,6 +600,7 @@ export class PayrollConfigurationController {
     }
 
     @Patch('termination-benefits/:id/approve')
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     async approveTerminationBenefit(
         @Param('id') id: string,
@@ -575,6 +615,7 @@ export class PayrollConfigurationController {
     }
 
     @Patch('termination-benefits/:id/reject')
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     async rejectTerminationBenefit(
         @Param('id') id: string,
@@ -603,6 +644,7 @@ export class PayrollConfigurationController {
 
     // ========== MANOS' PAY GRADE ENDPOINTS (Keeping only unique) ==========
     @Post('pay-grades')
+    @Roles(SystemRole.PAYROLL_SPECIALIST)
     createPayGrade(@Body() createDto: CreatePayGradeDto) {
         return this.payrollConfigService.createPayGrade(createDto);
     }
@@ -623,6 +665,7 @@ export class PayrollConfigurationController {
     }
 
     @Patch('pay-grades/:id')
+    @Roles(SystemRole.PAYROLL_SPECIALIST)
     updatePayGrade(
         @Param('id') id: string,
         @Body() updateDto: UpdatePayGradeDto,
@@ -631,6 +674,7 @@ export class PayrollConfigurationController {
     }
 
     @Delete('pay-grades/:id')
+    @Roles(SystemRole.PAYROLL_SPECIALIST)
     @HttpCode(HttpStatus.OK)
     async deletePayGrade(@Param('id') id: string) {
         const result = await this.payrollConfigService.deletePayGrade(id);
@@ -641,6 +685,7 @@ export class PayrollConfigurationController {
     }
 
     @Patch('pay-grades/:id/approve')
+    @Roles(SystemRole.PAYROLL_MANAGER)
     async approvePayGrade(
         @Param('id') id: string,
         @Body() approveDto: ApproveConfigDto,
@@ -654,6 +699,7 @@ export class PayrollConfigurationController {
     }
 
     @Patch('pay-grades/:id/reject')
+    @Roles(SystemRole.PAYROLL_MANAGER)
     async rejectPayGrade(
         @Param('id') id: string,
         @Body() approveDto: ApproveConfigDto,
@@ -673,6 +719,7 @@ export class PayrollConfigurationController {
     }
 
     @Put('company-settings')
+    @Roles(SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_MANAGER)
     updateCompanyWideSettings(@Body() updateDto: UpdateCompanyWideSettingsDto) {
         return this.payrollConfigService.updateCompanyWideSettings(updateDto);
     }

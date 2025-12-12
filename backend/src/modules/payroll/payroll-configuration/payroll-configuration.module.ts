@@ -18,6 +18,7 @@ import { taxRules, taxRulesSchema } from './models/taxRules.schema';
 import { terminationAndResignationBenefits, terminationAndResignationBenefitsSchema } from './models/terminationAndResignationBenefits';
 import { payGrade, payGradeSchema } from './models/payGrades.schema';
 import {RecruitmentModule} from "../../recruitment/recruitment.module";
+import { EmployeeProfile, EmployeeProfileSchema } from '../../employee/models/employee/employee-profile.schema';
 
 
 
@@ -37,7 +38,8 @@ import {RecruitmentModule} from "../../recruitment/recruitment.module";
       { name: payrollPolicies.name, schema: payrollPoliciesSchema },
       { name: terminationAndResignationBenefits.name, schema: terminationAndResignationBenefitsSchema },
       { name: CompanyWideSettings.name, schema: CompanyWideSettingsSchema },
-      { name: payGrade.name, schema: payGradeSchema }
+      { name: payGrade.name, schema: payGradeSchema },
+      { name: EmployeeProfile.name, schema: EmployeeProfileSchema }
     ]),
   ],
   controllers: [PayrollConfigurationController],
