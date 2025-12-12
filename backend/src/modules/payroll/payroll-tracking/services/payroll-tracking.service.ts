@@ -9,9 +9,11 @@ import { ClaimStatus, DisputeStatus, RefundStatus } from '../enums/payroll-track
 import {paySlip, PayslipDocument} from "../../payroll-execution/models/payslip.schema";
 import {employeePayrollDetails, employeePayrollDetailsDocument} from "../../payroll-execution/models/employeePayrollDetails.schema";
 import {EmployeeProfile} from "../../../employee/models/employee/employee-profile.schema";
+import {Department, DepartmentDocument} from "../../../employee/models/organization-structure/department.schema";
 import {ContractType, WorkType} from "../../../employee/enums/employee-profile.enums";
 import { PayrollConfigurationService } from "../../payroll-configuration/services/payroll-configuration.service";
 import { UnifiedLeaveService } from "../../../leaves/services/leaves.service";
+import { NotificationService } from "../../../time-management/services/NotificationService";
 
 @Injectable()
 export class PayrollTrackingService {
@@ -22,8 +24,10 @@ export class PayrollTrackingService {
     @InjectModel(paySlip.name) private payslipModel: Model<PayslipDocument>,
     @InjectModel(employeePayrollDetails.name) private employeePayrollDetailsModel: Model<employeePayrollDetailsDocument>,
     @InjectModel(EmployeeProfile.name) private employeeModel: Model<EmployeeProfile>,
+    @InjectModel(Department.name) private departmentModel: Model<DepartmentDocument>,
     private readonly payrollConfigService: PayrollConfigurationService,
     private readonly leavesService: UnifiedLeaveService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   // ========== Employee Self-Service Methods ==========
@@ -59,6 +63,47 @@ export class PayrollTrackingService {
       totalDeductions: payslip.totaDeductions,
       netPay: payslip.netPay,
       paymentStatus: payslip.paymentStatus,
+      createdAt: (payslip as any)?.createdAt,
+      updatedAt: (payslip as any)?.updatedAt,
+    };
+  }
+
+  // REQ-PY-1 (view part): View payslip online
+  async viewPayslip(payslipId: string, employeeId: string) {
+    const objectId = new Types.ObjectId(payslipId);
+    const employeeObjectId = new Types.ObjectId(employeeId);
+
+    const payslip = await this.payslipModel.findOne({
+      _id: objectId,
+      employeeId: employeeObjectId,
+    }).exec();
+
+    if (!payslip) {
+      throw new NotFoundException('Payslip not found');
+    }
+
+    // Return structured payslip data for online viewing
+    return {
+      payslipId: payslip._id,
+      employeeId: payslip.employeeId,
+      payrollRunId: payslip.payrollRunId,
+      paymentStatus: payslip.paymentStatus,
+      payPeriod: (payslip as any)?.createdAt,
+      earnings: {
+        baseSalary: payslip.earningsDetails?.baseSalary || 0,
+        allowances: payslip.earningsDetails?.allowances || [],
+        bonuses: payslip.earningsDetails?.bonuses || [],
+        benefits: payslip.earningsDetails?.benefits || [],
+        refunds: payslip.earningsDetails?.refunds || [],
+        totalEarnings: payslip.totalGrossSalary || 0,
+      },
+      deductions: {
+        taxes: payslip.deductionsDetails?.taxes || [],
+        insurances: payslip.deductionsDetails?.insurances || [],
+        penalties: payslip.deductionsDetails?.penalties || null,
+        totalDeductions: payslip.totaDeductions || 0,
+      },
+      netPay: payslip.netPay || 0,
       createdAt: (payslip as any)?.createdAt,
       updatedAt: (payslip as any)?.updatedAt,
     };
@@ -823,11 +868,32 @@ async getLeaveCompensation(employeeId: string) {
     
     const payslips = await this.payslipModel.find(query).exec();
     
-    // Group by department (placeholder logic)
+    // Get unique employee IDs
+    const employeeIds = [...new Set(payslips.map(p => p.employeeId))];
+    
+    // Fetch employees with populated departments
+    const employees = await this.employeeModel.find({ _id: { $in: employeeIds } })
+      .populate('primaryDepartmentId')
+      .exec();
+    
+    // Create map of employeeId to department
+    const employeeDepartmentMap = new Map();
+    employees.forEach(emp => {
+      const dept = emp.primaryDepartmentId as any;
+      employeeDepartmentMap.set(emp._id.toString(), dept ? dept.name || dept.code : 'Unknown');
+    });
+    
+    // Group by department
     const departmentSummary = payslips.reduce((acc, payslip) => {
-      const dept = departmentId || 'Unknown';
-      if (!acc[dept]) {
-        acc[dept] = {
+      const deptName = employeeDepartmentMap.get(payslip.employeeId.toString()) || 'Unknown';
+      
+      // If departmentId is specified, only include matching departments
+      if (departmentId && deptName !== departmentId) {
+        return acc;
+      }
+      
+      if (!acc[deptName]) {
+        acc[deptName] = {
           totalGross: 0,
           totalNet: 0,
           totalTax: 0,
@@ -836,11 +902,11 @@ async getLeaveCompensation(employeeId: string) {
         };
       }
       
-      acc[dept].totalGross += payslip.totalGrossSalary || 0;
-      acc[dept].totalNet += payslip.netPay || 0;
-      acc[dept].totalTax += payslip.deductionsDetails?.taxes?.reduce((sum, t) => sum + ((t as any)?.amount || 0), 0) || 0;
-      acc[dept].totalInsurance += payslip.deductionsDetails?.insurances?.reduce((sum, i) => sum + ((i as any)?.amount || 0), 0) || 0;
-      acc[dept].employeeCount++;
+      acc[deptName].totalGross += payslip.totalGrossSalary || 0;
+      acc[deptName].totalNet += payslip.netPay || 0;
+      acc[deptName].totalTax += payslip.deductionsDetails?.taxes?.reduce((sum, t) => sum + ((t as any)?.amount || 0), 0) || 0;
+      acc[deptName].totalInsurance += payslip.deductionsDetails?.insurances?.reduce((sum, i) => sum + ((i as any)?.amount || 0), 0) || 0;
+      acc[deptName].employeeCount++;
       
       return acc;
     }, {});
@@ -852,6 +918,7 @@ async getLeaveCompensation(employeeId: string) {
       summary: departmentSummary,
       detailedData: payslips.map(p => ({
         employeeId: p.employeeId,
+        department: employeeDepartmentMap.get(p.employeeId.toString()) || 'Unknown',
         payrollRunId: p.payrollRunId,
         grossSalary: p.totalGrossSalary,
         netSalary: p.netPay,
@@ -970,15 +1037,29 @@ async getLeaveCompensation(employeeId: string) {
     }
     
     if (action === 'confirm') {
-      // Dispute is now ready for finance processing
       dispute.resolutionComment = reason || `Confirmed by Payroll Manager ${managerId}`;
-      // Trigger notification to finance staff (REQ-PY-41)
+      await dispute.save();
+      
+      // Find finance users to notify (REQ-PY-41)
+      const financeUsers = await this.notificationService.findUsersByRole('Finance');
+      
+      if (financeUsers.length > 0) {
+        // Create notifications for all finance users
+        for (const financeUser of financeUsers) {
+          await this.notificationService['notificationModel'].create({
+            to: financeUser.employeeProfileId,
+            type: 'DISPUTE_APPROVED',
+            message: `New approved dispute requires processing for employee ${dispute.employeeId}`,
+          } as any);
+        }
+      }
     } else {
       dispute.status = DisputeStatus.UNDER_REVIEW;
       dispute.rejectionReason = reason || 'Rejected by Payroll Manager';
+      await dispute.save();
     }
     
-    return dispute.save();
+    return dispute;
   }
 
   // REQ-PY-41: Finance staff view approved disputes
@@ -1027,13 +1108,28 @@ async getLeaveCompensation(employeeId: string) {
     
     if (action === 'confirm') {
       claim.resolutionComment = reason || `Confirmed by Payroll Manager ${managerId}`;
-      // Trigger notification to finance staff (REQ-PY-44)
+      await claim.save();
+      
+      // Find finance users to notify (REQ-PY-44)
+      const financeUsers = await this.notificationService.findUsersByRole('Finance');
+      
+      if (financeUsers.length > 0) {
+        // Create notifications for all finance users
+        for (const financeUser of financeUsers) {
+          await this.notificationService['notificationModel'].create({
+            to: financeUser.employeeProfileId,
+            type: 'CLAIM_APPROVED',
+            message: `New approved claim requires processing for employee ${claim.employeeId} - Amount: ${claim.amount}`,
+          } as any);
+        }
+      }
     } else {
       claim.status = ClaimStatus.UNDER_REVIEW;
       claim.rejectionReason = reason || 'Rejected by Payroll Manager';
+      await claim.save();
     }
     
-    return claim.save();
+    return claim;
   }
 
   // REQ-PY-44: Finance staff view approved claims
@@ -1044,9 +1140,23 @@ async getLeaveCompensation(employeeId: string) {
       query.financeStaffId = new Types.ObjectId(financeStaffId);
     }
     
-    return this.claimsModel.find(query)
+    // Get approved claims
+    const claims = await this.claimsModel.find(query)
       .populate('employeeId', 'firstName lastName employeeId')
       .exec();
+    
+    // Mark CLAIM_APPROVED notifications as read for this finance staff member
+    if (financeStaffId) {
+      await this.notificationService['notificationModel'].updateMany(
+        { 
+          to: new Types.ObjectId(financeStaffId),
+          type: 'CLAIM_APPROVED'
+        },
+        { $set: { isRead: true } }
+      ).exec();
+    }
+    
+    return claims;
   }
 
   // ========== Refund Process Methods ==========
