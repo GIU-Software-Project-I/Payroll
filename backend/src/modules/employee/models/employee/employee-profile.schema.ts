@@ -4,6 +4,7 @@ import { HydratedDocument, Types } from 'mongoose';
 import { UserProfileBase } from './user-schema';
 import {ContractType, EmployeeStatus, WorkType} from "../../enums/employee-profile.enums";
 import {AppraisalRatingScaleType} from "../../enums/performance.enums";
+import {payGrade} from "../../../payroll/payroll-configuration/models/payGrades.schema";
 
 export type EmployeeProfileDocument = HydratedDocument<EmployeeProfile>;
 
@@ -71,8 +72,8 @@ export class EmployeeProfile extends UserProfileBase {
     @Prop({ type: Types.ObjectId, ref: 'Position' })
     supervisorPositionId?: Types.ObjectId;
 
-    // @Prop({ type: Types.ObjectId, ref: payGrade.name })
-    // payGradeId?: Types.ObjectId;
+    @Prop({ type: Types.ObjectId, ref: payGrade.name })
+    payGradeId?: Types.ObjectId;
 
     @Prop({ type: Types.ObjectId, ref: 'AppraisalRecord' })
     lastAppraisalRecordId?: Types.ObjectId;

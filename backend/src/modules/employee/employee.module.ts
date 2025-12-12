@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import {forwardRef, Module} from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 
 import { Candidate, CandidateSchema } from './models/employee/Candidate.Schema';
@@ -17,10 +17,13 @@ import {EmployeeProfileChangeRequest,
 import { OrganizationStructureModule } from './organization-structure.module';
 import {EmployeeProfileController} from "./controllers/employee-profile.controller";
 import {EmployeeProfileService} from "./services/employee-profile.service";
+import { SharedModule } from '../shared/shared.module';
+import {AuthModule} from "../auth/auth-module";
 
 
 @Module({
   imports: [
+      forwardRef(() => AuthModule),
     MongooseModule.forFeature([
       { name: Candidate.name, schema: CandidateSchema },
       { name: EmployeeProfile.name, schema: EmployeeProfileSchema },
@@ -30,10 +33,10 @@ import {EmployeeProfileService} from "./services/employee-profile.service";
 
     ]),
     OrganizationStructureModule,
+    SharedModule,
   ],
   controllers: [EmployeeProfileController ],
   providers: [EmployeeProfileService],
   exports: [EmployeeProfileService],
 })
 export class EmployeeModule {}
-

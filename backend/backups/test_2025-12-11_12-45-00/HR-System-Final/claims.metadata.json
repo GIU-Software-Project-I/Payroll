@@ -1,1 +1,0 @@
-{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"claimId":{"$numberInt":"1"}},"name":"claimId_1","background":true,"unique":true}],"uuid":"a3700f055be7466dbf401592c67bdf7e","collectionName":"claims","type":"collection"}

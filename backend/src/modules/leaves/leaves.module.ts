@@ -11,11 +11,14 @@ import {Calendar, CalendarSchema} from "./models/calendar.schema";
 import {Attachment, AttachmentSchema} from "./models/attachment.schema";
 import {UnifiedLeaveController} from "./controllers/leaves.controller";
 import {LeaveType, LeaveTypeSchema} from "./models/leave-type.schema";
-import {EmployeeModule} from "../employee/employee.module";
+import {SharedModule} from "../shared/shared.module";
+import {AuthModule} from "../auth/auth-module";
 
 
 @Module({
-  imports:[MongooseModule.forFeature([{name:LeaveType.name,schema:LeaveTypeSchema},
+  imports:[
+      AuthModule,
+      MongooseModule.forFeature([{name:LeaveType.name,schema:LeaveTypeSchema},
     {name:LeaveRequest.name, schema: LeaveRequestSchema},
     {name:LeavePolicy.name, schema:LeavePolicySchema},
     {name:LeaveEntitlement.name, schema:LeaveEntitlementSchema},
@@ -24,8 +27,7 @@ import {EmployeeModule} from "../employee/employee.module";
     {name:Calendar.name, schema:CalendarSchema},
     {name:Attachment.name, schema: AttachmentSchema}
   ]),
-      EmployeeModule,
-      // TimeManagementModule
+      SharedModule,
   ],
   controllers: [UnifiedLeaveController],
   providers: [UnifiedLeaveService],
