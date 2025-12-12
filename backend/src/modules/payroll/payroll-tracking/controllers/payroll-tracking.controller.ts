@@ -1,34 +1,32 @@
-// Note: In a real application, you would implement proper guards
-// @UseGuards(JwtAuthGuard, RolesGuard)
-
-import {Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put, Query, Res} from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
-
-import {PayrollTrackingService} from "../services/payroll-tracking.service";
+import { PayrollTrackingService } from '../services/payroll-tracking.service';
 import {
-    CreateClaimDto,
-    CreateDisputeDto,
-    CreateRefundDto,
-    UpdateClaimDto,
-    UpdateDisputeDto,
-    UpdateRefundDto
-} from "../dtos";
+  CreateClaimDto,
+  CreateDisputeDto,
+  CreateRefundDto,
+  UpdateClaimDto,
+  UpdateDisputeDto,
+  UpdateRefundDto,
+  PaginationDto,
+} from '../dtos';
 
 @Controller('payroll/tracking')
 export class PayrollTrackingController {
   constructor(private readonly payrollTrackingService: PayrollTrackingService) {}
 
-  // ========== Employee Self-Service Endpoints ==========
-
-  @Get('employee/:employeeId/payslips')
-  async getEmployeePayslips(@Param('employeeId') employeeId: string) {
-    return this.payrollTrackingService.getEmployeePayslips(employeeId);
-  }
+  // @Get('employee/:employeeId/payslips')
+  // async getEmployeePayslips(
+  //   @Param('employeeId') employeeId: string,
+  //   @Query() paginationDto: PaginationDto,
+  // ) {
+  //   return this.payrollTrackingService.getEmployeePayslips(employeeId, paginationDto);
+  // }
 
   @Get('payslip/:payslipId/employee/:employeeId')
   async getPayslipDetails(
     @Param('payslipId') payslipId: string,
-    @Param('employeeId') employeeId: string
+    @Param('employeeId') employeeId: string,
   ) {
     return this.payrollTrackingService.getPayslipDetails(payslipId, employeeId);
   }
@@ -92,7 +90,7 @@ export class PayrollTrackingController {
   @Get('employee/:employeeId/tax-deductions')
   async getTaxDeductions(
     @Param('employeeId') employeeId: string,
-    @Query('payslipId') payslipId?: string
+    @Query('payslipId') payslipId?: string,
   ) {
     return this.payrollTrackingService.getTaxDeductions(employeeId, payslipId);
   }
@@ -100,7 +98,7 @@ export class PayrollTrackingController {
   @Get('employee/:employeeId/insurance-deductions')
   async getInsuranceDeductions(
     @Param('employeeId') employeeId: string,
-    @Query('payslipId') payslipId?: string
+    @Query('payslipId') payslipId?: string,
   ) {
     return this.payrollTrackingService.getInsuranceDeductions(employeeId, payslipId);
   }
@@ -108,7 +106,7 @@ export class PayrollTrackingController {
   @Get('employee/:employeeId/misconduct-deductions')
   async getMisconductDeductions(
     @Param('employeeId') employeeId: string,
-    @Query('payslipId') payslipId?: string
+    @Query('payslipId') payslipId?: string,
   ) {
     return this.payrollTrackingService.getMisconductDeductions(employeeId, payslipId);
   }
@@ -116,20 +114,23 @@ export class PayrollTrackingController {
   @Get('employee/:employeeId/unpaid-leave-deductions')
   async getUnpaidLeaveDeductions(
     @Param('employeeId') employeeId: string,
-    @Query('payslipId') payslipId?: string
+    @Query('payslipId') payslipId?: string,
   ) {
     return this.payrollTrackingService.getUnpaidLeaveDeductions(employeeId, payslipId);
   }
 
-  @Get('employee/:employeeId/salary-history')
-  async getSalaryHistory(@Param('employeeId') employeeId: string) {
-    return this.payrollTrackingService.getSalaryHistory(employeeId);
-  }
+  // @Get('employee/:employeeId/salary-history')
+  // async getSalaryHistory(
+  //   @Param('employeeId') employeeId: string,
+  //   @Query() paginationDto: PaginationDto,
+  // ) {
+  //   return this.payrollTrackingService.getSalaryHistory(employeeId, paginationDto);
+  // }
 
   @Get('employee/:employeeId/employer-contributions')
   async getEmployerContributions(
     @Param('employeeId') employeeId: string,
-    @Query('payslipId') payslipId?: string
+    @Query('payslipId') payslipId?: string,
   ) {
     return this.payrollTrackingService.getEmployerContributions(employeeId, payslipId);
   }
@@ -137,7 +138,7 @@ export class PayrollTrackingController {
   @Get('employee/:employeeId/tax-documents')
   async getTaxDocuments(
     @Param('employeeId') employeeId: string,
-    @Query('year') year?: number
+    @Query('year') year?: number,
   ) {
     return this.payrollTrackingService.getTaxDocuments(employeeId, year);
   }
@@ -181,7 +182,7 @@ export class PayrollTrackingController {
       'totalTaxForSlip',
     ];
 
-    const detailRows = taxData.payslips.map(p => [
+    const detailRows = taxData.payslips.map((p) => [
       p.payslipId,
       p.payrollRunId,
       p.periodDate,
@@ -194,7 +195,7 @@ export class PayrollTrackingController {
       summaryRow.join(','),
       '',
       detailHeaders.join(','),
-      ...detailRows.map(r => r.join(',')),
+      ...detailRows.map((r) => r.join(',')),
     ];
 
     const csvContent = csvLines.join('\n');
@@ -208,47 +209,30 @@ export class PayrollTrackingController {
   @HttpCode(HttpStatus.CREATED)
   async createDispute(
     @Param('employeeId') employeeId: string,
-    @Body() createDisputeDto: CreateDisputeDto
+    @Body() createDisputeDto: CreateDisputeDto,
   ) {
-    return {
-      employeeId,
-      dispute: createDisputeDto,
-      status: 'UNDER_REVIEW',
-      note: 'createDispute temporarily handled at controller level',
-    };
+    return this.payrollTrackingService.createDispute(employeeId, createDisputeDto);
   }
 
   @Post('employee/:employeeId/claims')
   @HttpCode(HttpStatus.CREATED)
   async createClaim(
     @Param('employeeId') employeeId: string,
-    @Body() createClaimDto: CreateClaimDto
+    @Body() createClaimDto: CreateClaimDto,
   ) {
-    return {
-      employeeId,
-      claim: createClaimDto,
-      status: 'UNDER_REVIEW',
-      note: 'createClaim temporarily handled at controller level',
-    };
+    return this.payrollTrackingService.createClaim(employeeId, createClaimDto);
   }
 
   @Get('employee/:employeeId/track-requests')
   async trackClaimsAndDisputes(@Param('employeeId') employeeId: string) {
-    return {
-      employeeId,
-      claims: [],
-      disputes: [],
-      note: 'trackClaimsAndDisputes temporarily returns empty data from controller',
-    };
+    return this.payrollTrackingService.trackClaimsAndDisputes(employeeId);
   }
-
-  // ========== Operational Reports Endpoints ==========
 
   @Get('reports/department-payroll')
   async generateDepartmentPayrollReport(
     @Query('departmentId') departmentId?: string,
     @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string
+    @Query('endDate') endDate?: string,
   ) {
     const start = startDate ? new Date(startDate) : undefined;
     const end = endDate ? new Date(endDate) : undefined;
@@ -258,7 +242,7 @@ export class PayrollTrackingController {
   @Get('reports/payroll-summary')
   async generatePayrollSummary(
     @Query('type') type: 'monthly' | 'yearly',
-    @Query('period') period?: string
+    @Query('period') period?: string,
   ) {
     return this.payrollTrackingService.generatePayrollSummary(type, period);
   }
@@ -266,19 +250,17 @@ export class PayrollTrackingController {
   @Get('reports/compliance')
   async generateComplianceReport(
     @Query('type') type: string,
-    @Query('year') year?: number
+    @Query('year') year?: number,
   ) {
     return this.payrollTrackingService.generateComplianceReport(type, year);
   }
-
-  // ========== Disputes and Claims Approval Endpoints ==========
 
   @Put('disputes/:disputeId/review')
   async reviewDispute(
     @Param('disputeId') disputeId: string,
     @Query('specialistId') specialistId: string,
     @Query('action') action: 'approve' | 'reject',
-    @Body() body: { reason?: string }
+    @Body() body: { reason?: string },
   ) {
     return this.payrollTrackingService.reviewDispute(disputeId, specialistId, action, body.reason);
   }
@@ -288,29 +270,32 @@ export class PayrollTrackingController {
     @Param('disputeId') disputeId: string,
     @Query('managerId') managerId: string,
     @Query('action') action: 'confirm' | 'reject',
-    @Body() body: { reason?: string }
+    @Body() body: { reason?: string },
   ) {
     return this.payrollTrackingService.confirmDisputeApproval(disputeId, managerId, action, body.reason);
   }
 
-  @Get('disputes/approved')
-  async getApprovedDisputes(@Query('financeStaffId') financeStaffId?: string) {
-    return this.payrollTrackingService.getApprovedDisputes(financeStaffId);
-  }
+  // @Get('disputes/approved')
+  // async getApprovedDisputes(
+  //   @Query('financeStaffId') financeStaffId?: string,
+  //   @Query() paginationDto?: PaginationDto,
+  // ) {
+  //   return this.payrollTrackingService.getApprovedDisputes(financeStaffId, paginationDto);
+  // }
 
   @Put('claims/:claimId/review')
   async reviewClaim(
     @Param('claimId') claimId: string,
     @Query('specialistId') specialistId: string,
     @Query('action') action: 'approve' | 'reject',
-    @Body() body: { approvedAmount?: number; reason?: string }
+    @Body() body: { approvedAmount?: number; reason?: string },
   ) {
     return this.payrollTrackingService.reviewClaim(
-      claimId, 
-      specialistId, 
-      action, 
-      body.approvedAmount, 
-      body.reason
+      claimId,
+      specialistId,
+      action,
+      body.approvedAmount,
+      body.reason,
     );
   }
 
@@ -319,30 +304,31 @@ export class PayrollTrackingController {
     @Param('claimId') claimId: string,
     @Query('managerId') managerId: string,
     @Query('action') action: 'confirm' | 'reject',
-    @Body() body: { reason?: string }
+    @Body() body: { reason?: string },
   ) {
     return this.payrollTrackingService.confirmClaimApproval(claimId, managerId, action, body.reason);
   }
 
-  @Get('claims/approved')
-  async getApprovedClaims(@Query('financeStaffId') financeStaffId?: string) {
-    return this.payrollTrackingService.getApprovedClaims(financeStaffId);
-  }
-
-  // ========== Refund Process Endpoints ==========
+  // @Get('claims/approved')
+  // async getApprovedClaims(
+  //   @Query('financeStaffId') financeStaffId?: string,
+  //   @Query() paginationDto?: PaginationDto,
+  // ) {
+  //   return this.payrollTrackingService.getApprovedClaims(financeStaffId, paginationDto);
+  // }
 
   @Post('refunds/dispute/:disputeId')
   @HttpCode(HttpStatus.CREATED)
   async generateDisputeRefund(
     @Param('disputeId') disputeId: string,
     @Query('financeStaffId') financeStaffId: string,
-    @Body() createRefundDto: CreateRefundDto
+    @Body() createRefundDto: CreateRefundDto,
   ) {
     return this.payrollTrackingService.generateDisputeRefund(
       disputeId,
       financeStaffId,
       createRefundDto.amount,
-      createRefundDto.description
+      createRefundDto.description,
     );
   }
 
@@ -351,38 +337,37 @@ export class PayrollTrackingController {
   async generateClaimRefund(
     @Param('claimId') claimId: string,
     @Query('financeStaffId') financeStaffId: string,
-    @Body() createRefundDto: CreateRefundDto
+    @Body() createRefundDto: CreateRefundDto,
   ) {
     return this.payrollTrackingService.generateClaimRefund(
       claimId,
       financeStaffId,
       createRefundDto.amount,
-      createRefundDto.description
+      createRefundDto.description,
     );
   }
 
-  @Get('refunds/pending')
-  async getPendingRefunds() {
-    return this.payrollTrackingService.getPendingRefunds();
-  }
+  // @Get('refunds/pending')
+  // async getPendingRefunds(@Query() paginationDto?: PaginationDto) {
+  //   return this.payrollTrackingService.getPendingRefunds(paginationDto);
+  // }
 
   @Put('refunds/:refundId/mark-paid')
   async markRefundAsPaid(
     @Param('refundId') refundId: string,
-    @Body() body: { payrollRunId: string }
+    @Body() body: { payrollRunId: string },
   ) {
     return this.payrollTrackingService.markRefundAsPaid(refundId, body.payrollRunId);
   }
 
-  // ========== CRUD Endpoints for Claims, Disputes, Refunds ==========
-
-  @Get('claims')
-  async getAllClaims(
-    @Query('status') status?: string,
-    @Query('employeeId') employeeId?: string
-  ) {
-    return this.payrollTrackingService.getAllClaims(status, employeeId);
-  }
+  // @Get('claims')
+  // async getAllClaims(
+  //   @Query('status') status?: string,
+  //   @Query('employeeId') employeeId?: string,
+  //   @Query() paginationDto?: PaginationDto,
+  // ) {
+  //   return this.payrollTrackingService.getAllClaims(status, employeeId, paginationDto);
+  // }
 
   @Get('claims/:id')
   async getClaimById(@Param('id') id: string) {
@@ -390,10 +375,7 @@ export class PayrollTrackingController {
   }
 
   @Put('claims/:id')
-  async updateClaim(
-    @Param('id') id: string,
-    @Body() updateClaimDto: UpdateClaimDto
-  ) {
+  async updateClaim(@Param('id') id: string, @Body() updateClaimDto: UpdateClaimDto) {
     return this.payrollTrackingService.updateClaimById(id, updateClaimDto);
   }
 
@@ -403,13 +385,14 @@ export class PayrollTrackingController {
     await this.payrollTrackingService.deleteClaimById(id);
   }
 
-  @Get('disputes')
-  async getAllDisputes(
-    @Query('status') status?: string,
-    @Query('employeeId') employeeId?: string
-  ) {
-    return this.payrollTrackingService.getAllDisputes(status, employeeId);
-  }
+  // @Get('disputes')
+  // async getAllDisputes(
+  //   @Query('status') status?: string,
+  //   @Query('employeeId') employeeId?: string,
+  //   @Query() paginationDto?: PaginationDto,
+  // ) {
+  //   return this.payrollTrackingService.getAllDisputes(status, employeeId, paginationDto);
+  // }
 
   @Get('disputes/:id')
   async getDisputeById(@Param('id') id: string) {
@@ -417,10 +400,7 @@ export class PayrollTrackingController {
   }
 
   @Put('disputes/:id')
-  async updateDispute(
-    @Param('id') id: string,
-    @Body() updateDisputeDto: UpdateDisputeDto
-  ) {
+  async updateDispute(@Param('id') id: string, @Body() updateDisputeDto: UpdateDisputeDto) {
     return this.payrollTrackingService.updateDisputeById(id, updateDisputeDto);
   }
 
@@ -430,13 +410,14 @@ export class PayrollTrackingController {
     await this.payrollTrackingService.deleteDisputeById(id);
   }
 
-  @Get('refunds')
-  async getAllRefunds(
-    @Query('status') status?: string,
-    @Query('employeeId') employeeId?: string
-  ) {
-    return this.payrollTrackingService.getAllRefunds(status, employeeId);
-  }
+  // @Get('refunds')
+  // async getAllRefunds(
+  //   @Query('status') status?: string,
+  //   @Query('employeeId') employeeId?: string,
+  //   @Query() paginationDto?: PaginationDto,
+  // ) {
+  //   return this.payrollTrackingService.getAllRefunds(status, employeeId, paginationDto);
+  // }
 
   @Get('refunds/:id')
   async getRefundById(@Param('id') id: string) {
@@ -444,10 +425,7 @@ export class PayrollTrackingController {
   }
 
   @Put('refunds/:id')
-  async updateRefund(
-    @Param('id') id: string,
-    @Body() updateRefundDto: UpdateRefundDto
-  ) {
+  async updateRefund(@Param('id') id: string, @Body() updateRefundDto: UpdateRefundDto) {
     return this.payrollTrackingService.updateRefundById(id, updateRefundDto);
   }
 

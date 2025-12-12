@@ -116,7 +116,7 @@ async function main() {
   try {
     await client.connect();
     const db = client.db();
-    console.log('Connected to', (await db.admin().serverStatus()).host || 'mongo cluster');
+    console.log('Connected to', (await db.admin().serverStatus()).host || 'database employee content cluster');
 
     await ensureCollectionHasDefaults(db);
     const specialistId = await ensurePayrollSpecialist(db);

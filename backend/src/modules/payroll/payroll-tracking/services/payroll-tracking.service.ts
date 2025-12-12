@@ -6,9 +6,11 @@ import { disputes, disputesDocument } from '../models/disputes.schema';
 import { refunds, refundsDocument } from '../models/refunds.schema';
 
 import { ClaimStatus, DisputeStatus, RefundStatus } from '../enums/payroll-tracking-enum';
-import {paySlip, PayslipDocument} from "../../payroll-execution/models/payslip.schema";
-import {EmployeeProfile} from "../../../employee/models/employee/employee-profile.schema";
-import {ContractType, WorkType} from "../../../employee/enums/employee-profile.enums";
+import { paySlip, PayslipDocument } from '../../payroll-execution/models/payslip.schema';
+import { EmployeeProfile } from '../../../employee/models/employee/employee-profile.schema';
+import { ContractType, WorkType } from '../../../employee/enums/employee-profile.enums';
+import { CreateClaimDto, CreateDisputeDto, UpdateClaimDto, UpdateDisputeDto, UpdateRefundDto } from '../dtos';
+import { PaginationDto } from '../dtos/pagination.dto';
 
 @Injectable()
 export class PayrollTrackingService {
@@ -20,7 +22,7 @@ export class PayrollTrackingService {
     @InjectModel(EmployeeProfile.name) private employeeModel: Model<EmployeeProfile>,
   ) {}
 
-  // ========== Employee Self-Service Methods ==========
+  // ========== employee Self-Service Methods ==========
 
   // REQ-PY-1: View and download payslip
   async getEmployeePayslips(employeeId: string) {
@@ -87,7 +89,7 @@ export class PayrollTrackingService {
   async getBaseSalary(employeeId: string) {
     const employee = await this.employeeModel.findById(employeeId).exec();
     if (!employee) {
-      throw new NotFoundException('Employee not found');
+      throw new NotFoundException('employee not found');
     }
     
     // Derive contract/work type with sensible defaults
@@ -286,12 +288,12 @@ export class PayrollTrackingService {
 
   // REQ-PY-13: View salary history
   async getSalaryHistory(employeeId: string) {
-    const payslips = await this.payslipModel.find({ 
-      employeeId: new Types.ObjectId(employeeId) 
+    const payslips = await this.payslipModel.find({
+      employeeId: new Types.ObjectId(employeeId)
     })
     .sort({ createdAt: -1 })
     .exec();
-    
+
     return payslips.map(payslip => ({
       payslipId: payslip._id,
       grossSalary: payslip.totalGrossSalary || 0,
@@ -444,10 +446,10 @@ export class PayrollTrackingService {
       acc[dept].totalTax += payslip.deductionsDetails?.taxes?.reduce((sum, t) => sum + ((t as any)?.amount || 0), 0) || 0;
       acc[dept].totalInsurance += payslip.deductionsDetails?.insurances?.reduce((sum, i) => sum + ((i as any)?.amount || 0), 0) || 0;
       acc[dept].employeeCount++;
-      
+
       return acc;
     }, {});
-    
+
     return {
       reportType: 'DEPARTMENT_PAYROLL_SUMMARY',
       generatedDate: new Date().toISOString(),
@@ -514,7 +516,7 @@ export class PayrollTrackingService {
     const targetYear = year || new Date().getFullYear();
     const startDate = new Date(targetYear, 0, 1);
     const endDate = new Date(targetYear, 11, 31);
-    
+
     const payslips = await this.payslipModel.find({
       createdAt: {
         $gte: startDate,
@@ -523,7 +525,7 @@ export class PayrollTrackingService {
     }).exec();
     
     let reportData;
-    
+
     switch (reportType.toLowerCase()) {
       case 'tax':
         reportData = this.generateTaxReport(payslips, targetYear);
@@ -537,7 +539,7 @@ export class PayrollTrackingService {
       default:
         throw new BadRequestException('Invalid report type');
     }
-    
+
     return reportData;
   }
 
@@ -591,7 +593,7 @@ export class PayrollTrackingService {
     if (financeStaffId) {
       query.financeStaffId = new Types.ObjectId(financeStaffId);
     }
-    
+
     return this.disputesModel.find(query)
       .populate('employeeId', 'firstName lastName employeeId')
       .populate('payslipId', 'payPeriod netSalary')
@@ -646,7 +648,7 @@ export class PayrollTrackingService {
     if (financeStaffId) {
       query.financeStaffId = new Types.ObjectId(financeStaffId);
     }
-    
+
     return this.claimsModel.find(query)
       .populate('employeeId', 'firstName lastName employeeId')
       .exec();
@@ -664,7 +666,7 @@ export class PayrollTrackingService {
     if (dispute.status !== DisputeStatus.APPROVED) {
       throw new BadRequestException('Only approved disputes can generate refunds');
     }
-    
+
     // Check if refund already exists
     const existingRefund = await this.refundsModel.findOne({ disputeId: new Types.ObjectId(disputeId) });
     if (existingRefund) {
@@ -695,7 +697,7 @@ export class PayrollTrackingService {
     if (claim.status !== ClaimStatus.APPROVED) {
       throw new BadRequestException('Only approved claims can generate refunds');
     }
-    
+
     // Check if refund already exists
     const existingRefund = await this.refundsModel.findOne({ claimId: new Types.ObjectId(claimId) });
     if (existingRefund) {
@@ -731,7 +733,7 @@ export class PayrollTrackingService {
     if (!refund) {
       throw new NotFoundException('Refund not found');
     }
-    
+
     refund.status = RefundStatus.PAID;
     refund.paidInPayrollRunId = new Types.ObjectId(payrollRunId);
     
@@ -750,11 +752,11 @@ export class PayrollTrackingService {
           employeeCount: new Set()
         };
       }
-      
+
       acc[dept].totalGross += payslip.totalGrossSalary || 0;
       acc[dept].totalNet += payslip.netPay || 0;
       acc[dept].employeeCount.add(payslip.employeeId.toString());
-      
+
       return acc;
     }, {});
   }
@@ -881,7 +883,7 @@ export class PayrollTrackingService {
     const query: any = {};
     if (status) query.status = status;
     if (employeeId) query.employeeId = new Types.ObjectId(employeeId);
-    
+
     return this.claimsModel.find(query)
       .populate('employeeId', 'firstName lastName employeeId')
       .populate('financeStaffId', 'firstName lastName employeeId')
@@ -911,13 +913,13 @@ export class PayrollTrackingService {
     if (!claim) {
       throw new NotFoundException('Claim not found');
     }
-    
+
     return claim;
   }
 
   async deleteClaimById(id: string) {
     const result = await this.claimsModel.findByIdAndDelete(id).exec();
-    
+
     if (!result) {
       throw new NotFoundException('Claim not found');
     }
@@ -929,7 +931,7 @@ export class PayrollTrackingService {
     const query: any = {};
     if (status) query.status = status;
     if (employeeId) query.employeeId = new Types.ObjectId(employeeId);
-    
+
     return this.disputesModel.find(query)
       .populate('employeeId', 'firstName lastName employeeId')
       .populate('payslipId', 'payPeriod netSalary')
@@ -961,13 +963,13 @@ export class PayrollTrackingService {
     if (!dispute) {
       throw new NotFoundException('Dispute not found');
     }
-    
+
     return dispute;
   }
 
   async deleteDisputeById(id: string) {
     const result = await this.disputesModel.findByIdAndDelete(id).exec();
-    
+
     if (!result) {
       throw new NotFoundException('Dispute not found');
     }
@@ -1015,13 +1017,13 @@ export class PayrollTrackingService {
     if (!refund) {
       throw new NotFoundException('Refund not found');
     }
-    
+
     return refund;
   }
 
   async deleteRefundById(id: string) {
     const result = await this.refundsModel.findByIdAndDelete(id).exec();
-    
+
     if (!result) {
       throw new NotFoundException('Refund not found');
     }
@@ -1035,7 +1037,7 @@ async createDispute(employeeId: string, createDisputeDto: any) {
   const latestDispute = await this.disputesModel.findOne()
     .sort({ createdAt: -1 })
     .exec();
-  
+
   let nextNumber = 1;
   if (latestDispute && latestDispute.disputeId) {
     const match = latestDispute.disputeId.match(/DISP-(\d+)/);
@@ -1043,9 +1045,9 @@ async createDispute(employeeId: string, createDisputeDto: any) {
       nextNumber = parseInt(match[1]) + 1;
     }
   }
-  
+
   const disputeId = `DISP-${nextNumber.toString().padStart(4, '0')}`;
-  
+
   const dispute = new this.disputesModel({
     disputeId,
     employeeId: new Types.ObjectId(employeeId),
@@ -1053,7 +1055,7 @@ async createDispute(employeeId: string, createDisputeDto: any) {
     payslipId: new Types.ObjectId(createDisputeDto.payslipId),
     status: DisputeStatus.UNDER_REVIEW
   });
-  
+
   return dispute.save();
 }
 
@@ -1063,7 +1065,7 @@ async createClaim(employeeId: string, createClaimDto: any) {
   const latestClaim = await this.claimsModel.findOne()
     .sort({ createdAt: -1 })
     .exec();
-  
+
   let nextNumber = 1;
   if (latestClaim && latestClaim.claimId) {
     const match = latestClaim.claimId.match(/CLAIM-(\d+)/);
@@ -1071,16 +1073,16 @@ async createClaim(employeeId: string, createClaimDto: any) {
       nextNumber = parseInt(match[1]) + 1;
     }
   }
-  
+
   const claimId = `CLAIM-${nextNumber.toString().padStart(4, '0')}`;
-  
+
   const claim = new this.claimsModel({
     claimId,
     employeeId: new Types.ObjectId(employeeId),
     ...createClaimDto,
     status: ClaimStatus.UNDER_REVIEW
   });
-  
+
   return claim.save();
 }
 

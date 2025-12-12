@@ -233,7 +233,7 @@ export class AttendanceService {
 
     /**
      * Validate if punch time is within assigned shift time range
-     * @param employeeId - Employee ID
+     * @param employeeId - employee ID
      * @param punchTime - Time of punch
      * @returns Validation result with shift info
      */

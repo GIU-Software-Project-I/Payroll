@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"}],"uuid":"43a76ef784fa4153ab1ae68987ae86c7","collectionName":"employeepenalties","type":"collection"}

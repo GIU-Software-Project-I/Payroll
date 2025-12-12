@@ -6,7 +6,7 @@
 // import { payrollRuns, payrollRunsDocument } from '../models/payrollRuns.schema';
 // import { paySlip } from '../models/payslip.schema';
 // import { employeePayrollDetails } from '../models/employeePayrollDetails.schema';
-// import { BonusStatus } from '../enums/payroll-execution-enum';
+// import { BonusStatus } from '../enums/payroll-execution requirements-enum';
 // import { EmployeeTerminationResignation, EmployeeTerminationResignationDocument } from '../models/EmployeeTerminationResignation.schema';
 // import { SystemRole } from '../../../employee/enums/employee-profile.enums';
 // import { PayCalculatorService } from '../services/payCalculator.service';
@@ -14,7 +14,7 @@
 // import { LeavesService } from '../../../leaves/services/leaves.service';
 //
 // import { EmployeeSystemRole, EmployeeSystemRoleDocument } from '../../../employee/models/employee/employee-system-role.schema';
-// import {EmployeeProfileService} from "../../../employee/services/Employee-Profile.Service";
+// import {EmployeeProfileService} from "../../../employee/services/employee-Profile.Service";
 //
 // @Injectable()
 // export class PayrollExecutionService {
@@ -450,7 +450,7 @@
 //     //         employeesCount++;
 //     //         const employeeId = emp._id;
 //     //
-//     //         // Auto-create payroll-execution signing bonus for new hires when offer contains a signingBonus
+//     //         // Auto-create payroll-execution requirements signing bonus for new hires when offer contains a signingBonus
 //     //         try {
 //     //             if (emp && emp.dateOfHire) {
 //     //                 const doh = new Date(emp.dateOfHire);
@@ -461,7 +461,7 @@
 //     //                         if (candidate) {
 //     //                             const offer = await db.collection('offers').findOne({ candidateId: candidate._id, signingBonus: { $exists: true, $gt: 0 } });
 //     //                             if (offer && offer.signingBonus && offer.signingBonus > 0) {
-//     //                                 // create or find a signingBonus config in payroll-configuration
+//     //                                 // create or find a signingBonus config in payroll-configuration-requirements
 //     //                                 const sbFilter: any = { positionName: offer.role || (emp.primaryPositionId ? String(emp.primaryPositionId) : 'unknown'), amount: offer.signingBonus };
 //     //                                 let sbDoc = await db.collection('signingbonuses').findOne(sbFilter);
 //     //                                 if (!sbDoc) {

@@ -8,7 +8,7 @@ import { PayrollConfigurationModule } from './modules/payroll/payroll-configurat
 import {TimeManagementModule} from "./modules/time-management/time-management.module";
 import { PayrollTrackingModule } from './modules/payroll/payroll-tracking/payroll-tracking.module';
 
-import { OrganizationStructureModule } from "./modules/employee/controllers/organization-structure.module";
+import { OrganizationStructureModule } from "./modules/employee/organization-structure.module";
 import { EmployeeModule } from "./modules/employee/employee.module";
 import { PerformanceModule } from "./modules/employee/performance.module";
 import { LeavesModule } from "./modules/leaves/leaves.module";
@@ -45,9 +45,9 @@ import {RecruitmentModule} from "./modules/recruitment/recruitment.module";
 
 
     ],
-    providers: [
-        { provide: APP_GUARD, useClass: AuthenticationGuard },
-        { provide: APP_GUARD, useClass: AuthorizationGuard },
-    ],
+    // providers: [
+    //     { provide: APP_GUARD, useClass: AuthenticationGuard },
+    //     { provide: APP_GUARD, useClass: AuthorizationGuard },
+    // ],
 })
 export class AppModule {}

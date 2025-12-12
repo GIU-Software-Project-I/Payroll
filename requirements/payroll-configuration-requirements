@@ -62,7 +62,7 @@ REQ-PY-22	As an HR Manager, I want to review and update insurance bracket config
 Payroll Processing & Execution
 
 
-Entire payroll Business Rules including tracking and configuration, only use numbered in configuration for configuration :
+Entire payroll Business Rules including payroll tracking and execution, only use numbered in configuration for configuration :
 
 
 BR ID	BR Description
@@ -83,13 +83,13 @@ Employer Insurance = GrossSalary * employer_percentage"
 20	All payroll records must Supports local tax law customization (i.e. as per Egyptian labor law 2025 and other laws’ requirements).
 23	The system must support issuing reports about standard payroll summary, tax reports, and pay slip history.
 31	"The system needs to have a breakdown. One proposed is: Payroll schemas, Payroll areas. The organization may select to activate, or edit some
-                 A. Payroll Area, which is the batch of people for which payroll runs at the same time, 
+                 A. Payroll Area, which is the batch of people for which payroll runs at the same time,
                  B. Payroll Schemas, which is the payroll logic (i.e. set of rules and operations that define how the payroll should be processed for employees, like the recipe/logic the payroll is composed of.
-Our Formula : [Net Salary =Gross Salary(base pay+ allowances) – Taxes – Social/ Health Insurance – Other Deductions.]) 
-The system follows the two steps accordingly: 
-                     ● Payroll Area picks the employees and period. 
+Our Formula : [Net Salary =Gross Salary(base pay+ allowances) – Taxes – Social/ Health Insurance – Other Deductions.])
+The system follows the two steps accordingly:
+                     ● Payroll Area picks the employees and period.
                      ● Schema runs the payroll logic for that group. "
-33	The system must apply deductions for misconduct penalties (e.g., lateness, asset damage, disciplinary actions) as configured by HR policy, consistent with Egyptian 
+33	The system must apply deductions for misconduct penalties (e.g., lateness, asset damage, disciplinary actions) as configured by HR policy, consistent with Egyptian
 34	The system must ensure all deductions (taxes, insurance, penalties, unpaid leave, recovery) are applied after gross salary calculation and before net salary.
 35	The system must calculate net salary as: Gross Salary – Taxes(Tax = % of Base Salary) – Social/Health Insurance
 36	The system must store all calculation elements (salary base, allowances, taxes, deductions) for auditability and compliance.
@@ -100,7 +100,7 @@ The system follows the two steps accordingly:
 24	Signing bonuses must be processed only for employees flagged as eligible in their contracts (linked through Employee Profile).
 28	The system must ensure a signing bonus is disbursed only once unless explicitly authorized.
 25	Any manual overrides for signing bonuses must require authorization.
-56	"Upon employee resignation, the system must automatically calculate:  resignation-related entitlements (e.g., accrued leave payout, service completion benefits, pending allowances) according to contract and local labor law. And end-of-service benefits (gratuity, accrued leave encashment, pending allowances) according to company policy and labor law. 
+56	"Upon employee resignation, the system must automatically calculate:  resignation-related entitlements (e.g., accrued leave payout, service completion benefits, pending allowances) according to contract and local labor law. And end-of-service benefits (gratuity, accrued leave encashment, pending allowances) according to company policy and labor law.
 "
 26	Termination benefits must not be processed until HR clearance and final approvals are completed.
 27	Manual adjustments to termination payouts must require Payroll Specialist approval and full system logging.
@@ -111,8 +111,8 @@ The system follows the two steps accordingly:
 60	Misconduct penalties must not reduce salary below statutory minimum wages.
 63	Any payroll initiation or modification (automatic or manual) must go through validation checks (e.g., contract active, no expired approvals, minimum wage compliance) before processing.
 64	The system needs to be linked to the organization’s as well as the employees’ accounts to facilitate processing payroll.
-"The module must be integrated with other HRMS modules as the: 
-● Leaves Module: for cases of unapproved leaves, or for encashment of unused annual leave balance for termination. Such unused leaves must be either carried forward to the next fiscal year (if allowed) or converted into compensation, in line with Egyptian Labor Law 2025. Also, to factor in paid and unpaid leave deductions automatically applied based on leave rules. 
-● Time Management: to factor in working days/hours, overtime, and absence data directly. 
+"The module must be integrated with other HRMS modules as the:
+● Leaves Module: for cases of unapproved leaves, or for encashment of unused annual leave balance for termination. Such unused leaves must be either carried forward to the next fiscal year (if allowed) or converted into compensation, in line with Egyptian Labor Law 2025. Also, to factor in paid and unpaid leave deductions automatically applied based on leave rules.
+● Time Management: to factor in working days/hours, overtime, and absence data directly.
 ● Onboarding, Recruitment & Off boarding Module: for sign on bonuses and severance pay and other related items due in either termination or resignation cases
-● Employee Profile Module, to be linked to employee contracts and any related sign-on bonuses included. Any changes in contracts auto-update salary/payroll. "	
+● Employee Profile Module, to be linked to employee contracts and any related sign-on bonuses included. Any changes in contracts auto-update salary/payroll. "

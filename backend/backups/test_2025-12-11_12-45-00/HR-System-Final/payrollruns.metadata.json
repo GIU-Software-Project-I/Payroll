@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"runId":{"$numberInt":"1"}},"name":"runId_1","background":true,"unique":true}],"uuid":"668d7bf996234a309be7d5046206c2a6","collectionName":"payrollruns","type":"collection"}

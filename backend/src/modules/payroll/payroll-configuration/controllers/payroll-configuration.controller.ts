@@ -46,7 +46,7 @@ import { ApproveConfigDto } from '../dto/approve-config.dto';
 import { CreatePayGradeDto } from '../dto/create-paygrade.dto';
 import { UpdatePayGradeDto } from '../dto/update-paygrade.dto';
 
-@Controller('payroll-configuration')
+@Controller('payroll-configuration-requirements')
 @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
 export class PayrollConfigurationController {
     constructor(
@@ -719,7 +719,7 @@ export class PayrollConfigurationController {
 //     HttpCode,
 //     HttpStatus, BadRequestException,
 // } from '@nestjs/common';
-// import { PayrollConfigurationService } from '../services/payroll-configuration.service';
+// import { PayrollConfigurationService } from '../services/payroll-configuration-requirements.service';
 // import { UpdateCompanyWideSettingsDto } from '../dto/update-company-settings.dto';
 // import { ApproveConfigDto } from '../dto/approve-config.dto';
 // import { UpdateAllowanceDto } from '../dto/update-allowance.dto';
@@ -737,7 +737,7 @@ export class PayrollConfigurationController {
 // import {UpdateInsuranceDto} from "../dto/update-insurance.dto";
 // import {ApproveInsuranceDto} from "../dto/approve-insurance.dto";
 //
-// @Controller('payroll-configuration')
+// @Controller('payroll-configuration-requirements')
 // export class PayrollConfigurationController {
 //   constructor(
 //     private readonly payrollConfigurationService: PayrollConfigurationService,

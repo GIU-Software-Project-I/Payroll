@@ -1,358 +1,311 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Patch,
-  Body,
-  Param,
-  Query,
-  HttpCode,
-  HttpStatus,
-} from '@nestjs/common';
-
-
-import {CreateAppraisalTemplateDto, UpdateAppraisalTemplateDto} from "../dto/performance/appraisal-template.dto";
-import {CreateAppraisalCycleDto, UpdateAppraisalCycleDto} from "../dto/performance/appraisal-cycle.dto";
-import {
-    BulkCreateAppraisalAssignmentDto,
-    CreateAppraisalAssignmentDto
-} from "../dto/performance/appraisal-assignment.dto";
-import {SubmitAppraisalRecordDto} from "../dto/performance/appraisal-record.dto";
-import {FileAppraisalDisputeDto, ResolveAppraisalDisputeDto} from "../dto/performance/appraisal-dispute.dto";
-import {PerformanceService} from "../services/Performance.Service";
-
-
+import { Controller, Get, Post, Patch, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { PerformanceService, TemplateSearchQuery, CycleSearchQuery, AssignmentSearchQuery, RecordSearchQuery, DisputeSearchQuery } from '../services/performance.service';
+import { CreateAppraisalTemplateDto, UpdateAppraisalTemplateDto } from '../dto/performance/appraisal-template.dto';
+import { CreateAppraisalCycleDto, UpdateAppraisalCycleDto } from '../dto/performance/appraisal-cycle.dto';
+import { BulkCreateAppraisalAssignmentDto, CreateAppraisalAssignmentDto } from '../dto/performance/appraisal-assignment.dto';
+import { SubmitAppraisalRecordDto } from '../dto/performance/appraisal-record.dto';
+import { FileAppraisalDisputeDto, ResolveAppraisalDisputeDto } from '../dto/performance/appraisal-dispute.dto';
+import { AppraisalTemplateType, AppraisalCycleStatus, AppraisalAssignmentStatus, AppraisalRecordStatus, AppraisalDisputeStatus } from '../enums/performance.enums';
 
 @Controller('performance')
 export class PerformanceController {
-  constructor(private performanceService: PerformanceService) {}
+    constructor(private performanceService: PerformanceService) {}
 
-  // ============ PHASE 1: TEMPLATES ============
+    // ==================== TEMPLATES ====================
 
-  /**
-   * POST /performance/templates
-   * REQ-PP-01: Create a standardized appraisal template
-   */
-  @Post('templates')
-  @HttpCode(HttpStatus.CREATED)
-  async createTemplate(@Body() dto: CreateAppraisalTemplateDto) {
-    return this.performanceService.createTemplate(dto);
-  }
+    @Post('templates')
+    @HttpCode(HttpStatus.CREATED)
+    async createTemplate(@Body() dto: CreateAppraisalTemplateDto) {
+        return this.performanceService.createTemplate(dto);
+    }
 
-  /**
-   * PATCH /performance/templates/:templateId
-   * Update an appraisal template
-   */
-  @Patch('templates/:templateId')
-  async updateTemplate(
-    @Param('templateId') templateId: string,
-    @Body() dto: UpdateAppraisalTemplateDto,
-  ) {
-    return this.performanceService.updateTemplate(templateId, dto);
-  }
+    @Get('templates')
+    async getAllTemplates(@Query('isActive') isActive?: string) {
+        const active = isActive === undefined ? undefined : isActive === 'true';
+        return this.performanceService.getAllTemplates(active);
+    }
 
-  /**
-   * GET /performance/templates/:templateId
-   * Get template by ID
-   */
-  @Get('templates/:templateId')
-  async getTemplate(@Param('templateId') templateId: string) {
-    return this.performanceService.getTemplate(templateId);
-  }
+    @Get('templates/search')
+    async searchTemplates(
+        @Query('page') page?: string,
+        @Query('limit') limit?: string,
+        @Query('query') query?: string,
+        @Query('templateType') templateType?: AppraisalTemplateType,
+        @Query('isActive') isActive?: string,
+    ) {
+        const queryDto: TemplateSearchQuery = {
+            page: page ? parseInt(page, 10) : 1,
+            limit: limit ? parseInt(limit, 10) : 20,
+            query,
+            templateType,
+            isActive: isActive === undefined ? undefined : isActive === 'true',
+        };
+        return this.performanceService.searchTemplates(queryDto);
+    }
 
-  /**
-   * GET /performance/templates
-   * Get all templates (default: active only)
-   */
-  @Get('templates')
-  async getAllTemplates(@Query('isActive') isActive?: string) {
-    const filter = isActive === 'false' ? {} : { isActive: true };
-    return this.performanceService.getAllTemplates(filter);
-  }
+    @Get('templates/stats')
+    async getTemplateStats() {
+        return this.performanceService.getTemplateStats();
+    }
 
-  // ============ PHASE 2: CYCLES ============
+    @Get('templates/:id')
+    async getTemplateById(@Param('id') id: string) {
+        return this.performanceService.getTemplateById(id);
+    }
 
-  /**
-   * POST /performance/cycles
-   * REQ-PP-02: Create and schedule an appraisal cycle
-   */
-  @Post('cycles')
-  @HttpCode(HttpStatus.CREATED)
-  async createCycle(@Body() dto: CreateAppraisalCycleDto) {
-    return this.performanceService.createCycle(dto);
-  }
+    @Patch('templates/:id')
+    async updateTemplate(@Param('id') id: string, @Body() dto: UpdateAppraisalTemplateDto) {
+        return this.performanceService.updateTemplate(id, dto);
+    }
 
-  /**
-   * PATCH /performance/cycles/:cycleId
-   * Update an appraisal cycle
-   */
-  @Patch('cycles/:cycleId')
-  async updateCycle(
-    @Param('cycleId') cycleId: string,
-    @Body() dto: UpdateAppraisalCycleDto,
-  ) {
-    return this.performanceService.updateCycle(cycleId, dto);
-  }
+    @Patch('templates/:id/deactivate')
+    async deactivateTemplate(@Param('id') id: string) {
+        return this.performanceService.deactivateTemplate(id);
+    }
 
-  /**
-   * GET /performance/cycles/:cycleId
-   * Get cycle by ID
-   */
-  @Get('cycles/:cycleId')
-  async getCycle(@Param('cycleId') cycleId: string) {
-    return this.performanceService.getCycle(cycleId);
-  }
+    @Patch('templates/:id/reactivate')
+    async reactivateTemplate(@Param('id') id: string) {
+        return this.performanceService.reactivateTemplate(id);
+    }
 
-  /**
-   * GET /performance/cycles
-   * Get all cycles with optional filtering
-   */
-  @Get('cycles')
-  async getAllCycles(@Query('status') status?: string) {
-    const filter: any = {};
-    if (status) filter.status = status;
-    return this.performanceService.getAllCycles(filter);
-  }
+    // ==================== CYCLES ====================
 
-  /**
-   * POST /performance/cycles/:cycleId/activate
-   * Activate a PLANNED cycle (transition to ACTIVE)
-   */
-  @Post('cycles/:cycleId/activate')
-  @HttpCode(HttpStatus.OK)
-  async activateCycle(@Param('cycleId') cycleId: string) {
-    return this.performanceService.activateCycle(cycleId);
-  }
+    @Post('cycles')
+    @HttpCode(HttpStatus.CREATED)
+    async createCycle(@Body() dto: CreateAppraisalCycleDto) {
+        return this.performanceService.createCycle(dto);
+    }
 
-  /**
-   * POST /performance/cycles/:cycleId/close
-   * Close an ACTIVE cycle (transition to CLOSED)
-   */
-  @Post('cycles/:cycleId/close')
-  @HttpCode(HttpStatus.OK)
-  async closeCycle(@Param('cycleId') cycleId: string) {
-    return this.performanceService.closeCycle(cycleId);
-  }
+    @Get('cycles')
+    async getAllCycles(@Query('status') status?: AppraisalCycleStatus) {
+        return this.performanceService.getAllCycles(status);
+    }
 
-  /**
-   * POST /performance/cycles/:cycleId/archive
-   * Manually archive a CLOSED cycle
-   */
-  @Post('cycles/:cycleId/archive')
-  @HttpCode(HttpStatus.OK)
-  async archiveCycle(@Param('cycleId') cycleId: string) {
-    return this.performanceService.archiveCycle(cycleId);
-  }
+    @Get('cycles/search')
+    async searchCycles(
+        @Query('page') page?: string,
+        @Query('limit') limit?: string,
+        @Query('query') query?: string,
+        @Query('status') status?: AppraisalCycleStatus,
+        @Query('cycleType') cycleType?: AppraisalTemplateType,
+    ) {
+        const queryDto: CycleSearchQuery = {
+            page: page ? parseInt(page, 10) : 1,
+            limit: limit ? parseInt(limit, 10) : 20,
+            query,
+            status,
+            cycleType,
+        };
+        return this.performanceService.searchCycles(queryDto);
+    }
 
-  /**
-   * GET /performance/cycles/archived
-   * Get all archived cycles
-   */
-  @Get('cycles-archived')
-  async getArchivedCycles() {
-    return this.performanceService.getArchivedCycles();
-  }
+    @Get('cycles/stats')
+    async getCycleStats() {
+        return this.performanceService.getCycleStats();
+    }
 
-  // ============ PHASE 3A: ASSIGNMENTS ============
+    @Get('cycles/:id')
+    async getCycleById(@Param('id') id: string) {
+        return this.performanceService.getCycleById(id);
+    }
 
-  /**
-   * POST /performance/assignments
-   * REQ-PP-05: Create a single appraisal assignment
-   */
-  @Post('assignments')
-  @HttpCode(HttpStatus.CREATED)
-  async createAssignment(@Body() dto: CreateAppraisalAssignmentDto) {
-    return this.performanceService.createAssignment(dto);
-  }
+    @Patch('cycles/:id')
+    async updateCycle(@Param('id') id: string, @Body() dto: UpdateAppraisalCycleDto) {
+        return this.performanceService.updateCycle(id, dto);
+    }
 
-  /**
-   * POST /performance/assignments/bulk
-   * REQ-PP-05: Bulk create assignments for multiple employees
-   */
-  @Post('assignments/bulk')
-  @HttpCode(HttpStatus.CREATED)
-  async bulkCreateAssignments(
-    @Body() dto: BulkCreateAppraisalAssignmentDto,
-  ) {
-    return this.performanceService.bulkCreateAssignments(dto);
-  }
+    @Post('cycles/:id/activate')
+    @HttpCode(HttpStatus.OK)
+    async activateCycle(@Param('id') id: string) {
+        return this.performanceService.activateCycle(id);
+    }
 
-  /**
-   * GET /performance/assignments/:assignmentId
-   * Get assignment by ID
-   */
-  @Get('assignments/:assignmentId')
-  async getAssignment(@Param('assignmentId') assignmentId: string) {
-    return this.performanceService.getAssignment(assignmentId);
-  }
+    @Post('cycles/:id/close')
+    @HttpCode(HttpStatus.OK)
+    async closeCycle(@Param('id') id: string) {
+        return this.performanceService.closeCycle(id);
+    }
 
-  /**
-   * GET /performance/assignments
-   * Get all assignments with optional filtering
-   */
-  @Get('assignments')
-  async getAllAssignments(
-    @Query('cycleId') cycleId?: string,
-    @Query('departmentId') departmentId?: string,
-  ) {
-    const filter: any = {};
-    if (cycleId) filter.cycleId = cycleId;
-    if (departmentId) filter.departmentId = departmentId;
-    return this.performanceService.getAllAssignments(filter);
-  }
+    @Post('cycles/:id/archive')
+    @HttpCode(HttpStatus.OK)
+    async archiveCycle(@Param('id') id: string) {
+        return this.performanceService.archiveCycle(id);
+    }
 
-  /**
-   * GET /performance/assignments/manager/:managerProfileId
-   * REQ-PP-13: Get assignments for a specific manager
-   */
-  @Get('assignments/manager/:managerProfileId')
-  async getAssignmentsForManager(
-    @Param('managerProfileId') managerProfileId: string,
-  ) {
-    return this.performanceService.getAssignmentsForManager(managerProfileId);
-  }
+    // ==================== ASSIGNMENTS ====================
 
-  // ============ PHASE 3B & PHASE 4: RECORDS ============
+    @Post('assignments')
+    @HttpCode(HttpStatus.CREATED)
+    async createAssignment(@Body() dto: CreateAppraisalAssignmentDto) {
+        return this.performanceService.createAssignment(dto);
+    }
 
-  /**
-   * POST /performance/records
-   * REQ-AE-03 & REQ-AE-04: Submit appraisal record with ratings and comments
-   */
-  @Post('records')
-  @HttpCode(HttpStatus.CREATED)
-  async submitAppraisalRecord(@Body() dto: SubmitAppraisalRecordDto) {
-    return this.performanceService.submitAppraisalRecord(dto);
-  }
+    @Post('assignments/bulk')
+    @HttpCode(HttpStatus.CREATED)
+    async bulkCreateAssignments(@Body() dto: BulkCreateAppraisalAssignmentDto) {
+        return this.performanceService.bulkCreateAssignments(dto);
+    }
 
-  /**
-   * GET /performance/records/:recordId
-   * Get appraisal record by ID
-   */
-  @Get('records/:recordId')
-  async getAppraisalRecord(@Param('recordId') recordId: string) {
-    return this.performanceService.getAppraisalRecord(recordId);
-  }
+    @Get('assignments')
+    async searchAssignments(
+        @Query('page') page?: string,
+        @Query('limit') limit?: string,
+        @Query('cycleId') cycleId?: string,
+        @Query('employeeProfileId') employeeProfileId?: string,
+        @Query('managerProfileId') managerProfileId?: string,
+        @Query('departmentId') departmentId?: string,
+        @Query('status') status?: AppraisalAssignmentStatus,
+    ) {
+        const queryDto: AssignmentSearchQuery = {
+            page: page ? parseInt(page, 10) : 1,
+            limit: limit ? parseInt(limit, 10) : 20,
+            cycleId,
+            employeeProfileId,
+            managerProfileId,
+            departmentId,
+            status,
+        };
+        return this.performanceService.searchAssignments(queryDto);
+    }
 
-  /**
-   * GET /performance/records/cycle/:cycleId
-   * Get appraisal records for a specific cycle
-   */
-  @Get('records/cycle/:cycleId')
-  async getRecordsByCycle(@Param('cycleId') cycleId: string) {
-    return this.performanceService.getRecordsByCycle(cycleId);
-  }
+    @Get('assignments/manager/:managerProfileId')
+    async getAssignmentsForManager(@Param('managerProfileId') managerProfileId: string) {
+        return this.performanceService.getAssignmentsForManager(managerProfileId);
+    }
 
-  /**
-   * POST /performance/records/:recordId/publish
-   * REQ-AE-06: Publish appraisal record to employee
-   */
-  @Post('records/:recordId/publish')
-  @HttpCode(HttpStatus.OK)
-  async publishAppraisalRecord(
-    @Param('recordId') recordId: string,
-    @Body() body: { publishedByEmployeeId: string },
-  ) {
-    return this.performanceService.publishAppraisalRecord(
-      recordId,
-      body.publishedByEmployeeId,
-    );
-  }
+    @Get('assignments/employee/:employeeProfileId')
+    async getAssignmentsForEmployee(@Param('employeeProfileId') employeeProfileId: string) {
+        return this.performanceService.getAssignmentsForEmployee(employeeProfileId);
+    }
 
-  /**
-   * GET /performance/dashboard/:cycleId
-   * REQ-AE-10: Get completion dashboard for a cycle
-   */
-  @Get('dashboard/:cycleId')
-  async getCompletionDashboard(@Param('cycleId') cycleId: string) {
-    return this.performanceService.getCompletionDashboard(cycleId);
-  }
+    @Get('assignments/:id')
+    async getAssignmentById(@Param('id') id: string) {
+        return this.performanceService.getAssignmentById(id);
+    }
 
-  /**
-   * GET /performance/pending-manager/:managerProfileId
-   * REQ-AE-06: Get pending appraisals for a manager
-   */
-  @Get('pending-manager/:managerProfileId')
-  async getPendingAppraisesByManager(
-    @Param('managerProfileId') managerProfileId: string,
-  ) {
-    return this.performanceService.getPendingAppraisesByManager(
-      managerProfileId,
-    );
-  }
+    // ==================== RECORDS ====================
 
-  // ============ PHASE 5: EMPLOYEE ACKNOWLEDGEMENT ============
+    @Post('records')
+    @HttpCode(HttpStatus.CREATED)
+    async submitAppraisalRecord(@Body() dto: SubmitAppraisalRecordDto) {
+        return this.performanceService.submitAppraisalRecord(dto);
+    }
 
-  /**
-   * POST /performance/records/:recordId/acknowledge
-   * REQ-OD-01: employee acknowledges appraisal record
-   */
-  @Post('records/:recordId/acknowledge')
-  @HttpCode(HttpStatus.OK)
-  async acknowledgeAppraisal(
-    @Param('recordId') recordId: string,
-    @Body() body?: { acknowledgementComment?: string },
-  ) {
-    return this.performanceService.acknowledgeAppraisal(
-      recordId,
-      body?.acknowledgementComment,
-    );
-  }
+    @Post('records/draft')
+    @HttpCode(HttpStatus.CREATED)
+    async saveDraftRecord(@Body() dto: SubmitAppraisalRecordDto) {
+        return this.performanceService.saveDraftRecord(dto);
+    }
 
-  /**
-   * GET /performance/employee/:employeeProfileId/history
-   * Get historical appraisal records for an employee
-   */
-  @Get('employee/:employeeProfileId/history')
-  async getEmployeeAppraisalHistory(
-    @Param('employeeProfileId') employeeProfileId: string,
-  ) {
-    return this.performanceService.getEmployeeAppraisalHistory(
-      employeeProfileId,
-    );
-  }
+    @Get('records')
+    async searchRecords(
+        @Query('page') page?: string,
+        @Query('limit') limit?: string,
+        @Query('cycleId') cycleId?: string,
+        @Query('employeeProfileId') employeeProfileId?: string,
+        @Query('managerProfileId') managerProfileId?: string,
+        @Query('status') status?: AppraisalRecordStatus,
+    ) {
+        const queryDto: RecordSearchQuery = {
+            page: page ? parseInt(page, 10) : 1,
+            limit: limit ? parseInt(limit, 10) : 20,
+            cycleId,
+            employeeProfileId,
+            managerProfileId,
+            status,
+        };
+        return this.performanceService.searchRecords(queryDto);
+    }
 
-  // ============ PHASE 6 & 7: DISPUTES ============
+    @Get('records/assignment/:assignmentId')
+    async getRecordByAssignment(@Param('assignmentId') assignmentId: string) {
+        return this.performanceService.getRecordByAssignment(assignmentId);
+    }
 
-  /**
-   * POST /performance/disputes
-   * REQ-AE-07: employee files a dispute/objection
-   */
-  @Post('disputes')
-  @HttpCode(HttpStatus.CREATED)
-  async fileDispute(@Body() dto: FileAppraisalDisputeDto) {
-    return this.performanceService.fileDispute(dto);
-  }
+    @Get('records/:id')
+    async getRecordById(@Param('id') id: string) {
+        return this.performanceService.getRecordById(id);
+    }
 
-  /**
-   * GET /performance/disputes/:disputeId
-   * Get dispute by ID
-   */
-  @Get('disputes/:disputeId')
-  async getDispute(@Param('disputeId') disputeId: string) {
-    return this.performanceService.getDispute(disputeId);
-  }
+    @Post('records/:id/publish')
+    @HttpCode(HttpStatus.OK)
+    async publishRecord(@Param('id') id: string, @Body() body: { publishedByEmployeeId: string }) {
+        return this.performanceService.publishRecord(id, body.publishedByEmployeeId);
+    }
 
-  /**
-   * GET /performance/disputes/cycle/:cycleId
-   * Get all disputes for a cycle
-   */
-  @Get('disputes/cycle/:cycleId')
-  async getDisputesByCycle(@Param('cycleId') cycleId: string) {
-    return this.performanceService.getDisputesByCycle(cycleId);
-  }
+    @Post('records/bulk-publish')
+    @HttpCode(HttpStatus.OK)
+    async bulkPublishRecords(@Body() body: { recordIds: string[]; publishedByEmployeeId: string }) {
+        return this.performanceService.bulkPublishRecords(body.recordIds, body.publishedByEmployeeId);
+    }
 
-  /**
-   * PATCH /performance/disputes/:disputeId/resolve
-   * REQ-OD-07: HR Manager resolves a dispute
-   */
-  @Patch('disputes/:disputeId/resolve')
-  async resolveDispute(
-    @Param('disputeId') disputeId: string,
-    @Body() dto: ResolveAppraisalDisputeDto,
-  ) {
-    return this.performanceService.resolveDispute({
-      ...dto,
-      disputeId,
-    });
-  }
+    @Post('records/:id/acknowledge')
+    @HttpCode(HttpStatus.OK)
+    async acknowledgeRecord(@Param('id') id: string, @Body() body?: { comment?: string }) {
+        return this.performanceService.acknowledgeRecord(id, body?.comment);
+    }
+
+    @Post('records/:id/view')
+    @HttpCode(HttpStatus.OK)
+    async markRecordViewed(@Param('id') id: string) {
+        return this.performanceService.markRecordViewed(id);
+    }
+
+    @Get('employee/:employeeProfileId/history')
+    async getEmployeeAppraisalHistory(@Param('employeeProfileId') employeeProfileId: string) {
+        return this.performanceService.getEmployeeAppraisalHistory(employeeProfileId);
+    }
+
+    // ==================== DISPUTES ====================
+
+    @Post('disputes')
+    @HttpCode(HttpStatus.CREATED)
+    async fileDispute(@Body() dto: FileAppraisalDisputeDto) {
+        return this.performanceService.fileDispute(dto);
+    }
+
+    @Get('disputes')
+    async searchDisputes(
+        @Query('page') page?: string,
+        @Query('limit') limit?: string,
+        @Query('cycleId') cycleId?: string,
+        @Query('status') status?: AppraisalDisputeStatus,
+        @Query('raisedByEmployeeId') raisedByEmployeeId?: string,
+    ) {
+        const queryDto: DisputeSearchQuery = {
+            page: page ? parseInt(page, 10) : 1,
+            limit: limit ? parseInt(limit, 10) : 20,
+            cycleId,
+            status,
+            raisedByEmployeeId,
+        };
+        return this.performanceService.searchDisputes(queryDto);
+    }
+
+    @Get('disputes/stats')
+    async getDisputeStats(@Query('cycleId') cycleId?: string) {
+        return this.performanceService.getDisputeStats(cycleId);
+    }
+
+    @Get('disputes/:id')
+    async getDisputeById(@Param('id') id: string) {
+        return this.performanceService.getDisputeById(id);
+    }
+
+    @Patch('disputes/:id/assign-reviewer')
+    async assignDisputeReviewer(@Param('id') id: string, @Body() body: { reviewerEmployeeId: string }) {
+        return this.performanceService.assignDisputeReviewer(id, body.reviewerEmployeeId);
+    }
+
+    @Patch('disputes/:id/resolve')
+    async resolveDispute(@Param('id') id: string, @Body() dto: ResolveAppraisalDisputeDto) {
+        return this.performanceService.resolveDispute({ ...dto, disputeId: id });
+    }
+
+    // ==================== DASHBOARD ====================
+
+    @Get('dashboard/:cycleId')
+    async getCompletionDashboard(@Param('cycleId') cycleId: string) {
+        return this.performanceService.getCompletionDashboard(cycleId);
+    }
 }

@@ -23,7 +23,7 @@ export class PunchDto {
 // Punch in/out DTOs
 export class PunchInDto {
     @ApiProperty({
-        description: 'Employee ID',
+        description: 'employee ID',
         example: '692cdd8e67a40875239080d0',
         default: '692cdd8e67a40875239080d0'
     })
@@ -45,7 +45,7 @@ export class PunchInDto {
 
 export class PunchOutDto {
     @ApiProperty({
-        description: 'Employee ID',
+        description: 'employee ID',
         example: '692cdd8e67a40875239080d0',
         default: '692cdd8e67a40875239080d0'
     })
@@ -136,10 +136,10 @@ export class CorrectAttendanceDto {
 
     @ApiProperty({
         description: 'Reason for correction (REQUIRED - must be descriptive)',
-        example: 'Employee forgot to punch out',
-        default: 'Employee forgot to punch out'
+        example: 'employee forgot to punch out',
+        default: 'employee forgot to punch out'
     })
-    correctionReason: string = 'Employee forgot to punch out';
+    correctionReason: string = 'employee forgot to punch out';
 
     @ApiPropertyOptional({
         description: 'Corrected by (admin/manager ID)',
@@ -151,7 +151,7 @@ export class CorrectAttendanceDto {
 
 export class BulkReviewAttendanceDto {
     @ApiProperty({
-        description: 'Employee ID to review attendance for',
+        description: 'employee ID to review attendance for',
         example: '674c1a1b2c3d4e5f6a7b8c9d',
         default: '674c1a1b2c3d4e5f6a7b8c9d'
     })

@@ -606,7 +606,7 @@ export class ShiftManagementController {
                 summary: 'Cancel a shift assignment',
                 value: {
                     status: 'CANCELLED',
-                    reason: 'Employee requested shift change',
+                    reason: 'employee requested shift change',
                     updatedBy: '674c1a1b2c3d4e5f6a7b8d03'
                 }
             },
@@ -734,7 +734,7 @@ export class ShiftManagementController {
     // Repeated lateness utilities
     @Get('repeated-lateness/:employeeId/count')
     @ApiOperation({ summary: 'Get repeated lateness count for an employee', description: 'Returns number of LATE exceptions (total, not limited to a window).' })
-    @ApiParam({ name: 'employeeId', description: 'Employee ID (ObjectId)' })
+    @ApiParam({ name: 'employeeId', description: 'employee ID (ObjectId)' })
     @ApiResponse({ status: 200, description: 'Total count of LATE exceptions for the employee', schema: { type: 'integer', example: 4 } })
     getRepeatedLatenessCount(@Param('employeeId') employeeId: string) {
         return this.repeatedLatenessService.getLateCount(employeeId);
@@ -742,7 +742,7 @@ export class ShiftManagementController {
 
     @Post('repeated-lateness/:employeeId/evaluate')
     @ApiOperation({ summary: 'Evaluate and escalate repeated lateness for an employee', description: 'Manually trigger repeated-lateness evaluation and escalation (creates escalation exception & notification when threshold met).' })
-    @ApiParam({ name: 'employeeId', description: 'Employee ID (ObjectId)' })
+    @ApiParam({ name: 'employeeId', description: 'employee ID (ObjectId)' })
     @ApiBody({
         schema: {
             type: 'object',

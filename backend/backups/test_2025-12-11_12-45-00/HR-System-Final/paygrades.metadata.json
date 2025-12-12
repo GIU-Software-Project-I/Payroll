@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"grade":{"$numberInt":"1"}},"name":"grade_1","background":true,"unique":true}],"uuid":"7d9c1b22a4cf4ff7bc969fb4e985fecd","collectionName":"paygrades","type":"collection"}

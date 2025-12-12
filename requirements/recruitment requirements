@@ -57,3 +57,62 @@ Recruitment Process	Offers & Hiring Decisions	REC-018	As a HR Employee/HR Manage
 
 
 Recruitment Process	Offers & Hiring Decisions	REC-029	As a HR Employee, I want to trigger pre-boarding tasks (contract signing, forms) after offer acceptance and before the start date, so new hire readiness is improved.	Offer Acceptance Status	Onboarding Module (Task Checklist)	BR 26(c)	Once a candidate’s acceptance is received, the next module (Onboarding) should be triggered.
+
+
+
+
+
+
+
+Workflow: Minimized Recruitment, Onboarding, and Offboarding
+The workflow traces the sequence of actions starting from job definition (Recruitment) through new hire setup (Onboarding) and finally through separation (Offboarding).
+Phase 1: Recruitment (REC)
+This phase manages attracting and selecting candidates, culminating in a signed offer and the triggering of pre-boarding tasks.
+Step	Requirement ID	User Story Summary / Action
+
+1. Preparation & Templates	REC-003	HR Manager defines standardized job description templates.
+
+2. Process Definition	REC-004	HR Manager establishes hiring process templates for stages and progress updates.
+
+3. Job Posting	REC-023	HR Employee previews and publishes jobs on the company careers page.
+
+4. Application & Consent	REC-007	Candidate uploads CV and applies for a position.
+	REC-028	Candidate gives consent for personal-data processing.
+
+5. Referral Tagging	REC-030	HR Employee tags candidates as referrals.
+
+6. Candidate Tracking	REC-008	HR Employee tracks candidates through each stage of the hiring process.
+	REC-009	HR Manager monitors recruitment progress across open positions.
+
+7. Evaluation Setup	REC-020	HR Employee uses structured assessment and scoring forms per role.
+
+8. Interview Coordination	REC-010	HR Employee schedules and manages interview invitations.
+	REC-021	HR Employee coordinates interview panels.
+
+9. Feedback & Scoring	REC-011	HR Employee provides feedback/interview score for filtration.
+
+10. Communication	REC-017	Candidate receives updates about application status.
+	REC-022	HR Employee sends automated rejection notifications.
+
+11. Offer Management	REC-014	HR Manager manages job offers and approvals.
+	REC-018	HR Employee/Manager generates, sends and collects electronically signed offer letters.
+
+12. Handoff to Onboarding	REC-029	HR Employee triggers pre-boarding tasks after offer acceptance.
+
+
+
+Phase I: Recruitment (Acquisition & Offer)			
+
+1. Setup Templates	HR Manager	Define standardized job description templates [REC-003] and establish hiring process templates [REC-004].	US: REC-003, REC-004. BR: Process template defines stages and progress percentage.
+
+2. Publish Job	HR Employee	Preview and publish jobs on the company careers page [REC-023].	US: REC-023. BR: Posting must be automatic once approved.
+
+3. Application & Consent	Candidate	Upload CV [REC-007] and give consent for personal-data processing [REC-028].	US: REC-007, REC-028. BR: Storing applications requires applicant authorization.
+
+4. Pipeline & Tags	HR Employee	Tag candidates as referrals [REC-030] and track candidates through each stage of the hiring process [REC-008].	US: REC-030, REC-008. BR: Applications tracked through defined stages. Referrals get preferential filtering.
+
+5. Evaluation	HR Employee	Use structured assessment and scoring forms per role [REC-020], coordinate interviews [REC-021], and schedule/manage invitations [REC-010].	US: REC-020, REC-021, REC-010, REC-011. BR: Structured assessment forms required; ranking rules enforced.
+
+6. Monitoring & Communication	HR Manager / Candidate	HR monitors recruitment progress [REC-009]; candidates get automatic updates [REC-017].	US: REC-009, REC-017. BR: Status tracking must be real-time and visualized; automated notifications required.
+
+7. Offer & Transition	HR Manager / HR Employee	Manage job offers and approvals [REC-014]; generate and send e-signed offers [REC-018]; send automated rejections [REC-022]; trigger pre-boarding [REC-029].	US: REC-014, REC-018, REC-022, REC-029. BR: Offer acceptance triggers Onboarding; offer data used for contract creation.

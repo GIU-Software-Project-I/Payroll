@@ -1,0 +1,158 @@
+{
+  "collection": "leavetypes",
+  "documents": [
+    {
+      "_id": {
+        "$oid": "693a800a7e07119e5fd6a9aa"
+      },
+      "code": "SICK",
+      "name": "Sick Leave",
+      "categoryId": {
+        "$oid": "693a800a7e07119e5fd6a9a5"
+      },
+      "description": "Medical leave for illness",
+      "paid": true,
+      "deductible": true,
+      "requiresAttachment": true,
+      "minTenureMonths": null,
+      "maxDurationDays": {
+        "$numberInt": "14"
+      },
+      "__v": {
+        "$numberInt": "0"
+      },
+      "createdAt": {
+        "$date": {
+          "$numberLong": "1765441546404"
+        }
+      },
+      "updatedAt": {
+        "$date": {
+          "$numberLong": "1765441546404"
+        }
+      }
+    },
+    {
+      "_id": {
+        "$oid": "693a800a7e07119e5fd6a9ab"
+      },
+      "code": "MATERNITY",
+      "name": "Maternity Leave",
+      "categoryId": {
+        "$oid": "693a800a7e07119e5fd6a9a6"
+      },
+      "description": "Maternity leave for new mothers",
+      "paid": true,
+      "deductible": false,
+      "requiresAttachment": true,
+      "minTenureMonths": null,
+      "maxDurationDays": {
+        "$numberInt": "90"
+      },
+      "__v": {
+        "$numberInt": "0"
+      },
+      "createdAt": {
+        "$date": {
+          "$numberLong": "1765441546404"
+        }
+      },
+      "updatedAt": {
+        "$date": {
+          "$numberLong": "1765441546404"
+        }
+      }
+    },
+    {
+      "_id": {
+        "$oid": "693a800a7e07119e5fd6a9ac"
+      },
+      "code": "PATERNITY",
+      "name": "Paternity Leave",
+      "categoryId": {
+        "$oid": "693a800a7e07119e5fd6a9a6"
+      },
+      "description": "Paternity leave for new fathers",
+      "paid": true,
+      "deductible": false,
+      "requiresAttachment": true,
+      "minTenureMonths": null,
+      "maxDurationDays": {
+        "$numberInt": "15"
+      },
+      "__v": {
+        "$numberInt": "0"
+      },
+      "createdAt": {
+        "$date": {
+          "$numberLong": "1765441546404"
+        }
+      },
+      "updatedAt": {
+        "$date": {
+          "$numberLong": "1765441546404"
+        }
+      }
+    },
+    {
+      "_id": {
+        "$oid": "693a800a7e07119e5fd6a9ad"
+      },
+      "code": "UNPAID",
+      "name": "Unpaid Leave",
+      "categoryId": {
+        "$oid": "693a800a7e07119e5fd6a9a7"
+      },
+      "description": "Leave without pay",
+      "paid": false,
+      "deductible": false,
+      "requiresAttachment": false,
+      "minTenureMonths": null,
+      "maxDurationDays": null,
+      "__v": {
+        "$numberInt": "0"
+      },
+      "createdAt": {
+        "$date": {
+          "$numberLong": "1765441546404"
+        }
+      },
+      "updatedAt": {
+        "$date": {
+          "$numberLong": "1765441546404"
+        }
+      }
+    },
+    {
+      "_id": {
+        "$oid": "693a99748a0d23da404cdf92"
+      },
+      "code": "ANNUAL_STANDARD",
+      "name": "Annual Leave (Standard)",
+      "categoryId": "693a987b8a0d23da404cdf8f",
+      "description": "Standard annual leave",
+      "paid": true,
+      "deductible": true,
+      "requiresAttachment": false,
+      "minTenureMonths": {
+        "$numberInt": "3"
+      },
+      "maxDurationDays": {
+        "$numberInt": "15"
+      },
+      "createdAt": {
+        "$date": {
+          "$numberLong": "1765448052369"
+        }
+      },
+      "updatedAt": {
+        "$date": {
+          "$numberLong": "1765448052369"
+        }
+      },
+      "__v": {
+        "$numberInt": "0"
+      }
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+{
+  "collection": "leaveadjustments",
+  "documents": [
+    {
+      "_id": {
+        "$oid": "693a800b7e07119e5fd6a9cb"
+      },
+      "employeeId": {
+        "$oid": "693a80047e07119e5fd6a8d9"
+      },
+      "leaveTypeId": {
+        "$oid": "693a800a7e07119e5fd6a9a9"
+      },
+      "adjustmentType": "add",
+      "amount": {
+        "$numberInt": "3"
+      },
+      "reason": "Carry forward from previous year",
+      "hrUserId": {
+        "$oid": "693a80047e07119e5fd6a8da"
+      },
+      "__v": {
+        "$numberInt": "0"
+      },
+      "createdAt": {
+        "$date": {
+          "$numberLong": "1765441547126"
+        }
+      },
+      "updatedAt": {
+        "$date": {
+          "$numberLong": "1765441547126"
+        }
+      }
+    },
+    {
+      "_id": {
+        "$oid": "693a800b7e07119e5fd6a9cc"
+      },
+      "employeeId": {
+        "$oid": "693a80047e07119e5fd6a8da"
+      },
+      "leaveTypeId": {
+        "$oid": "693a800a7e07119e5fd6a9a9"
+      },
+      "adjustmentType": "deduct",
+      "amount": {
+        "$numberInt": "2"
+      },
+      "reason": "Correction for unapproved absence",
+      "hrUserId": {
+        "$oid": "693a80047e07119e5fd6a8da"
+      },
+      "__v": {
+        "$numberInt": "0"
+      },
+      "createdAt": {
+        "$date": {
+          "$numberLong": "1765441547126"
+        }
+      },
+      "updatedAt": {
+        "$date": {
+          "$numberLong": "1765441547126"
+        }
+      }
+    },
+    {
+      "_id": {
+        "$oid": "693a800b7e07119e5fd6a9cd"
+      },
+      "employeeId": {
+        "$oid": "693a80047e07119e5fd6a8db"
+      },
+      "leaveTypeId": {
+        "$oid": "693a800a7e07119e5fd6a9a9"
+      },
+      "adjustmentType": "encashment",
+      "amount": {
+        "$numberInt": "5"
+      },
+      "reason": "Leave encashment at year end",
+      "hrUserId": {
+        "$oid": "693a80047e07119e5fd6a8da"
+      },
+      "__v": {
+        "$numberInt": "0"
+      },
+      "createdAt": {
+        "$date": {
+          "$numberLong": "1765441547126"
+        }
+      },
+      "updatedAt": {
+        "$date": {
+          "$numberLong": "1765441547126"
+        }
+      }
+    }
+  ]
+}

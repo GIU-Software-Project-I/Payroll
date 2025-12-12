@@ -1,0 +1,105 @@
+{
+  "collection": "position_assignments",
+  "documents": [
+    {
+      "_id": {
+        "$oid": "693a800d7e07119e5fd6a9fb"
+      },
+      "employeeProfileId": {
+        "$oid": "693a80047e07119e5fd6a8d9"
+      },
+      "positionId": {
+        "$oid": "693a80037e07119e5fd6a88f"
+      },
+      "departmentId": {
+        "$oid": "693a80037e07119e5fd6a888"
+      },
+      "startDate": {
+        "$date": {
+          "$numberLong": "1768435200000"
+        }
+      },
+      "reason": "New hire assignment",
+      "notes": "Initial position assignment",
+      "__v": {
+        "$numberInt": "0"
+      },
+      "createdAt": {
+        "$date": {
+          "$numberLong": "1765441549368"
+        }
+      },
+      "updatedAt": {
+        "$date": {
+          "$numberLong": "1765441549368"
+        }
+      }
+    },
+    {
+      "_id": {
+        "$oid": "693a800d7e07119e5fd6a9fc"
+      },
+      "employeeProfileId": {
+        "$oid": "693a80047e07119e5fd6a8da"
+      },
+      "positionId": {
+        "$oid": "693a80037e07119e5fd6a890"
+      },
+      "departmentId": {
+        "$oid": "693a80037e07119e5fd6a889"
+      },
+      "startDate": {
+        "$date": {
+          "$numberLong": "1769904000000"
+        }
+      },
+      "reason": "New hire assignment",
+      "__v": {
+        "$numberInt": "0"
+      },
+      "createdAt": {
+        "$date": {
+          "$numberLong": "1765441549368"
+        }
+      },
+      "updatedAt": {
+        "$date": {
+          "$numberLong": "1765441549368"
+        }
+      }
+    },
+    {
+      "_id": {
+        "$oid": "693a800d7e07119e5fd6a9fd"
+      },
+      "employeeProfileId": {
+        "$oid": "693a80047e07119e5fd6a8db"
+      },
+      "positionId": {
+        "$oid": "693a80037e07119e5fd6a891"
+      },
+      "departmentId": {
+        "$oid": "693a80037e07119e5fd6a88a"
+      },
+      "startDate": {
+        "$date": {
+          "$numberLong": "1768867200000"
+        }
+      },
+      "reason": "Transfer from previous department",
+      "__v": {
+        "$numberInt": "0"
+      },
+      "createdAt": {
+        "$date": {
+          "$numberLong": "1765441549368"
+        }
+      },
+      "updatedAt": {
+        "$date": {
+          "$numberLong": "1765441549368"
+        }
+      }
+    }
+  ]
+}

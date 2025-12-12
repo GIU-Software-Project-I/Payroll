@@ -1,208 +1,124 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
-
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { UpdateContactInfoDto } from '../dto/employee-profile/update-contact-info.dto';
 import { UpdateBioDto } from '../dto/employee-profile/update-bio.dto';
 import { CreateCorrectionRequestDto } from '../dto/employee-profile/create-correction-request.dto';
 import { AdminUpdateProfileDto } from '../dto/employee-profile/admin-update-profile.dto';
 import { AdminAssignRoleDto } from '../dto/employee-profile/admin-assign-role.dto';
-import { ProfileChangeStatus, EmployeeStatus } from '../enums/employee-profile.enums';
-import {EmployeeProfileService} from "../services/Employee-Profile.Service";
-
-
-// Mock AuthGuard - Replace with actual AuthGuard from your auth module
-// import { AuthGuard } from '../guards/auth.guard';
-// import { RolesGuard } from '../guards/roles.guard';
-// import { Roles } from '../decorators/roles.decorator';
+import { SearchEmployeesDto, PaginationQueryDto } from '../dto/employee-profile/search-employees.dto';
+import { ProcessChangeRequestDto } from '../dto/employee-profile/process-change-request.dto';
+import { ProfileChangeStatus } from '../enums/employee-profile.enums';
+import { EmployeeProfileService } from '../services/employee-profile.service';
 
 @Controller('employee-profile')
 export class EmployeeProfileController {
-    constructor(private readonly employeeProfileService: EmployeeProfileService) { }
+    constructor(private readonly employeeProfileService: EmployeeProfileService) {}
 
-    // --- Self-Service ---
-
-    /**
-     * US-E2-04: View full employee profile
-     * GET /employee-profile/me
-     */
     @Get('me')
-    // @UseGuards(AuthGuard)
-    async getMyProfile(@Req() req: any) {
-        const userId = req.user?.userId || req.query.userId;
+    async getMyProfile(@Query('userId') userId: string) {
         return this.employeeProfileService.getProfile(userId);
     }
 
-    /**
-     * US-E2-05: Update contact information
-     * PATCH /employee-profile/me/contact-info
-     * BR 2g, 2n, 2o: Phone, Email, Address requirements
-     */
     @Patch('me/contact-info')
-    // @UseGuards(AuthGuard)
-    async updateContactInfo(@Req() req: any, @Body() dto: UpdateContactInfoDto) {
-        const userId = req.user?.userId || req.query.userId;
+    async updateContactInfo(@Query('userId') userId: string, @Body() dto: UpdateContactInfoDto) {
         return this.employeeProfileService.updateContactInfo(userId, dto);
     }
 
-    /**
-     * US-E2-12: Add biography and upload profile picture
-     * PATCH /employee-profile/me/bio
-     */
     @Patch('me/bio')
-    // @UseGuards(AuthGuard)
-    async updateBio(@Req() req: any, @Body() dto: UpdateBioDto) {
-        const userId = req.user?.userId || req.query.userId;
+    async updateBio(@Query('userId') userId: string, @Body() dto: UpdateBioDto) {
         return this.employeeProfileService.updateBio(userId, dto);
     }
 
-    /**
-     * US-E6-02: Request corrections of data (job title, department)
-     * US-E2-06: Submit requests to change legal name or marital status
-     * POST /employee-profile/me/correction-request
-     * BR 20a: Only authorized roles can create requests
-     * BR 36: Changes must be made via workflow approval
-     */
     @Post('me/correction-request')
-    // @UseGuards(AuthGuard)
-    async createCorrectionRequest(@Req() req: any, @Body() dto: CreateCorrectionRequestDto) {
-        const userId = req.user?.userId || req.query.userId;
+    async createCorrectionRequest(@Query('userId') userId: string, @Body() dto: CreateCorrectionRequestDto) {
         return this.employeeProfileService.createCorrectionRequest(userId, dto);
     }
 
-    // --- Manager View ---
+    @Get('me/correction-requests')
+    async getMyChangeRequests(@Query('userId') userId: string, @Query() queryDto: PaginationQueryDto) {
+        return this.employeeProfileService.getMyChangeRequests(userId, queryDto);
+    }
 
-    /**
-     * US-E4-01: View team members' profiles (excluding sensitive info)
-     * US-E4-02: See summary of team's job titles and departments
-     * GET /employee-profile/team
-     * BR 41b: Direct Managers see their team only
-     * BR 18b: Privacy restrictions applied for managers
-     */
+    @Patch('me/correction-requests/:requestId/cancel')
+    async cancelMyChangeRequest(@Query('userId') userId: string, @Param('requestId') requestId: string) {
+        return this.employeeProfileService.cancelMyChangeRequest(userId, requestId);
+    }
+
     @Get('team')
-    // @UseGuards(AuthGuard)
-    async getTeamProfiles(@Req() req: any) {
-        const managerId = req.user?.userId || req.query.userId;
+    async getTeamProfiles(@Query('userId') managerId: string) {
         return this.employeeProfileService.getTeamProfiles(managerId);
     }
 
-    // --- HR / Admin ---
+    @Get('team/paginated')
+    async getTeamProfilesPaginated(@Query('userId') managerId: string, @Query() queryDto: PaginationQueryDto) {
+        return this.employeeProfileService.getTeamProfilesPaginated(managerId, queryDto);
+    }
 
-    /**
-     * US-E6-03: Search for employees data
-     * GET /employee-profile/admin/search
-     * Supports filtering by status, department, position
-     */
+    @Get('admin/employees')
+    async getAllEmployees(@Query() queryDto: SearchEmployeesDto) {
+        return this.employeeProfileService.getAllEmployees(queryDto);
+    }
+
     @Get('admin/search')
-    // @UseGuards(AuthGuard, RolesGuard)
-    // @Roles('HR_ADMIN', 'SYSTEM_ADMIN')
-    async searchEmployees(
-        @Query('query') query: string,
-        @Query('status') status?: EmployeeStatus,
-        @Query('departmentId') departmentId?: string,
-        @Query('positionId') positionId?: string,
-    ) {
-        if (!query) {
-            throw new Error('Search query is required');
-        }
-        return this.employeeProfileService.searchEmployees(query, {
-            status,
-            departmentId,
-            positionId,
-        });
+    async searchEmployees(@Query() queryDto: SearchEmployeesDto) {
+        return this.employeeProfileService.searchEmployees(queryDto);
     }
 
-    /**
-     * Get all pending change requests for HR approval
-     * GET /employee-profile/admin/change-requests
-     * BR 36: All changes must be via workflow approval
-     */
     @Get('admin/change-requests')
-    // @UseGuards(AuthGuard, RolesGuard)
-    // @Roles('HR_ADMIN', 'SYSTEM_ADMIN')
-    async getChangeRequests(@Query('status') status?: ProfileChangeStatus) {
-        return this.employeeProfileService.getChangeRequests(status);
+    async getChangeRequests(
+        @Query('status') status?: ProfileChangeStatus,
+        @Query('page') page?: number,
+        @Query('limit') limit?: number
+    ) {
+        return this.employeeProfileService.getChangeRequests(status, page || 1, limit || 20);
     }
 
-    /**
-     * US-E2-03: Review and approve employee-submitted profile changes
-     * PATCH /employee-profile/admin/change-requests/:requestId/process
-     * BR 36: All changes must be made via workflow approval
-     * BR 22: Trace all editing with timestamps
-     */
+    @Get('admin/change-requests/count/pending')
+    async getPendingChangeRequestsCount() {
+        const count = await this.employeeProfileService.getPendingChangeRequestsCount();
+        return { count };
+    }
+
+    @Get('admin/change-requests/:requestId')
+    async getChangeRequestById(@Param('requestId') requestId: string) {
+        return this.employeeProfileService.getChangeRequestById(requestId);
+    }
+
     @Patch('admin/change-requests/:requestId/process')
-    // @UseGuards(AuthGuard, RolesGuard)
-    // @Roles('HR_ADMIN', 'SYSTEM_ADMIN')
     async processChangeRequest(
         @Param('requestId') requestId: string,
-        @Body('status') status: ProfileChangeStatus.APPROVED | ProfileChangeStatus.REJECTED,
-        @Req() req: any
+        @Body() dto: ProcessChangeRequestDto
     ) {
-        const userId = req.user?.userId;
-        return this.employeeProfileService.processChangeRequest(requestId, status, userId);
+        return this.employeeProfileService.processChangeRequest(requestId, dto.status, undefined, dto.rejectionReason);
     }
 
-    /**
-     * Get single employee profile (Admin view)
-     * GET /employee-profile/:id
-     * BR 20a: Only authorized roles can view complete profile
-     */
+    @Get('admin/stats/by-status')
+    async getEmployeeCountByStatus() {
+        return this.employeeProfileService.getEmployeeCountByStatus();
+    }
+
+    @Get('admin/stats/by-department')
+    async getEmployeeCountByDepartment() {
+        return this.employeeProfileService.getEmployeeCountByDepartment();
+    }
+
     @Get(':id')
-    // @UseGuards(AuthGuard, RolesGuard)
-    // @Roles('HR_ADMIN', 'SYSTEM_ADMIN')
     async getProfile(@Param('id') id: string) {
         return this.employeeProfileService.adminGetProfile(id);
     }
 
-    /**
-     * US-EP-04: Edit any part of employee profile
-     * PATCH /employee-profile/:id
-     * BR 20a: Only authorized roles can modify data
-     * BR 22: Trace all editing with timestamps and user IDs
-     */
     @Patch(':id')
-    // @UseGuards(AuthGuard, RolesGuard)
-    // @Roles('HR_ADMIN', 'SYSTEM_ADMIN')
-    async updateProfile(
-        @Param('id') id: string,
-        @Body() dto: AdminUpdateProfileDto,
-        @Req() req: any
-    ) {
-        const userId = req.user?.userId;
-        return this.employeeProfileService.adminUpdateProfile(id, dto, userId);
+    async updateProfile(@Param('id') id: string, @Body() dto: AdminUpdateProfileDto) {
+        return this.employeeProfileService.adminUpdateProfile(id, dto);
     }
 
-    /**
-     * US-EP-05: Deactivate employee profile upon termination/resignation
-     * PATCH /employee-profile/:id/deactivate
-     * BR 3j: employee status controls system access
-     * BR 20: Automatic synchronization to Payroll (block payment) and Time Management
-     */
     @Patch(':id/deactivate')
-    // @UseGuards(AuthGuard, RolesGuard)
-    // @Roles('HR_ADMIN', 'SYSTEM_ADMIN')
-    async deactivateEmployee(
-        @Param('id') id: string,
-        @Req() req: any
-    ) {
-        const userId = req.user?.userId;
-        return this.employeeProfileService.adminDeactivateEmployee(id, userId);
+    async deactivateEmployee(@Param('id') id: string) {
+        return this.employeeProfileService.adminDeactivateEmployee(id);
     }
 
-    /**
-     * US-E7-05: Assign roles and access permissions to employees
-     * PATCH /employee-profile/:id/role
-     * BR 20a: Only authorized roles can assign permissions
-     * BR 22: Trace role assignments with timestamps
-     */
     @Patch(':id/role')
-    // @UseGuards(AuthGuard, RolesGuard)
-    // @Roles('HR_ADMIN', 'SYSTEM_ADMIN')
-    async assignRole(
-        @Param('id') id: string,
-        @Body() dto: AdminAssignRoleDto,
-        @Req() req: any
-    ) {
-        const userId = req.user?.userId;
-        return this.employeeProfileService.adminAssignRole(id, dto, userId);
+    async assignRole(@Param('id') id: string, @Body() dto: AdminAssignRoleDto) {
+        return this.employeeProfileService.adminAssignRole(id, dto);
     }
 }
 
