@@ -24,6 +24,9 @@ import { OfferFinalStatus } from '../enums/offer-final-status.enum';
 import { OfferResponseStatus } from '../enums/offer-response-status.enum';
 import { ApprovalStatus } from '../enums/approval-status.enum';
 
+// Shared Services
+import { SharedRecruitmentService } from '../../shared/shared-recruitment.service';
+
 @Injectable()
 export class RecruitmentService {
     constructor(
@@ -36,6 +39,7 @@ export class RecruitmentService {
         @InjectModel(AssessmentResult.name) private assessmentModel: Model<AssessmentResultDocument>,
         @InjectModel(Offer.name) private offerModel: Model<OfferDocument>,
         @InjectModel(Contract.name) private contractModel: Model<ContractDocument>,
+        private readonly sharedRecruitmentService: SharedRecruitmentService,
     ) {}
 
     private validateObjectId(id: string, fieldName: string): void {
@@ -564,8 +568,14 @@ export class RecruitmentService {
             notes: `Interview scheduled for ${dto.scheduledDate}`,
         });
 
-        // TODO: Send calendar invites to panel members
-        // TODO: Send notification to candidate
+        await this.sharedRecruitmentService.sendInterviewNotifications({
+            candidateId: application.candidateId.toString(),
+            panelMemberIds: dto.panel,
+            interviewDate: new Date(dto.scheduledDate),
+            interviewMethod: dto.method,
+            videoLink: dto.videoLink,
+            stage: dto.stage,
+        });
 
         return saved;
     }
@@ -977,8 +987,12 @@ export class RecruitmentService {
             throw new BadRequestException('Offer must be approved before sending');
         }
 
-        // TODO: Integrate with email service to send offer letter
-        // This would generate PDF offer letter and send via email
+        await this.sharedRecruitmentService.sendOfferNotification({
+            candidateId: offer.candidateId.toString(),
+            offerId: offerId,
+            role: offer.role,
+            deadline: offer.deadline,
+        });
 
         return {
             sent: true,
@@ -995,8 +1009,12 @@ export class RecruitmentService {
             throw new NotFoundException(`Application with ID ${dto.applicationId} not found`);
         }
 
-        // TODO: Integrate with email service for status notifications
-        // This would send templated emails based on notification type
+        await this.sharedRecruitmentService.sendApplicationStatusNotification({
+            candidateId: application.candidateId.toString(),
+            applicationId: dto.applicationId,
+            status: application.status,
+            message: dto.content,
+        });
 
         return {
             sent: true,
@@ -1018,8 +1036,11 @@ export class RecruitmentService {
             reason: dto.rejectionReason || 'Application not selected',
         });
 
-        // TODO: Integrate with email service for rejection notifications
-        // This would use templates for respectful rejection communication
+        await this.sharedRecruitmentService.sendRejectionNotification({
+            candidateId: application.candidateId.toString(),
+            applicationId: dto.applicationId,
+            rejectionReason: dto.rejectionReason,
+        });
 
         return {
             sent: true,

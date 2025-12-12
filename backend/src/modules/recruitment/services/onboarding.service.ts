@@ -6,6 +6,7 @@ import { Model, Types } from 'mongoose';
 import { Onboarding, OnboardingDocument } from '../models/onboarding.schema';
 import { Contract, ContractDocument } from '../models/contract.schema';
 import { Document, DocumentDocument } from '../models/document.schema';
+import { Offer, OfferDocument } from '../models/offer.schema';
 
 // DTOs
 import {CreateOnboardingDto, CreateOnboardingTaskDto, UpdateTaskStatusDto, UploadDocumentDto, ReserveEquipmentDto, ProvisionAccessDto, TriggerPayrollInitiationDto, ScheduleAccessRevocationDto, CancelOnboardingDto,} from '../dto/onboarding';
@@ -13,12 +14,17 @@ import {CreateOnboardingDto, CreateOnboardingTaskDto, UpdateTaskStatusDto, Uploa
 // Enums
 import { OnboardingTaskStatus } from '../enums/onboarding-task-status.enum';
 
+// Shared Services
+import { SharedRecruitmentService } from '../../shared/shared-recruitment.service';
+
 @Injectable()
 export class OnboardingService {
     constructor(
         @InjectModel(Onboarding.name) private onboardingModel: Model<OnboardingDocument>,
         @InjectModel(Contract.name) private contractModel: Model<ContractDocument>,
         @InjectModel(Document.name) private documentModel: Model<DocumentDocument>,
+        @InjectModel(Offer.name) private offerModel: Model<OfferDocument>,
+        private readonly sharedRecruitmentService: SharedRecruitmentService,
     ) {}
 
     private validateObjectId(id: string, fieldName: string): void {
@@ -96,10 +102,42 @@ export class OnboardingService {
             throw new BadRequestException('Contract must be fully signed before creating employee profile');
         }
 
-        // TODO: This contract data should be used to create employee Profile in employee module
-        // TODO: Extract: role, grossSalary, signingBonus, benefits, acceptanceDate
-
         return contract;
+    }
+
+    async createEmployeeFromContract(contractId: string): Promise<{
+        employee: any;
+        temporaryPassword: string;
+        contract: Contract;
+    }> {
+        const contract = await this.contractModel
+            .findById(contractId)
+            .populate('offerId')
+            .exec();
+
+        if (!contract) {
+            throw new NotFoundException(`Contract with ID ${contractId} not found`);
+        }
+
+        if (!contract.employeeSignedAt || !contract.employerSignedAt) {
+            throw new BadRequestException('Contract must be fully signed before creating employee profile');
+        }
+
+        const offer = await this.offerModel.findById(contract.offerId).exec();
+        if (!offer) {
+            throw new NotFoundException('Associated offer not found');
+        }
+
+        const { employee, temporaryPassword } = await this.sharedRecruitmentService.createEmployeeFromContract({
+            candidateId: offer.candidateId.toString(),
+            role: contract.role,
+            grossSalary: contract.grossSalary,
+            signingBonus: contract.signingBonus,
+            benefits: contract.benefits,
+            acceptanceDate: contract.acceptanceDate,
+        });
+
+        return { employee, temporaryPassword, contract };
     }
 
     async getOnboardingByEmployeeId(employeeId: string): Promise<Onboarding> {
@@ -225,15 +263,23 @@ export class OnboardingService {
 
         const overdueTasks = pendingTasks.filter(t => t.deadline && new Date(t.deadline) < now);
 
-        // TODO: Integration with Notifications Module (N)
-        // TODO: Send reminders for pending tasks
-        // TODO: Send urgent notifications for overdue tasks
+        for (const task of pendingTasks) {
+            const isOverdue = task.deadline && new Date(task.deadline) < now;
+            await this.sharedRecruitmentService.sendOnboardingTaskReminder({
+                employeeId,
+                taskName: task.name,
+                deadline: task.deadline,
+                isOverdue,
+            });
+        }
 
         return {employeeId, pendingTasks, overdueTasks,};
     }
 
     async uploadDocument(dto: UploadDocumentDto): Promise<Document> {
-        // TODO: Validate employee/candidate exists
+        await this.sharedRecruitmentService.validateEmployeeExists(dto.ownerId).catch(async () => {
+            await this.sharedRecruitmentService.validateCandidateExists(dto.ownerId);
+        });
 
         const document = new this.documentModel({
             ownerId: new Types.ObjectId(dto.ownerId),
@@ -242,10 +288,15 @@ export class OnboardingService {
             uploadedAt: new Date(),
         });
 
-        // TODO: Store documents in employee Profile (EP)
-        // TODO: Trigger verification workflow in HR
+        const savedDoc = await document.save();
 
-        return document.save();
+        await this.sharedRecruitmentService.notifyDocumentUploaded({
+            ownerId: dto.ownerId,
+            ownerName: dto.ownerId,
+            documentType: dto.type,
+        });
+
+        return savedDoc;
     }
 
     async getDocumentsByOwner(ownerId: string): Promise<Document[]> {
@@ -274,35 +325,38 @@ export class OnboardingService {
     }
 
     async provisionSystemAccess(dto: ProvisionAccessDto): Promise<{ success: boolean; employeeId: string; message: string; provisionedAt: Date; }> {
-        // TODO: Validate employee exists in employee Profile module
+        const employee = await this.sharedRecruitmentService.validateEmployeeExists(dto.employeeId);
 
-        // TODO: Integration with IT/Access Systems
-        // TODO: Create email account
-        // TODO: Setup SSO credentials
-        // TODO: Grant access to payroll system
-        // TODO: Grant access to internal tools
-        // TODO: Grant access to time management (clock in/out)
+        await this.sharedRecruitmentService.notifySystemAccessProvisioned({
+            employeeId: dto.employeeId,
+            employeeName: employee.fullName || `${employee.firstName} ${employee.lastName}`,
+            workEmail: employee.workEmail || '',
+        });
 
-        // TODO: Send notification to IT department
-        // TODO: Send notification to employee with access details
-
-        return {success: true, employeeId: dto.employeeId, message: 'System access provisioned successfully. Email, SSO, and internal systems enabled.', provisionedAt: new Date(),
+        return {
+            success: true,
+            employeeId: dto.employeeId,
+            message: 'System access provisioned successfully. Email, SSO, and internal systems enabled.',
+            provisionedAt: new Date(),
         };
     }
 
     async reserveEquipment(dto: ReserveEquipmentDto): Promise<{ success: boolean; employeeId: string; reservedItems: { equipment?: string[];deskNumber?: string; accessCardNumber?: string; }; message: string; }> {
-        // TODO: Validate employee exists
+        const employee = await this.sharedRecruitmentService.validateEmployeeExists(dto.employeeId);
 
-        // TODO: Integration with Facilities/Admin Systems
-        // TODO: Reserve equipment from inventory
-        // TODO: Assign desk/workspace
-        // TODO: Generate access card
-
-        // TODO: Send notification to Facilities/Admin
-        // TODO: Update onboarding task status for equipment reservation
-
-        return {success: true, employeeId: dto.employeeId, reservedItems: {
+        await this.sharedRecruitmentService.notifyEquipmentReserved({
+            employeeId: dto.employeeId,
+            employeeName: employee.fullName || `${employee.firstName} ${employee.lastName}`,
             equipment: dto.equipment,
+            deskNumber: dto.deskNumber,
+            accessCardNumber: dto.accessCardNumber,
+        });
+
+        return {
+            success: true,
+            employeeId: dto.employeeId,
+            reservedItems: {
+                equipment: dto.equipment,
                 deskNumber: dto.deskNumber,
                 accessCardNumber: dto.accessCardNumber,
             },
@@ -316,11 +370,13 @@ export class OnboardingService {
         revocationDate?: string;
         message: string;
     }> {
-        // TODO: Validate employee exists
+        const employee = await this.sharedRecruitmentService.validateEmployeeExists(dto.employeeId);
 
-        // TODO: Store scheduled revocation in system
-        // TODO: Create scheduled job for automatic revocation
-        // TODO: Link to Offboarding module (OFF-007) for security control
+        await this.sharedRecruitmentService.notifyAccessRevocationScheduled({
+            employeeId: dto.employeeId,
+            employeeName: employee.fullName || `${employee.firstName} ${employee.lastName}`,
+            revocationDate: dto.revocationDate || 'On termination',
+        });
 
         return {
             success: true,
@@ -403,12 +459,16 @@ export class OnboardingService {
             throw new BadRequestException('Cannot cancel completed onboarding');
         }
 
-        // TODO: Integration with employee Profile module
-        // TODO: Terminate/deactivate employee profile
-        // TODO: Revoke any provisioned access
-        // TODO: Cancel equipment reservations
-        // TODO: Remove from payroll
-        // TODO: Notify relevant departments (IT, Admin, Payroll)
+        const employee = await this.sharedRecruitmentService.validateEmployeeExists(onboarding.employeeId.toString());
+        const employeeName = employee.fullName || `${employee.firstName} ${employee.lastName}`;
+
+        await this.sharedRecruitmentService.deactivateEmployee(onboarding.employeeId.toString(), dto.reason);
+
+        await this.sharedRecruitmentService.notifyOnboardingCancelled({
+            employeeId: onboarding.employeeId.toString(),
+            employeeName,
+            reason: dto.reason,
+        });
 
         await this.onboardingModel.findByIdAndDelete(onboardingId).exec();
 

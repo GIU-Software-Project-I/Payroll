@@ -40,7 +40,7 @@ export class UnifiedLeaveService {
     private leaveCategoryModel: Model<LeaveCategoryDocument>,
     @InjectModel('LeavePolicy')
     private policyModel: Model<LeavePolicyDocument>,
-  ) {}
+  ) { }
 
   // --------------------------------------------------------------------------------
   // Policy / Types / Categories
@@ -334,19 +334,21 @@ export class UnifiedLeaveService {
       }
     }
 
+    // Check for overlaps with PENDING or APPROVED requests
+    // REQ-015: System should automatically check for overlapping dates
+    // Improved logic to cover [StartA, EndA] overlaps [StartB, EndB]
     const overlap = await this.leaveRequestModel
       .findOne({
         employeeId: new Types.ObjectId(dto.employeeId),
-        status: { $in: [LeaveStatus.APPROVED] },
+        status: { $in: [LeaveStatus.APPROVED, LeaveStatus.PENDING] }, // Covered pending too for safety
         $or: [
           { 'dates.from': { $lte: toDate }, 'dates.to': { $gte: fromDate } },
-          { 'dates.from': { $lte: fromDate }, 'dates.to': { $gte: fromDate } },
         ],
       })
       .lean();
 
     if (overlap) {
-      throw new BadRequestException('Overlapping approved leave exists');
+      throw new BadRequestException('Overlapping leave request exists (Pending or Approved)');
     }
 
     for (
@@ -374,7 +376,17 @@ export class UnifiedLeaveService {
       );
     }
 
-    if (leaveType.code !== 'UNPAID') {
+    // REQ-028: Medical certificate for Sick leave > 1 day
+    // We check category name or type code for "SICK"
+    const category = await this.leaveCategoryModel.findById(leaveType.categoryId);
+    const isSick = category?.name?.toLowerCase().includes('sick') || leaveType.name.toLowerCase().includes('sick');
+
+    if (isSick && duration > 1 && !dto.attachmentId) {
+      throw new BadRequestException('Medical certificate is required for sick leave exceeding 1 day');
+    }
+
+    // Entitlement Check
+    if (leaveType.deductible) {
       const entitlement = await this.entitlementModel
         .findOne({
           employeeId: new Types.ObjectId(dto.employeeId),
@@ -382,21 +394,24 @@ export class UnifiedLeaveService {
         })
         .lean();
 
-      if (entitlement) {
-        const yearly = entitlement.yearlyEntitlement ?? 0;
-        const carryForward = entitlement.carryForward ?? 0;
-        const taken = entitlement.taken ?? 0;
-        const pending = entitlement.pending ?? 0;
+      // If deductible and NO entitlement record -> Assume 0 balance -> Fail if duration > 0
+      if (!entitlement) {
+        throw new BadRequestException('No leave entitlement found for this type. Balance is 0.');
+      }
 
-        const remaining =
-          entitlement.remaining ??
-          yearly + carryForward - taken - pending;
+      const yearly = entitlement.yearlyEntitlement ?? 0;
+      const carryForward = entitlement.carryForward ?? 0;
+      const taken = entitlement.taken ?? 0;
+      const pending = entitlement.pending ?? 0;
+      const accrued = entitlement.accruedRounded ?? entitlement.accruedActual ?? yearly; // Use accrued if available, else yearly (depending on policy, but here we read state)
+      // Note: In refined logic, remaining should be the source of truth if maintained correctly.
 
-        if (duration > remaining) {
-          throw new BadRequestException(
-            `Requested duration (${duration} days) exceeds remaining entitlement (${remaining} days) for this leave type`,
-          );
-        }
+      const remaining = entitlement.remaining ?? (accrued + carryForward - taken - pending);
+
+      if (duration > remaining) {
+        throw new BadRequestException(
+          `Requested duration (${duration} days) exceeds remaining entitlement (${remaining} days) for this leave type`,
+        );
       }
     }
 
@@ -427,8 +442,52 @@ export class UnifiedLeaveService {
     return created;
   }
 
-  async getAllRequests() {
-    return this.leaveRequestModel.find().lean();
+  async getAllRequests(
+    opts: {
+      page?: number;
+      limit?: number;
+      employeeId?: string;
+      status?: string;
+      leaveTypeId?: string;
+      from?: string;
+      to?: string;
+    } = {},
+  ) {
+    const q: any = {};
+
+    if (opts.employeeId) q.employeeId = new Types.ObjectId(opts.employeeId);
+    if (opts.status) q.status = opts.status;
+    if (opts.leaveTypeId)
+      q.leaveTypeId = new Types.ObjectId(opts.leaveTypeId);
+
+    if (opts.from || opts.to) {
+      q['dates.from'] = {};
+      if (opts.from) q['dates.from'].$gte = new Date(opts.from);
+      if (opts.to) q['dates.from'].$lte = new Date(opts.to);
+    }
+
+    const page = Math.max(1, Number(opts.page) || 1);
+    const limit = Math.max(1, Number(opts.limit) || 20);
+
+    const [data, total] = await Promise.all([
+      this.leaveRequestModel
+        .find(q)
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      this.leaveRequestModel.countDocuments(q),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit),
+      },
+    };
   }
 
   async getRequest(id: string) {
@@ -601,13 +660,21 @@ export class UnifiedLeaveService {
     id: string,
     hrId: string,
     decision: 'approve' | 'reject',
+    allowNegative: boolean = false,
   ) {
     const leave = await this.leaveRequestModel.findById(id);
     if (!leave) throw new NotFoundException('Not found');
 
-    if (leave.status !== LeaveStatus.PENDING) {
+    // Allow override of REJECTED status if decision is approve
+    // Also allow PENDING
+    const validStatuses: LeaveStatus[] = [LeaveStatus.PENDING];
+    if (decision === 'approve') {
+      validStatuses.push(LeaveStatus.REJECTED); // Allow override
+    }
+
+    if (!validStatuses.includes(leave.status as LeaveStatus)) {
       throw new BadRequestException(
-        'Only pending requests can be finalized by HR',
+        `Cannot finalize request in status ${leave.status}`,
       );
     }
 
@@ -647,27 +714,41 @@ export class UnifiedLeaveService {
       leaveTypeId: leave.leaveTypeId,
     });
 
-    if (ent) {
-      ent.taken = (ent.taken || 0) + (leave.durationDays || 0);
-      ent.remaining = Math.max(
-        0,
-        (ent.remaining || 0) - (leave.durationDays || 0),
-      );
-      await ent.save();
-    } else {
-      await this.entitlementModel.create({
-        employeeId: leave.employeeId,
-        leaveTypeId: leave.leaveTypeId,
-        yearlyEntitlement: 0,
-        accruedActual: 0,
-        accruedRounded: 0,
-        carryForward: 0,
-        taken: leave.durationDays || 0,
-        pending: 0,
-        remaining: -(leave.durationDays || 0),
-        lastAccrualDate: null,
-        nextResetDate: null,
-      });
+    // Check if deductible
+    const leaveType = await this.leaveTypeModel.findById(leave.leaveTypeId);
+    const isDeductible = leaveType?.deductible ?? true;
+
+    if (isDeductible) {
+      if (ent) {
+        if (!allowNegative) {
+          const remaining = ent.remaining ?? 0;
+          if (leave.durationDays > remaining) {
+            throw new BadRequestException(`Insufficient balance for approval. Request: ${leave.durationDays}, Remaining: ${remaining}. Use allowNegative=true to override.`);
+          }
+        }
+
+        ent.taken = (ent.taken || 0) + (leave.durationDays || 0);
+        ent.remaining = (ent.remaining || 0) - (leave.durationDays || 0); // Allow going negative if allowNegative is true (or if logic passed above)
+        await ent.save();
+      } else {
+        // No entitlement exists
+        if (!allowNegative) {
+          throw new BadRequestException('No entitlement found. Cannot approve without allowNegative override.');
+        }
+        await this.entitlementModel.create({
+          employeeId: leave.employeeId,
+          leaveTypeId: leave.leaveTypeId,
+          yearlyEntitlement: 0,
+          accruedActual: 0,
+          accruedRounded: 0,
+          carryForward: 0,
+          taken: leave.durationDays || 0,
+          pending: 0,
+          remaining: -(leave.durationDays || 0),
+          lastAccrualDate: null,
+          nextResetDate: null,
+        });
+      }
     }
 
     await this.payrollNotifyAfterApproval(leave);
@@ -738,7 +819,7 @@ export class UnifiedLeaveService {
       {
         employeeId: new Types.ObjectId(employeeId),
         leaveTypeId: new Types.ObjectId(leaveTypeId),
-      } ,
+      },
       { $inc: { remaining: incValue } },
       { new: true },
     );
@@ -1083,14 +1164,39 @@ export class UnifiedLeaveService {
     strategy: 'hireDate' | 'calendarYear' | 'custom',
     referenceDate?: Date,
   ) {
+    // REQ-012: Define Legal Leave Year & Reset Rules
+    // Corrected to respect Accrual Method
     const entitlements = await this.entitlementModel.find();
+    const policies = await this.policyModel.find().lean();
+    const policyMap = new Map(policies.map(p => [p.leaveTypeId.toString(), p]));
+
     for (const e of entitlements) {
-      e.remaining =
-        (e.yearlyEntitlement || 0) +
-        (e.carryForward || 0) -
-        (e.taken || 0);
-      e.accruedActual = 0;
-      e.accruedRounded = 0;
+      const policy = policyMap.get(e.leaveTypeId.toString());
+      const method = policy?.accrualMethod ?? AccrualMethod.YEARLY; // Default to yearly if no policy? Or Monthly? Safe choice.
+
+      if (method === AccrualMethod.YEARLY) {
+        // Yearly: Full entitlement upfront
+        e.accruedActual = e.yearlyEntitlement || 0;
+        e.accruedRounded = e.yearlyEntitlement || 0;
+        e.remaining = (e.yearlyEntitlement || 0) + (e.carryForward || 0) - (e.taken || 0); // Logic assumes taken resets? No, taken is cumulative for the year usually. If this is RESET YEAR, taken should be 0? 
+        // Wait, Reset Leave Year means "Start New Year".
+        // Taken should be reset to 0.
+        // Remaining = Accrued + CarryForward.
+        // The previous code had " - e.taken". If taken is "Taken in PREVIOUS year", we shouldn't subtract it from NEW year balance.
+        // We rely on "carryForward" calculation to have moved unused to carryForward.
+        // So Remaining = Accrued (New) + CarryForward.
+        e.taken = 0;
+        e.pending = 0; // Assuming pending requests carry over? Or pending count reset? Usually pending requests are for valid dates. If dates in new year, they stay pending. But "count" in entitlement might differ.
+
+        e.remaining = e.accruedRounded + e.carryForward;
+      } else {
+        // Monthly: Start with 0 accrued
+        e.accruedActual = 0;
+        e.accruedRounded = 0;
+        e.remaining = (e.carryForward || 0); // Only start with CF
+        e.taken = 0;
+      }
+      e.lastAccrualDate = referenceDate ?? new Date();
       await e.save();
     }
     return { ok: true, processed: entitlements.length };
@@ -1104,7 +1210,7 @@ export class UnifiedLeaveService {
     if (!startDate || !endDate) return 0;
     const totalDays = Math.ceil(
       (new Date(endDate).getTime() - new Date(startDate).getTime()) /
-        (1000 * 60 * 60 * 24),
+      (1000 * 60 * 60 * 24),
     );
 
     const unpaidRequests = await this.leaveRequestModel
@@ -1134,7 +1240,7 @@ export class UnifiedLeaveService {
         const days =
           Math.ceil(
             (overlapEnd.getTime() - overlapStart.getTime()) /
-              (1000 * 60 * 60 * 24),
+            (1000 * 60 * 60 * 24),
           ) + 1;
         unpaidDays += days;
       }
