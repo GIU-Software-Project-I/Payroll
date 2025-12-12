@@ -1,4 +1,3 @@
-// src/leaves/controllers/unified-leave.controller.ts
 import {
   Controller,
   Get,
@@ -9,12 +8,7 @@ import {
   Body,
   Param,
   Query,
-  Req,
-  ForbiddenException,
-  BadRequestException,
-  UnauthorizedException,
-  HttpException,
-  HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { UnifiedLeaveService } from '../services/leaves.service';
 import { CreateLeaveTypeDto } from '../dto/create-leave-type.dto';
@@ -23,19 +17,25 @@ import { CreateLeaveCategoryDto } from '../dto/create-leave-category.dto';
 import { AdjustBalanceDto } from '../dto/adjust-balance.dto';
 import { CreateEntitlementDto } from '../dto/create-entitlement.dto';
 import { CreateLeaveRequestDto } from '../dto/create-leave-request.dto';
+import { CreateLeavePolicyDto } from '../dto/create-leave-policy.dto';
 import { AccrualMethod } from '../enums/accrual-method.enum';
 import { RoundingRule } from '../enums/rounding-rule.enum';
+import { AuthenticationGuard } from '../../auth/guards/authentication-guard';
+import { AuthorizationGuard } from '../../auth/guards/authorization-guard';
+import { Roles } from '../../auth/decorators/roles-decorator';
+import { SystemRole } from '../../employee/enums/employee-profile.enums';
 
 @Controller('leaves')
+@UseGuards(AuthenticationGuard, AuthorizationGuard)
 export class UnifiedLeaveController {
   constructor(private readonly service: UnifiedLeaveService) { }
 
   // -------------------------
-  // Leave Types
+  // Leave Types (REQ-006: HR Admin creates and manages leave types)
   // -------------------------
 
-  // Sick usage (generic, but can be used for SICK type)
   @Get('employees/:employeeId/leave-usage')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async getLeaveUsageLastYears(
     @Param('employeeId') employeeId: string,
     @Query('leaveTypeId') leaveTypeId: string,
@@ -45,8 +45,8 @@ export class UnifiedLeaveController {
     return this.service.getLeaveUsageLastYears(employeeId, leaveTypeId, yearsNum);
   }
 
-  // Maternity count (or any special type)
   @Get('employees/:employeeId/leave-count')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async getLeaveCountForType(
     @Param('employeeId') employeeId: string,
     @Query('leaveTypeId') leaveTypeId: string,
@@ -55,46 +55,47 @@ export class UnifiedLeaveController {
   }
 
   @Post('types')
-  async createLeaveType(@Body() dto: CreateLeaveTypeDto, @Req() req) {
-    //  if (!req.user || req.user.role !== 'HR_ADMIN') throw new ForbiddenException();
+  @Roles(SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async createLeaveType(@Body() dto: CreateLeaveTypeDto) {
     return this.service.createLeaveType(dto);
   }
 
   @Get('types')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async getAllLeaveTypes() {
     return this.service.getAllLeaveTypes();
   }
 
   @Get('types/:id')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async getLeaveType(@Param('id') id: string) {
     return this.service.getLeaveType(id);
   }
 
   @Put('types/:id')
+  @Roles(SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async updateLeaveType(
     @Param('id') id: string,
     @Body() dto: UpdateLeaveTypeDto,
-    @Req() req,
   ) {
-    // if (!req.user || req.user.role !== 'HR_ADMIN') throw new ForbiddenException();
     return this.service.updateLeaveType(id, dto);
   }
 
   @Delete('types/:id')
-  async deleteLeaveType(@Param('id') id: string, @Req() req) {
-    // if (!req.user || req.user.role !== 'HR_ADMIN') throw new ForbiddenException();
+  @Roles(SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async deleteLeaveType(@Param('id') id: string) {
     return this.service.deleteLeaveType(id);
   }
+
   // -------------------------
-  // Leave eligibility
+  // Leave Eligibility (REQ-007: HR Admin sets eligibility rules)
   // -------------------------
   @Patch('types/:id/eligibility')
+  @Roles(SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async setEligibility(
     @Param('id') id: string,
     @Body() body: any,
-    @Req() req,
   ) {
-    // if (!req.user || req.user.role !== 'HR_ADMIN') throw new ForbiddenException();
     return this.service.updateLeaveType(id, { eligibility: body });
   }
 
@@ -102,46 +103,49 @@ export class UnifiedLeaveController {
   // Leave Categories
   // -------------------------
   @Post('categories')
-  async createCategory(@Body() dto: CreateLeaveCategoryDto, @Req() req) {
-    // if (!req.user || req.user.role !== 'HR_ADMIN') throw new ForbiddenException();
+  @Roles(SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async createCategory(@Body() dto: CreateLeaveCategoryDto) {
     return this.service.createCategory(dto);
   }
 
   @Get('categories')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async getAllCategories() {
     return this.service.getAllCategories();
   }
 
   @Get('categories/:id')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async getCategory(@Param('id') id: string) {
     return this.service.getCategory(id);
   }
 
   @Put('categories/:id')
+  @Roles(SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async updateCategory(
     @Param('id') id: string,
     @Body() dto: Partial<CreateLeaveCategoryDto>,
-    @Req() req,
   ) {
-    // if (!req.user || req.user.role !== 'HR_ADMIN') throw new ForbiddenException();
     return this.service.updateCategory(id, dto);
   }
 
   @Delete('categories/:id')
-  async deleteCategory(@Param('id') id: string, @Req() req) {
-    // if (!req.user || req.user.role !== 'HR_ADMIN') throw new ForbiddenException();
+  @Roles(SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async deleteCategory(@Param('id') id: string) {
     return this.service.deleteCategory(id);
   }
 
   // -------------------------
-  // Leave Requests
+  // Leave Requests (REQ-015 - REQ-031: Employees submit, managers review, HR finalizes)
   // -------------------------
   @Post('requests')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async createRequest(@Body() dto: CreateLeaveRequestDto) {
     return this.service.createLeaveRequest(dto as any);
   }
 
   @Get('requests')
+  @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async getAllRequests(
     @Query('page') page?: number,
     @Query('limit') limit?: number,
@@ -163,11 +167,13 @@ export class UnifiedLeaveController {
   }
 
   @Get('requests/:id')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async getRequest(@Param('id') id: string) {
     return this.service.getRequest(id);
   }
 
   @Patch('requests/:id')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async updateRequest(
     @Param('id') id: string,
     @Body() dto: Partial<CreateLeaveRequestDto>,
@@ -176,6 +182,7 @@ export class UnifiedLeaveController {
   }
 
   @Patch('requests/:id/cancel')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async cancelRequest(
     @Param('id') id: string,
     @Query('employeeId') employeeId: string,
@@ -184,6 +191,7 @@ export class UnifiedLeaveController {
   }
 
   @Patch('requests/:id/manager-approve')
+  @Roles(SystemRole.DEPARTMENT_HEAD, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async managerApprove(
     @Param('id') id: string,
     @Query('managerId') managerId: string,
@@ -192,47 +200,53 @@ export class UnifiedLeaveController {
   }
 
   @Patch('requests/:id/manager-reject')
+  @Roles(SystemRole.DEPARTMENT_HEAD, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async managerReject(
     @Param('id') id: string,
     @Query('managerId') managerId: string,
+    @Query('reason') reason?: string,
   ) {
-    return this.service.managerReject(id, managerId);
+    return this.service.managerReject(id, managerId, reason);
   }
 
   @Patch('requests/:id/hr-finalize')
+  @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async hrFinalize(
     @Param('id') id: string,
     @Query('hrId') hrId: string,
     @Query('decision') decision: 'approve' | 'reject',
-    @Query('allowNegative') allowNegative?: string, // Boolean passed as string query
+    @Query('allowNegative') allowNegative?: string,
   ) {
     const allow = allowNegative === 'true';
     return this.service.hrFinalize(id, hrId, decision, allow);
   }
 
   // -------------------------
-  // Leave Adjustments
+  // Leave Adjustments (REQ-013: HR Admin manual balance adjustment)
   // -------------------------
   @Post('adjustments')
+  @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async createAdjustment(@Body() dto: AdjustBalanceDto) {
     return this.service.createAdjustment(dto as any);
   }
 
   // -------------------------
-  // Entitlements
+  // Entitlements (REQ-008: HR Admin assigns personalized entitlements)
   // -------------------------
   @Post('entitlements')
+  @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async createEntitlement(@Body() dto: CreateEntitlementDto) {
     return this.service.createEntitlement(dto);
   }
 
   @Get('entitlements/:employeeId')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async getEntitlements(@Param('employeeId') employeeId: string) {
     return this.service.getEntitlements(employeeId);
   }
 
-  // assign personalized entitlement (uses assignEntitlement in service)
   @Post('entitlements/assign')
+  @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async assignEntitlement(
     @Body() body: { employeeId: string; leaveTypeId: string; yearlyEntitlement: number },
   ) {
@@ -244,14 +258,16 @@ export class UnifiedLeaveController {
   }
 
   // -------------------------
-  // employee Self-Service Views
+  // Employee Self-Service Views (REQ-031 - REQ-033)
   // -------------------------
   @Get('employees/:employeeId/balances')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async getEmployeeBalances(@Param('employeeId') employeeId: string) {
     return this.service.getEmployeeBalances(employeeId);
   }
 
   @Get('employees/:employeeId/history')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async getEmployeeHistory(
     @Param('employeeId') employeeId: string,
     @Query()
@@ -269,9 +285,10 @@ export class UnifiedLeaveController {
   }
 
   // -------------------------
-  // Manager Views
+  // Manager Views (REQ-034 - REQ-039)
   // -------------------------
   @Get('manager/:managerId/team-balances')
+  @Roles(SystemRole.DEPARTMENT_HEAD, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async teamBalances(
     @Param('managerId') managerId: string,
     @Query('department') department?: string,
@@ -281,6 +298,7 @@ export class UnifiedLeaveController {
   }
 
   @Get('manager/:managerId/team-requests')
+  @Roles(SystemRole.DEPARTMENT_HEAD, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async teamRequests(
     @Param('managerId') managerId: string,
     @Query()
@@ -299,6 +317,7 @@ export class UnifiedLeaveController {
   }
 
   @Get('manager/:managerId/irregular-patterns')
+  @Roles(SystemRole.DEPARTMENT_HEAD, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async irregularPatterns(
     @Param('managerId') managerId: string,
     @Query('department') department?: string,
@@ -307,6 +326,7 @@ export class UnifiedLeaveController {
   }
 
   @Post('manager/flag-irregular/:requestId')
+  @Roles(SystemRole.DEPARTMENT_HEAD, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async flagIrregular(
     @Param('requestId') requestId: string,
     @Body() body: { flag: boolean; reason?: string },
@@ -319,9 +339,10 @@ export class UnifiedLeaveController {
   }
 
   // -------------------------
-  // Calendar / Holidays / Blocked Periods
+  // Calendar / Holidays / Blocked Periods (REQ-010)
   // -------------------------
   @Post('calendar/holidays')
+  @Roles(SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async addHoliday(
     @Body()
     body: { year: number; date: string; reason?: string },
@@ -332,6 +353,7 @@ export class UnifiedLeaveController {
   }
 
   @Post('calendar/blocked-periods')
+  @Roles(SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async addBlockedPeriod(
     @Body()
     body: { year: number; from: string; to: string; reason: string },
@@ -343,14 +365,16 @@ export class UnifiedLeaveController {
   }
 
   @Get('calendar/:year')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async getCalendar(@Param('year') year: string) {
     return this.service.getCalendar(Number(year));
   }
 
   // -------------------------
-  // Accruals
+  // Accruals (REQ-040 - REQ-042)
   // -------------------------
   @Post('accruals/run')
+  @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async runAccrual(
     @Query('referenceDate') referenceDate?: string,
     @Body()
@@ -364,8 +388,8 @@ export class UnifiedLeaveController {
     return this.service.runAccrual(referenceDate, method, roundingRule);
   }
 
-
   @Post('accruals/carryforward')
+  @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async carryForward(
     @Query('referenceDate') referenceDate?: string,
     @Body()
@@ -379,13 +403,14 @@ export class UnifiedLeaveController {
     return this.service.carryForward(referenceDate, capDays, expiryMonths);
   }
 
-
   @Get('accruals/employee/:id/recalc')
+  @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async recalcEmployee(@Param('id') id: string) {
     return this.service.recalcEmployee(id);
   }
 
   @Post('accruals/reset-year')
+  @Roles(SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async resetLeaveYear(
     @Body()
     body: {
@@ -400,11 +425,11 @@ export class UnifiedLeaveController {
   }
 
   @Post('accruals/adjust-suspension')
+  @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async adjustSuspension(
     @Body()
     body: { employeeId: string; fromDate: string; toDate: string; reason?: string },
   ) {
-    // استخدم calculateServiceDays لأنه closest لوظيفه تعليق الاستحقاقات
     const { employeeId, fromDate, toDate, reason } = body;
     const serviceDays = await this.service.calculateServiceDays(
       employeeId,
@@ -415,22 +440,25 @@ export class UnifiedLeaveController {
   }
 
   // -------------------------
-  // Attachments
+  // Attachments (REQ-016, REQ-028)
   // -------------------------
   @Post('attachments')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async saveAttachment(@Body() dto: any) {
     return this.service.saveAttachment(dto);
   }
 
   @Get('attachments/:id/validate-medical')
+  @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async validateMedicalAttachment(@Param('id') id: string) {
     return this.service.validateMedicalAttachment(id);
   }
 
   // -------------------------
-  // Bulk Processing
+  // Bulk Processing (REQ-027)
   // -------------------------
   @Post('requests/bulk-process')
+  @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async bulkProcessRequests(
     @Body()
     body: { requestIds: string[]; action: 'approve' | 'reject'; actorId: string },
@@ -443,9 +471,10 @@ export class UnifiedLeaveController {
   }
 
   // -------------------------
-  // Payroll
+  // Payroll Integration (REQ-042)
   // -------------------------
   @Post('payroll/sync-balance')
+  @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_MANAGER, SystemRole.PAYROLL_SPECIALIST)
   async payrollSyncBalance(
     @Body() body: { employeeId: string; balanceData?: any },
   ) {
@@ -456,11 +485,13 @@ export class UnifiedLeaveController {
   }
 
   @Post('payroll/sync-leave-approval')
+  @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_MANAGER, SystemRole.PAYROLL_SPECIALIST)
   async payrollSyncLeave(@Body() body: { employeeId: string; leaveData: any }) {
     return this.service.payrollSyncLeave(body.employeeId, body.leaveData);
   }
 
   @Post('payroll/calculate-unpaid-deduction')
+  @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_MANAGER, SystemRole.PAYROLL_SPECIALIST)
   async calculateUnpaidDeduction(
     @Body()
     body: {
@@ -479,6 +510,7 @@ export class UnifiedLeaveController {
   }
 
   @Post('payroll/calculate-encashment')
+  @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_MANAGER, SystemRole.PAYROLL_SPECIALIST)
   async calculateEncashment(
     @Body()
     body: {
@@ -497,6 +529,7 @@ export class UnifiedLeaveController {
   }
 
   @Post('payroll/sync-cancellation')
+  @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_MANAGER, SystemRole.PAYROLL_SPECIALIST)
   async syncCancellation(
     @Body()
     body: {
@@ -510,5 +543,139 @@ export class UnifiedLeaveController {
       body.leaveRequestId,
       body.daysToRestore,
     );
+  }
+
+  // -------------------------
+  // Leave Policies (REQ-001 - REQ-009)
+  // -------------------------
+  @Post('policies')
+  @Roles(SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async createPolicy(@Body() dto: CreateLeavePolicyDto) {
+    return this.service.createPolicy(dto);
+  }
+
+  @Get('policies')
+  @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async getAllPolicies() {
+    return this.service.getAllPolicies();
+  }
+
+  @Get('policies/:id')
+  @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async getPolicy(@Param('id') id: string) {
+    return this.service.getPolicy(id);
+  }
+
+  @Get('policies/by-leave-type/:leaveTypeId')
+  @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async getPolicyByLeaveType(@Param('leaveTypeId') leaveTypeId: string) {
+    return this.service.getPolicyByLeaveType(leaveTypeId);
+  }
+
+  @Put('policies/:id')
+  @Roles(SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async updatePolicy(@Param('id') id: string, @Body() dto: Partial<CreateLeavePolicyDto>) {
+    return this.service.updatePolicy(id, dto);
+  }
+
+  @Delete('policies/:id')
+  @Roles(SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async deletePolicy(@Param('id') id: string) {
+    return this.service.deletePolicy(id);
+  }
+
+  // -------------------------
+  // Statistics and Reports
+  // -------------------------
+  @Get('stats')
+  @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async getLeaveStats(
+    @Query('employeeId') employeeId?: string,
+    @Query('departmentId') departmentId?: string,
+  ) {
+    return this.service.getLeaveStats(employeeId, departmentId);
+  }
+
+  @Get('employees/:employeeId/entitlement-summary')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async getEntitlementSummary(@Param('employeeId') employeeId: string) {
+    return this.service.getEntitlementSummary(employeeId);
+  }
+
+  @Get('manager/:managerId/pending-count')
+  @Roles(SystemRole.DEPARTMENT_HEAD, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async getPendingApprovalsCount(@Param('managerId') managerId: string) {
+    return this.service.getPendingApprovalsCount(managerId);
+  }
+
+  @Get('requests/overdue')
+  @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async getOverdueRequests(@Query('hours') hours?: string) {
+    const hoursNum = hours ? Number(hours) : 48;
+    return this.service.getOverdueRequests(hoursNum);
+  }
+
+  @Post('requests/escalate-overdue')
+  @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async escalateOverdue() {
+    return this.service.checkAndEscalateOverdue();
+  }
+
+  // -------------------------
+  // Calendar Extended
+  // -------------------------
+  @Put('calendar/:year')
+  @Roles(SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async updateCalendar(
+    @Param('year') year: string,
+    @Body() body: { holidays?: string[]; blockedPeriods?: any[] },
+  ) {
+    const holidays = body.holidays?.map(d => new Date(d));
+    return this.service.updateCalendar(Number(year), { holidays, blockedPeriods: body.blockedPeriods });
+  }
+
+  @Delete('calendar/:year/holidays')
+  @Roles(SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async removeHoliday(
+    @Param('year') year: string,
+    @Body() body: { date: string },
+  ) {
+    return this.service.removeHoliday(Number(year), new Date(body.date));
+  }
+
+  @Delete('calendar/:year/blocked-periods')
+  @Roles(SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async removeBlockedPeriod(
+    @Param('year') year: string,
+    @Body() body: { from: string; to: string },
+  ) {
+    return this.service.removeBlockedPeriod(Number(year), new Date(body.from), new Date(body.to));
+  }
+
+  // -------------------------
+  // Attachments Extended
+  // -------------------------
+  @Get('attachments/:id')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async getAttachment(@Param('id') id: string) {
+    return this.service.getAttachment(id);
+  }
+
+  @Delete('attachments/:id')
+  @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async deleteAttachment(@Param('id') id: string) {
+    return this.service.deleteAttachment(id);
+  }
+
+  // -------------------------
+  // Adjustment History
+  // -------------------------
+  @Get('employees/:employeeId/adjustment-history')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async getAdjustmentHistory(
+    @Param('employeeId') employeeId: string,
+    @Query('leaveTypeId') leaveTypeId?: string,
+  ) {
+    return this.service.getAdjustmentHistory(employeeId, leaveTypeId);
   }
 }

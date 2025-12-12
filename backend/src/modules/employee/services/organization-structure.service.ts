@@ -9,6 +9,7 @@ import { StructureApproval, StructureApprovalDocument } from '../models/organiza
 import { StructureChangeLog, StructureChangeLogDocument } from '../models/organization-structure/structure-change-log.schema';
 import { ApprovalDecision, ChangeLogAction, StructureRequestStatus, StructureRequestType } from '../enums/organization-structure.enums';
 import { CreateDepartmentDto, UpdateDepartmentDto, CreatePositionDto, UpdatePositionDto, AssignPositionDto, EndAssignmentDto, SubmitStructureRequestDto, UpdateStructureRequestDto, SubmitApprovalDecisionDto } from '../dto/organization-structure';
+import { SharedOrganizationService } from '../../shared/services/shared-organization.service';
 
 export interface PaginatedResult<T> {
     data: T[];
@@ -60,6 +61,7 @@ export class OrganizationStructureService {
         @InjectModel(StructureChangeRequest.name) private changeRequestModel: Model<StructureChangeRequestDocument>,
         @InjectModel(StructureApproval.name) private approvalModel: Model<StructureApprovalDocument>,
         @InjectModel(StructureChangeLog.name) private changeLogModel: Model<StructureChangeLogDocument>,
+        private readonly sharedOrganizationService: SharedOrganizationService,
     ) { }
 
     private validateObjectId(id: string, fieldName: string): void {
@@ -433,7 +435,10 @@ export class OrganizationStructureService {
             after: updatedPosition.toObject(),
         });
 
-        // TODO: Notify affected employees and managers of position changes
+        const affectedEmployeeIds = await this.sharedOrganizationService.getEmployeesByPosition(id);
+        if (affectedEmployeeIds.length > 0) {
+            await this.sharedOrganizationService.sendStructureChangeNotification('Position Updated', position.title, affectedEmployeeIds);
+        }
 
         return updatedPosition;
     }
@@ -513,7 +518,7 @@ export class OrganizationStructureService {
             after: updatedPosition.toObject(),
         });
 
-        // TODO: Notify HR and affected employees
+        await this.sharedOrganizationService.sendStructureChangeNotification('Position Deactivated', position.title);
 
         return updatedPosition;
     }
@@ -666,8 +671,9 @@ export class OrganizationStructureService {
             after: assignment.toObject(),
         });
 
-        // TODO: Update EmployeeProfile.primaryPositionId and primaryDepartmentId
-        // TODO: Notify employee and managers
+        const departmentId = dto.departmentId || position.departmentId.toString();
+        await this.sharedOrganizationService.updateEmployeePrimaryPosition(dto.employeeProfileId, dto.positionId, departmentId);
+        await this.sharedOrganizationService.sendStructureChangeNotification('Position Assignment', position.title, [dto.employeeProfileId]);
 
         return assignment;
     }
@@ -710,7 +716,7 @@ export class OrganizationStructureService {
             after: updatedAssignment.toObject(),
         });
 
-        // TODO: Update EmployeeProfile if this was the primary position
+        await this.sharedOrganizationService.clearEmployeePrimaryPosition(assignment.employeeProfileId.toString());
 
         return updatedAssignment;
     }
@@ -830,7 +836,13 @@ export class OrganizationStructureService {
             after: request.toObject(),
         });
 
-        // TODO: Notify approvers
+        const targetName = dto.targetDepartmentId ? 'department' : dto.targetPositionId ? 'position' : 'structure';
+        await this.sharedOrganizationService.notifyStructureChangeRequestSubmitted(
+            request.requestNumber,
+            dto.requestedByEmployeeId,
+            dto.requestType,
+            targetName
+        );
 
         return request;
     }
@@ -1016,8 +1028,12 @@ export class OrganizationStructureService {
             after: approval.toObject(),
         });
 
-        // TODO: Notify requester of decision
-        // TODO: If approved, implement the change
+        await this.sharedOrganizationService.notifyStructureChangeRequestProcessed(
+            changeRequest.requestNumber,
+            changeRequest.requestedByEmployeeId.toString(),
+            dto.decision,
+            dto.comments
+        );
 
         return approval;
     }
@@ -1132,4 +1148,3 @@ export class OrganizationStructureService {
         });
     }
 }
-

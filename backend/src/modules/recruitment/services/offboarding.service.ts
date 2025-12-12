@@ -25,7 +25,7 @@ import { TerminationStatus } from '../enums/termination-status.enum';
 import { ApprovalStatus } from '../enums/approval-status.enum';
 
 // Shared Services
-import { SharedRecruitmentService } from '../../shared/shared-recruitment.service';
+import { SharedRecruitmentService } from '../../shared/services/shared-recruitment.service';
 
 @Injectable()
 export class OffboardingService {

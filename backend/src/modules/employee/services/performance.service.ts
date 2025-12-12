@@ -13,6 +13,7 @@ import { CreateAppraisalCycleDto, UpdateAppraisalCycleDto } from '../dto/perform
 import { BulkCreateAppraisalAssignmentDto, CreateAppraisalAssignmentDto } from '../dto/performance/appraisal-assignment.dto';
 import { SubmitAppraisalRecordDto } from '../dto/performance/appraisal-record.dto';
 import { FileAppraisalDisputeDto, ResolveAppraisalDisputeDto } from '../dto/performance/appraisal-dispute.dto';
+import { SharedPerformanceService } from '../../shared/services/shared-performance.service';
 
 export interface PaginatedResult<T> {
     data: T[];
@@ -77,6 +78,7 @@ export class PerformanceService {
         @InjectModel(AppraisalAssignment.name) private assignmentModel: Model<AppraisalAssignmentDocument>,
         @InjectModel(AppraisalRecord.name) private recordModel: Model<AppraisalRecordDocument>,
         @InjectModel(AppraisalDispute.name) private disputeModel: Model<AppraisalDisputeDocument>,
+        private readonly sharedPerformanceService: SharedPerformanceService,
     ) {}
 
     private validateObjectId(id: string, fieldName: string): void {
@@ -423,7 +425,6 @@ export class PerformanceService {
         cycle.status = AppraisalCycleStatus.ACTIVE;
         cycle.publishedAt = now;
 
-        // TODO: Notify employees and managers about the new cycle
 
         return cycle.save();
     }
@@ -596,7 +597,15 @@ export class PerformanceService {
             dueDate: dto.dueDate ? new Date(dto.dueDate) : cycle.managerDueDate,
         });
 
-        // TODO: Notify employee and manager about the assignment
+        const employeeProfile = await this.sharedPerformanceService.getEmployeeProfile(dto.employeeProfileId);
+        const employeeName = employeeProfile?.fullName || 'Employee';
+        await this.sharedPerformanceService.sendAppraisalAssignedNotification(
+            dto.employeeProfileId,
+            dto.managerProfileId,
+            employeeName,
+            cycle.name,
+            assignment.dueDate
+        );
 
         return assignment;
     }
@@ -641,12 +650,12 @@ export class PerformanceService {
                 continue;
             }
 
-            // TODO: Get manager from organization structure
+            const managerId = await this.sharedPerformanceService.getManagerForEmployee(employeeId);
             toCreate.push({
                 cycleId: new Types.ObjectId(dto.cycleId),
                 templateId: new Types.ObjectId(dto.templateId),
                 employeeProfileId: new Types.ObjectId(employeeId),
-                managerProfileId: new Types.ObjectId(dto.departmentId),
+                managerProfileId: managerId ? new Types.ObjectId(managerId) : new Types.ObjectId(dto.departmentId),
                 departmentId: new Types.ObjectId(dto.departmentId),
                 status: AppraisalAssignmentStatus.NOT_STARTED,
                 assignedAt: new Date(),
@@ -902,7 +911,21 @@ export class PerformanceService {
             await assignment.save();
         }
 
-        // TODO: Notify employee about published appraisal
+        const cycle = await this.cycleModel.findById(record.cycleId);
+        const cycleName = cycle?.name || 'Appraisal Cycle';
+
+        await this.sharedPerformanceService.sendAppraisalPublishedNotification(
+            record.employeeProfileId.toString(),
+            cycleName,
+            record.overallRatingLabel || String(record.totalScore)
+        );
+
+        await this.sharedPerformanceService.updateEmployeeLastAppraisal(
+            record.employeeProfileId.toString(),
+            record._id.toString(),
+            record.cycleId.toString(),
+            record.templateId.toString()
+        );
 
         return record.save();
     }
@@ -1068,7 +1091,13 @@ export class PerformanceService {
             status: AppraisalDisputeStatus.OPEN,
         });
 
-        // TODO: Notify HR about the new dispute
+        const employeeProfile = await this.sharedPerformanceService.getEmployeeProfile(dto.raisedByEmployeeId);
+        const employeeName = employeeProfile?.fullName || 'Employee';
+        await this.sharedPerformanceService.sendDisputeFiledNotification(
+            dto.raisedByEmployeeId,
+            employeeName,
+            dispute._id.toString()
+        );
 
         return dispute;
     }
@@ -1106,7 +1135,6 @@ export class PerformanceService {
         dispute.assignedReviewerEmployeeId = new Types.ObjectId(reviewerEmployeeId);
         dispute.status = AppraisalDisputeStatus.UNDER_REVIEW;
 
-        // TODO: Notify reviewer about the assignment
 
         return dispute.save();
     }
@@ -1137,8 +1165,26 @@ export class PerformanceService {
         dispute.resolvedByEmployeeId = new Types.ObjectId(dto.resolvedByEmployeeId);
         dispute.resolvedAt = new Date();
 
-        // TODO: Notify employee about resolution
-        // TODO: If ADJUSTED, allow manager to revise the appraisal
+        await this.sharedPerformanceService.sendDisputeResolvedNotification(
+            dispute.raisedByEmployeeId.toString(),
+            dispute._id.toString(),
+            dto.status,
+            dto.resolutionSummary
+        );
+
+        if (dto.status === AppraisalDisputeStatus.ADJUSTED) {
+            const record = await this.recordModel.findById(dispute.appraisalId);
+            if (record) {
+                record.status = AppraisalRecordStatus.MANAGER_SUBMITTED;
+                await record.save();
+
+                const assignment = await this.assignmentModel.findById(record.assignmentId);
+                if (assignment) {
+                    assignment.status = AppraisalAssignmentStatus.SUBMITTED;
+                    await assignment.save();
+                }
+            }
+        }
 
         return dispute.save();
     }

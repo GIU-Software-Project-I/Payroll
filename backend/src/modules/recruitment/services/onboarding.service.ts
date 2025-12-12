@@ -15,7 +15,7 @@ import {CreateOnboardingDto, CreateOnboardingTaskDto, UpdateTaskStatusDto, Uploa
 import { OnboardingTaskStatus } from '../enums/onboarding-task-status.enum';
 
 // Shared Services
-import { SharedRecruitmentService } from '../../shared/shared-recruitment.service';
+import { SharedRecruitmentService } from '../../shared/services/shared-recruitment.service';
 
 @Injectable()
 export class OnboardingService {

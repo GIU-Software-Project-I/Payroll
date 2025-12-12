@@ -9,10 +9,13 @@ import { StructureChangeLog,StructureChangeLogSchema } from './models/organizati
 import { StructureChangeRequest,StructureChangeRequestSchema } from './models/organization-structure/structure-change-request.schema';
 import {OrganizationStructureController} from "./controllers/organization-structure.controller";
 import {OrganizationStructureService} from "./services/organization-structure.service";
+import { SharedModule } from '../shared/shared.module';
+import {AuthModule} from "../auth/auth-module";
 
 
 @Module({
   imports: [
+        AuthModule,
     MongooseModule.forFeature([
       { name: Department.name, schema: DepartmentSchema },
       { name: Position.name, schema: PositionSchema },
@@ -21,6 +24,7 @@ import {OrganizationStructureService} from "./services/organization-structure.se
       { name: StructureChangeLog.name, schema: StructureChangeLogSchema },
       {name: StructureChangeRequest.name,schema: StructureChangeRequestSchema,},
     ]),
+    SharedModule,
   ],
   controllers: [OrganizationStructureController],
   providers: [OrganizationStructureService],

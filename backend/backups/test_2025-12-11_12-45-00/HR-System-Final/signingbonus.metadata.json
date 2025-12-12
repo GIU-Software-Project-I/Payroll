@@ -1,1 +1,0 @@
-{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"positionName":{"$numberInt":"1"}},"name":"positionName_1","background":true,"unique":true}],"uuid":"071f7e7ae7f64a34b568e99ecdb8485e","collectionName":"signingbonus","type":"collection"}

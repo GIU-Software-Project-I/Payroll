@@ -11,6 +11,7 @@ import { AdminUpdateProfileDto } from '../dto/employee-profile/admin-update-prof
 import { AdminAssignRoleDto } from '../dto/employee-profile/admin-assign-role.dto';
 import { SearchEmployeesDto, PaginatedResult, PaginationQueryDto } from '../dto/employee-profile/search-employees.dto';
 import { EmployeeStatus, ProfileChangeStatus } from '../enums/employee-profile.enums';
+import { SharedEmployeeService } from '../../shared/services/shared-employee.service';
 
 @Injectable()
 export class EmployeeProfileService {
@@ -21,6 +22,7 @@ export class EmployeeProfileService {
         private changeRequestModel: Model<EmployeeProfileChangeRequestDocument>,
         @InjectModel(EmployeeSystemRole.name)
         private systemRoleModel: Model<EmployeeSystemRoleDocument>,
+        private readonly sharedEmployeeService: SharedEmployeeService,
     ) {}
 
     private validateObjectId(id: string, fieldName: string): void {
@@ -101,9 +103,9 @@ export class EmployeeProfileService {
             profile.address = { ...profile.address, ...dto.address };
         }
 
-        // TODO: Trigger N-037 notification (use NotificationService from time-management module)
-
-        return profile.save();
+        const savedProfile = await profile.save();
+        await this.sharedEmployeeService.sendProfileUpdatedNotification(userId, profile.fullName || 'Employee');
+        return savedProfile;
     }
 
     async updateBio(userId: string, dto: UpdateBioDto): Promise<EmployeeProfile> {
@@ -121,9 +123,9 @@ export class EmployeeProfileService {
         if (dto.biography !== undefined) profile.biography = dto.biography;
         if (dto.profilePictureUrl !== undefined) profile.profilePictureUrl = dto.profilePictureUrl;
 
-        // TODO: Trigger N-037 notification (use NotificationService from time-management module)
-
-        return profile.save();
+        const savedProfile = await profile.save();
+        await this.sharedEmployeeService.sendProfileUpdatedNotification(userId, profile.fullName || 'Employee');
+        return savedProfile;
     }
 
     async createCorrectionRequest(userId: string, dto: CreateCorrectionRequestDto): Promise<EmployeeProfileChangeRequest> {
@@ -158,9 +160,9 @@ export class EmployeeProfileService {
             submittedAt: new Date(),
         });
 
-        // TODO: Trigger N-040 notification (use NotificationService from time-management module)
-
-        return request.save();
+        const savedRequest = await request.save();
+        await this.sharedEmployeeService.sendChangeRequestSubmittedNotification(userId, profile.fullName || 'Employee', savedRequest.requestId);
+        return savedRequest;
     }
 
     async getMyChangeRequests(
@@ -463,11 +465,15 @@ export class EmployeeProfileService {
         if (dto.bankName !== undefined) profile.bankName = dto.bankName;
         if (dto.bankAccountNumber !== undefined) profile.bankAccountNumber = dto.bankAccountNumber;
 
-        // TODO: Trigger N-037 notification (use NotificationService from time-management module)
-        // TODO: If position/department changed, use OrgStructureIntegrationService from shared module
-        // TODO: If status changed to TERMINATED/SUSPENDED, use PayrollIntegrationService and TimeManagementIntegrationService from shared module
+        const savedProfile = await profile.save();
 
-        return profile.save();
+        await this.sharedEmployeeService.sendProfileUpdatedNotification(id, profile.fullName || 'Employee');
+
+        if (dto.status && dto.status !== oldStatus) {
+            await this.sharedEmployeeService.syncEmployeeStatusToPayroll(id, dto.status, profile.fullName || 'Employee');
+        }
+
+        return savedProfile;
     }
 
     async adminDeactivateEmployee(id: string, adminUserId?: string): Promise<EmployeeProfile> {
@@ -498,12 +504,12 @@ export class EmployeeProfileService {
         profile.status = EmployeeStatus.TERMINATED;
         profile.statusEffectiveFrom = new Date();
 
-        // TODO: Use PayrollIntegrationService.syncEmployeeStatus() from shared module to block payment
-        // TODO: Use TimeManagementIntegrationService.syncEmployeeStatus() from shared module
-        // TODO: Use TimeManagementIntegrationService.deactivateTimeTracking() from shared module
-        // TODO: Trigger N-037 notification (use NotificationService from time-management module)
+        const savedProfile = await profile.save();
 
-        return profile.save();
+        await this.sharedEmployeeService.syncEmployeeStatusToPayroll(id, EmployeeStatus.TERMINATED, profile.fullName || 'Employee');
+        await this.sharedEmployeeService.sendProfileUpdatedNotification(id, profile.fullName || 'Employee');
+
+        return savedProfile;
     }
 
     async adminAssignRole(id: string, dto: AdminAssignRoleDto, adminUserId?: string): Promise<EmployeeProfile> {
@@ -595,10 +601,19 @@ export class EmployeeProfileService {
         request.status = status;
         request.processedAt = new Date();
 
-        // TODO: If APPROVED, apply changes to profile
-        // TODO: Trigger N-037 notification (use NotificationService from time-management module)
+        const savedRequest = await request.save();
 
-        return request.save();
+        const employeeProfile = request.employeeProfileId as any;
+        if (employeeProfile?._id) {
+            await this.sharedEmployeeService.sendChangeRequestProcessedNotification(
+                employeeProfile._id.toString(),
+                requestId,
+                status,
+                rejectionReason
+            );
+        }
+
+        return savedRequest;
     }
 
     async getEmployeeCountByStatus(): Promise<Record<string, number>> {
@@ -657,4 +672,3 @@ export class EmployeeProfileService {
         return this.changeRequestModel.countDocuments({ status: ProfileChangeStatus.PENDING });
     }
 }
-

@@ -8,7 +8,11 @@ import { Candidate, CandidateSchema } from '../employee/models/employee/Candidat
 import { AppraisalRecord, AppraisalRecordSchema } from '../employee/models/performance/appraisal-record.schema';
 
 import { AuthModule } from '../auth/auth-module';
-import { SharedRecruitmentService } from './shared-recruitment.service';
+import { SharedRecruitmentService } from './services/shared-recruitment.service';
+import { SharedEmployeeService } from './services/shared-employee.service';
+import { SharedOrganizationService } from './services/shared-organization.service';
+import { SharedPerformanceService } from './services/shared-performance.service';
+import { SharedLeavesService } from './services/shared-leaves.service';
 
 @Module({
     imports: [
@@ -21,8 +25,7 @@ import { SharedRecruitmentService } from './shared-recruitment.service';
         ]),
         forwardRef(() => AuthModule),
     ],
-    providers: [SharedRecruitmentService],
-    exports: [SharedRecruitmentService],
+    providers: [SharedRecruitmentService, SharedEmployeeService, SharedOrganizationService, SharedPerformanceService, SharedLeavesService],
+    exports: [SharedRecruitmentService, SharedEmployeeService, SharedOrganizationService, SharedPerformanceService, SharedLeavesService],
 })
 export class SharedModule {}
-

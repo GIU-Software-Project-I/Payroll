@@ -10,6 +10,8 @@ import {AppraisalDispute, AppraisalDisputeSchema} from "./models/performance/app
 
 import {PerformanceController} from "./controllers/performance.controller";
 import {PerformanceService} from "./services/performance.service";
+import { SharedModule } from '../shared/shared.module';
+import {AuthModule} from "../auth/auth-module";
 
 
 
@@ -17,6 +19,7 @@ import {PerformanceService} from "./services/performance.service";
 
 @Module({
   imports: [
+      AuthModule,
     MongooseModule.forFeature([
       { name: AppraisalTemplate.name, schema: AppraisalTemplateSchema },
       { name: AppraisalCycle.name, schema: AppraisalCycleSchema },
@@ -24,10 +27,10 @@ import {PerformanceService} from "./services/performance.service";
       { name: AppraisalRecord.name, schema: AppraisalRecordSchema },
       { name: AppraisalDispute.name, schema: AppraisalDisputeSchema },
     ]),
+    SharedModule,
   ],
   controllers: [PerformanceController],
   providers: [PerformanceService],
   exports: [PerformanceService],
 })
 export class PerformanceModule {}
-
