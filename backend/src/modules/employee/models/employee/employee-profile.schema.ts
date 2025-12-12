@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
-
+;
 import { UserProfileBase } from './user-schema';
 import {ContractType, EmployeeStatus, WorkType} from "../../enums/employee-profile.enums";
 import {AppraisalRatingScaleType} from "../../enums/performance.enums";
