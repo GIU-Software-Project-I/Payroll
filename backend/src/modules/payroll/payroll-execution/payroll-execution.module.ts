@@ -1,9 +1,9 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 // import controller and services 
-// import { PayrollExecutionController } from './controllers/payroll-execution requirements.controller';
-// import { PayrollExecutionService } from './services/payroll-execution requirements.service';
-// import schemas from payroll-configuration-requirements subsystem
+import { PayrollExecutionController } from './controllers/payroll-execution.controller';
+import { PayrollExecutionService } from './services/payroll-execution.service';
+// import schemas from payroll-configuration subsystem
 import { terminationAndResignationBenefits, terminationAndResignationBenefitsSchema } from '../payroll-configuration/models/terminationAndResignationBenefits';
 import { signingBonus, signingBonusSchema } from '../payroll-configuration/models/signingBonus.schema';
 // import schemas from current subsystem
@@ -21,6 +21,7 @@ import { PayrollTrackingModule } from '../payroll-tracking/payroll-tracking.modu
 import { PayrollConfigurationModule } from '../payroll-configuration/payroll-configuration.module';
 // import time-management module
 import { TimeManagementModule } from '../../time-management/time-management.module';
+import { AttendanceRecord, AttendanceRecordSchema } from '../../time-management/models/attendance-record.schema';
 // import employee module
 import { EmployeeModule } from '../../employee/employee.module';
 // import leaves module
@@ -40,10 +41,10 @@ import { AuthModule } from '../../auth/auth-module';
     { name: terminationAndResignationBenefits.name, schema: terminationAndResignationBenefitsSchema },
     { name: signingBonus.name, schema: signingBonusSchema },
     { name: employeePenalties.name, schema: employeePenaltiesSchema },
-
+    { name: AttendanceRecord.name, schema: AttendanceRecordSchema },
   ])],
-  // controllers: [PayrollExecutionController],
-  // providers: [PayrollExecutionService, PayCalculatorService],
-  // exports: [PayrollExecutionService]
+  controllers: [PayrollExecutionController],
+  providers: [PayrollExecutionService, PayCalculatorService],
+  exports: [PayrollExecutionService]
 })
 export class PayrollExecutionModule { }
