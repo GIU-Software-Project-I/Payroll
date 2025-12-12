@@ -1,5 +1,5 @@
 // src/leaves/controllers/unified-leave.controller.ts
-import { 
+import {
   Controller,
   Get,
   Post,
@@ -28,35 +28,35 @@ import { RoundingRule } from '../enums/rounding-rule.enum';
 
 @Controller('leaves')
 export class UnifiedLeaveController {
-  constructor(private readonly service: UnifiedLeaveService) {}
+  constructor(private readonly service: UnifiedLeaveService) { }
 
   // -------------------------
   // Leave Types
   // -------------------------
 
   // Sick usage (generic, but can be used for SICK type)
-@Get('employees/:employeeId/leave-usage')
-async getLeaveUsageLastYears(
-  @Param('employeeId') employeeId: string,
-  @Query('leaveTypeId') leaveTypeId: string,
-  @Query('years') years?: string,
-) {
-  const yearsNum = years ? Number(years) : 3;
-  return this.service.getLeaveUsageLastYears(employeeId, leaveTypeId, yearsNum);
-}
+  @Get('employees/:employeeId/leave-usage')
+  async getLeaveUsageLastYears(
+    @Param('employeeId') employeeId: string,
+    @Query('leaveTypeId') leaveTypeId: string,
+    @Query('years') years?: string,
+  ) {
+    const yearsNum = years ? Number(years) : 3;
+    return this.service.getLeaveUsageLastYears(employeeId, leaveTypeId, yearsNum);
+  }
 
-// Maternity count (or any special type)
-@Get('employees/:employeeId/leave-count')
-async getLeaveCountForType(
-  @Param('employeeId') employeeId: string,
-  @Query('leaveTypeId') leaveTypeId: string,
-) {
-  return this.service.getLeaveCountForType(employeeId, leaveTypeId);
-}
+  // Maternity count (or any special type)
+  @Get('employees/:employeeId/leave-count')
+  async getLeaveCountForType(
+    @Param('employeeId') employeeId: string,
+    @Query('leaveTypeId') leaveTypeId: string,
+  ) {
+    return this.service.getLeaveCountForType(employeeId, leaveTypeId);
+  }
 
   @Post('types')
   async createLeaveType(@Body() dto: CreateLeaveTypeDto, @Req() req) {
-  //  if (!req.user || req.user.role !== 'HR_ADMIN') throw new ForbiddenException();
+    //  if (!req.user || req.user.role !== 'HR_ADMIN') throw new ForbiddenException();
     return this.service.createLeaveType(dto);
   }
 
@@ -76,34 +76,34 @@ async getLeaveCountForType(
     @Body() dto: UpdateLeaveTypeDto,
     @Req() req,
   ) {
-   // if (!req.user || req.user.role !== 'HR_ADMIN') throw new ForbiddenException();
+    // if (!req.user || req.user.role !== 'HR_ADMIN') throw new ForbiddenException();
     return this.service.updateLeaveType(id, dto);
   }
 
   @Delete('types/:id')
   async deleteLeaveType(@Param('id') id: string, @Req() req) {
-   // if (!req.user || req.user.role !== 'HR_ADMIN') throw new ForbiddenException();
+    // if (!req.user || req.user.role !== 'HR_ADMIN') throw new ForbiddenException();
     return this.service.deleteLeaveType(id);
   }
-    // -------------------------
+  // -------------------------
   // Leave eligibility
   // -------------------------
-@Patch('types/:id/eligibility')
-async setEligibility(
-  @Param('id') id: string,
-  @Body() body: any,
-  @Req() req,
-) {
- // if (!req.user || req.user.role !== 'HR_ADMIN') throw new ForbiddenException();
-  return this.service.updateLeaveType(id, { eligibility: body });
-}
+  @Patch('types/:id/eligibility')
+  async setEligibility(
+    @Param('id') id: string,
+    @Body() body: any,
+    @Req() req,
+  ) {
+    // if (!req.user || req.user.role !== 'HR_ADMIN') throw new ForbiddenException();
+    return this.service.updateLeaveType(id, { eligibility: body });
+  }
 
   // -------------------------
   // Leave Categories
   // -------------------------
   @Post('categories')
   async createCategory(@Body() dto: CreateLeaveCategoryDto, @Req() req) {
-   // if (!req.user || req.user.role !== 'HR_ADMIN') throw new ForbiddenException();
+    // if (!req.user || req.user.role !== 'HR_ADMIN') throw new ForbiddenException();
     return this.service.createCategory(dto);
   }
 
@@ -123,13 +123,13 @@ async setEligibility(
     @Body() dto: Partial<CreateLeaveCategoryDto>,
     @Req() req,
   ) {
-   // if (!req.user || req.user.role !== 'HR_ADMIN') throw new ForbiddenException();
+    // if (!req.user || req.user.role !== 'HR_ADMIN') throw new ForbiddenException();
     return this.service.updateCategory(id, dto);
   }
 
   @Delete('categories/:id')
   async deleteCategory(@Param('id') id: string, @Req() req) {
-   // if (!req.user || req.user.role !== 'HR_ADMIN') throw new ForbiddenException();
+    // if (!req.user || req.user.role !== 'HR_ADMIN') throw new ForbiddenException();
     return this.service.deleteCategory(id);
   }
 
@@ -142,8 +142,24 @@ async setEligibility(
   }
 
   @Get('requests')
-  async getAllRequests() {
-    return this.service.getAllRequests();
+  async getAllRequests(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('employeeId') employeeId?: string,
+    @Query('status') status?: string,
+    @Query('leaveTypeId') leaveTypeId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.service.getAllRequests({
+      page,
+      limit,
+      employeeId,
+      status,
+      leaveTypeId,
+      from,
+      to,
+    });
   }
 
   @Get('requests/:id')
@@ -188,9 +204,10 @@ async setEligibility(
     @Param('id') id: string,
     @Query('hrId') hrId: string,
     @Query('decision') decision: 'approve' | 'reject',
-    
+    @Query('allowNegative') allowNegative?: string, // Boolean passed as string query
   ) {
-    return this.service.hrFinalize(id, hrId, decision);
+    const allow = allowNegative === 'true';
+    return this.service.hrFinalize(id, hrId, decision, allow);
   }
 
   // -------------------------
@@ -333,34 +350,34 @@ async setEligibility(
   // -------------------------
   // Accruals
   // -------------------------
-@Post('accruals/run')
-async runAccrual(
-  @Query('referenceDate') referenceDate?: string,
-  @Body()
-  body?: {
-    method?: AccrualMethod;
-    roundingRule?: RoundingRule;
-  },
-) {
-  const method = body?.method ?? AccrualMethod.MONTHLY;
-  const roundingRule = body?.roundingRule ?? RoundingRule.ROUND;
-  return this.service.runAccrual(referenceDate, method, roundingRule);
-}
+  @Post('accruals/run')
+  async runAccrual(
+    @Query('referenceDate') referenceDate?: string,
+    @Body()
+    body?: {
+      method?: AccrualMethod;
+      roundingRule?: RoundingRule;
+    },
+  ) {
+    const method = body?.method ?? AccrualMethod.MONTHLY;
+    const roundingRule = body?.roundingRule ?? RoundingRule.ROUND;
+    return this.service.runAccrual(referenceDate, method, roundingRule);
+  }
 
 
-@Post('accruals/carryforward')
-async carryForward(
-  @Query('referenceDate') referenceDate?: string,
-  @Body()
-  body?: {
-    capDays?: number;
-    expiryMonths?: number;
-  },
-) {
-  const capDays = body?.capDays;
-  const expiryMonths = body?.expiryMonths;
-  return this.service.carryForward(referenceDate, capDays, expiryMonths);
-}
+  @Post('accruals/carryforward')
+  async carryForward(
+    @Query('referenceDate') referenceDate?: string,
+    @Body()
+    body?: {
+      capDays?: number;
+      expiryMonths?: number;
+    },
+  ) {
+    const capDays = body?.capDays;
+    const expiryMonths = body?.expiryMonths;
+    return this.service.carryForward(referenceDate, capDays, expiryMonths);
+  }
 
 
   @Get('accruals/employee/:id/recalc')

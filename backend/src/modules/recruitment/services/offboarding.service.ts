@@ -24,12 +24,16 @@ import { TerminationInitiation } from '../enums/termination-initiation.enum';
 import { TerminationStatus } from '../enums/termination-status.enum';
 import { ApprovalStatus } from '../enums/approval-status.enum';
 
+// Shared Services
+import { SharedRecruitmentService } from '../../shared/shared-recruitment.service';
+
 @Injectable()
 export class OffboardingService {
     constructor(
         @InjectModel(TerminationRequest.name) private terminationRequestModel: Model<TerminationRequestDocument>,
         @InjectModel(ClearanceChecklist.name) private clearanceChecklistModel: Model<ClearanceChecklistDocument>,
         @InjectModel(Contract.name) private contractModel: Model<ContractDocument>,
+        private readonly sharedRecruitmentService: SharedRecruitmentService,
     ) {}
 
     private validateObjectId(id: string, fieldName: string): void {
@@ -45,9 +49,20 @@ export class OffboardingService {
         [TerminationStatus.REJECTED]: [],
     };
 
-    async createTerminationRequest(dto: CreateTerminationRequestDto): Promise<TerminationRequest> {
+    async createTerminationRequest(dto: CreateTerminationRequestDto): Promise<TerminationRequest & { performanceWarnings?: string[] }> {
         this.validateObjectId(dto.employeeId, 'employeeId');
         this.validateObjectId(dto.contractId, 'contractId');
+
+        const employee = await this.sharedRecruitmentService.validateEmployeeExists(dto.employeeId);
+
+        if (employee.status === 'TERMINATED') {
+            throw new BadRequestException('Cannot create termination request for already terminated employee');
+        }
+
+        const justification = await this.sharedRecruitmentService.validateTerminationJustification(
+            dto.employeeId,
+            dto.initiator
+        );
 
         const contract = await this.contractModel.findById(dto.contractId).exec();
         if (!contract) {
@@ -69,7 +84,7 @@ export class OffboardingService {
         }).exec();
 
         if (existingApprovedRequest) {
-            throw new ConflictException('employee already has an approved termination request');
+            throw new ConflictException('Employee already has an approved termination request');
         }
 
         if (dto.terminationDate) {
@@ -92,7 +107,20 @@ export class OffboardingService {
             contractId: new Types.ObjectId(dto.contractId),
         });
 
-        return terminationRequest.save();
+        const savedRequest = await terminationRequest.save();
+
+        const result: any = savedRequest.toObject();
+        if (justification.warnings.length > 0) {
+            result.performanceWarnings = justification.warnings;
+            result.performanceData = {
+                hasPublishedAppraisals: justification.performanceData.hasPublishedAppraisals,
+                totalAppraisals: justification.performanceData.totalAppraisals,
+                averageScore: justification.performanceData.averageScore,
+                lowScoreCount: justification.performanceData.lowScoreAppraisals.length,
+            };
+        }
+
+        return result;
     }
 
     async getAllTerminationRequests(
@@ -189,12 +217,30 @@ export class OffboardingService {
             request.hrComments = dto.hrComments;
         }
 
-        return request.save();
+        const savedRequest = await request.save();
+
+        if (dto.status === TerminationStatus.APPROVED) {
+            const employee = await this.sharedRecruitmentService.validateEmployeeExists(request.employeeId.toString());
+            await this.sharedRecruitmentService.notifyTerminationApproved({
+                employeeId: request.employeeId.toString(),
+                employeeName: employee.fullName || `${employee.firstName} ${employee.lastName}`,
+                terminationDate: request.terminationDate,
+                initiator: request.initiator,
+            });
+        }
+
+        return savedRequest;
     }
 
     async createResignationRequest(dto: CreateResignationRequestDto): Promise<TerminationRequest> {
         this.validateObjectId(dto.employeeId, 'employeeId');
         this.validateObjectId(dto.contractId, 'contractId');
+
+        const employee = await this.sharedRecruitmentService.validateEmployeeExists(dto.employeeId);
+
+        if (employee.status === 'TERMINATED') {
+            throw new BadRequestException('Cannot create resignation request for already terminated employee');
+        }
 
         const contract = await this.contractModel.findById(dto.contractId).exec();
         if (!contract) {
@@ -216,7 +262,7 @@ export class OffboardingService {
         }).exec();
 
         if (existingApprovedRequest) {
-            throw new ConflictException('employee already has an approved termination/resignation request');
+            throw new ConflictException('Employee already has an approved termination/resignation request');
         }
 
         if (dto.terminationDate) {
@@ -357,11 +403,15 @@ export class OffboardingService {
         const updated = await checklist.save();
 
         const allApproved = checklist.items.every(item => item.status === ApprovalStatus.APPROVED);
+        const allEquipmentReturned = checklist.equipmentList.every(item => item.returned);
 
-        // TODO: If all approved and all equipment returned, trigger final settlement notification
-        if (allApproved) {
-            // TODO: Notify HR that clearance is complete
-            // TODO: Enable final settlement processing
+        if (allApproved && allEquipmentReturned && checklist.cardReturned) {
+            const employee = await this.sharedRecruitmentService.validateEmployeeExists(termination.employeeId.toString());
+            await this.sharedRecruitmentService.notifyClearanceComplete({
+                employeeId: termination.employeeId.toString(),
+                employeeName: employee.fullName || `${employee.firstName} ${employee.lastName}`,
+                terminationId: termination._id.toString(),
+            });
         }
 
         return updated;
@@ -457,9 +507,8 @@ export class OffboardingService {
         message: string;
         revokedAt: Date;
     }> {
-        // TODO: Validate employee exists in employee Profile module
+        const employee = await this.sharedRecruitmentService.validateEmployeeExists(dto.employeeId);
 
-        // TODO: Verify termination request exists and is approved
         const terminationRequest = await this.terminationRequestModel
             .findOne({
                 employeeId: new Types.ObjectId(dto.employeeId),
@@ -473,14 +522,10 @@ export class OffboardingService {
             );
         }
 
-        // TODO: Integration with IT/Access Systems
-        // TODO: Disable SSO/email/tools access
-        // TODO: Revoke payroll system access
-        // TODO: Disable time management clock access
-        // TODO: Set employee profile status to INACTIVE
-
-        // TODO: Store access revocation log in audit trail
-        // TODO: Send notifications to IT/System Admin
+        await this.sharedRecruitmentService.deactivateEmployee(
+            dto.employeeId,
+            `Access revoked due to termination. Initiator: ${terminationRequest.initiator}`
+        );
 
         return {
             success: true,
@@ -524,21 +569,17 @@ export class OffboardingService {
             }
         }
 
-        // TODO: Integration with Leaves Module
-        // TODO: Fetch employee leave balance
-        // TODO: Calculate unused annual leave encashment
+        const employee = await this.sharedRecruitmentService.validateEmployeeExists(terminationRequest.employeeId.toString());
+        const employeeName = employee.fullName || `${employee.firstName} ${employee.lastName}`;
 
-        // TODO: Integration with employee Profile
-        // TODO: Fetch employee benefits information
+        // TODO: Integration with Leaves Module - Fetch employee leave balance and calculate unused annual leave encashment
+        // TODO: Integration with Payroll Module - Trigger final pay calculation entry (unused leave, deductions, loans, severance)
 
-        // TODO: Integration with Payroll Module
-        // TODO: Trigger service that fills collection relating user to benefit in payroll execution module
-        // TODO: Create final pay calculation entry (unused leave, deductions, loans, severance)
-        // TODO: Schedule benefits auto-termination as of end of notice period
-        // TODO: Process any signing bonus clawbacks if applicable
-
-        // TODO: Send notifications to Payroll department
-        // TODO: Send notifications to employee about final settlement timeline
+        await this.sharedRecruitmentService.notifyFinalSettlementTriggered({
+            employeeId: terminationRequest.employeeId.toString(),
+            employeeName,
+            terminationId: dto.terminationId,
+        });
 
         return {
             success: true,

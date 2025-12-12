@@ -26,6 +26,9 @@ import { RecruitmentService } from "./services/recruitment.service";
 import {OffboardingService} from "./services/offboarding.service";
 import {OnboardingService} from "./services/onboarding.service";
 
+// Shared Module
+import { SharedModule } from "../shared/shared.module";
+
 
 @Module({
     imports: [
@@ -45,6 +48,7 @@ import {OnboardingService} from "./services/onboarding.service";
             { name: Onboarding.name, schema: OnboardingSchema },
             { name: TerminationRequest.name, schema: TerminationRequestSchema },
         ]),
+        SharedModule,
     ],
     controllers: [RecruitmentController, OnboardingController, OffboardingController],
     providers: [RecruitmentService, OnboardingService, OffboardingService],

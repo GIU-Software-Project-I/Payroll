@@ -1,5 +1,105 @@
-### GET request to example server
-GET https://examples.http-client.intellij.net/get
-    ?generated-in=WebStorm
+### Create Leave Type
+POST http://localhost:4000/leaves/types
+Content-Type: application/json
 
-###
+{
+    "code": "TEST_TYPE",
+    "name": "Test Leave Type",
+    "categoryId": "693a800a7e07119e5fd6a9a5",
+    "paid": true,
+    "deductible": true,
+    "requiresAttachment": false
+}
+
+### Get All Leave Types
+GET http://localhost:4000/leaves/types
+
+### Update Leave Type
+PUT http://localhost:4000/leaves/types/693a800a7e07119e5fd6a9aa
+Content-Type: application/json
+
+{
+    "name": "Sick Leave - Updated",
+    "description": "Updated Description"
+}
+
+### Get Leave Type by ID
+GET http://localhost:4000/leaves/types/693a800a7e07119e5fd6a9aa
+
+### Delete Leave Type
+DELETE http://localhost:4000/leaves/types/693a800a7e07119e5fd6a9aa
+
+### Create Leave Category
+POST http://localhost:4000/leaves/categories
+Content-Type: application/json
+
+{
+    "name": "Test Category",
+    "description": "Category for testing"
+}
+
+### Get All Categories
+GET http://localhost:4000/leaves/categories
+
+### Create Leave Request (Pending)
+POST http://localhost:4000/leaves/requests
+Content-Type: application/json
+
+{
+    "employeeId": "693a7f807e07119e5fd6a992",
+    "leaveTypeId": "693a800a7e07119e5fd6a9aa",
+    "from": "2025-12-20",
+    "to": "2025-12-22",
+    "justification": "Feeling unwell"
+}
+
+### Get All Requests (Default)
+GET http://localhost:4000/leaves/requests
+
+### Get Requests (Paginated & Filtered)
+GET http://localhost:4000/leaves/requests?page=1&limit=5&status=pending&employeeId=693a7f807e07119e5fd6a992
+
+### Manager Approve Request
+PATCH http://localhost:4000/leaves/requests/REQUEST_ID/manager-approve?managerId=MANAGER_ID
+
+### HR Finalize Request (Approve)
+PATCH http://localhost:4000/leaves/requests/REQUEST_ID/hr-finalize?hrId=HR_ID&decision=approve&allowNegative=false
+
+### HR Finalize Request (Override Negative Balance)
+PATCH http://localhost:4000/leaves/requests/REQUEST_ID/hr-finalize?hrId=HR_ID&decision=approve&allowNegative=true
+
+### Cancel Request
+PATCH http://localhost:4000/leaves/requests/REQUEST_ID/cancel?employeeId=693a7f807e07119e5fd6a992
+
+### Attempt to Approve Cancelled Request (Should Fail)
+PATCH http://localhost:4000/leaves/requests/REQUEST_ID/hr-finalize?hrId=HR_ID&decision=approve
+
+### Assign Entitlement
+POST http://localhost:4000/leaves/entitlements/assign
+Content-Type: application/json
+
+{
+    "employeeId": "693a7f807e07119e5fd6a992",
+    "leaveTypeId": "693a800a7e07119e5fd6a9aa",
+    "yearlyEntitlement": 21
+}
+
+### Get Employee Balances
+GET http://localhost:4000/leaves/employees/693a7f807e07119e5fd6a992/balances
+
+### Run Accrual
+POST http://localhost:4000/leaves/accruals/run
+Content-Type: application/json
+
+{
+    "method": "monthly",
+    "roundingRule": "round"
+}
+
+### Reset Year
+POST http://localhost:4000/leaves/accruals/reset-year
+Content-Type: application/json
+
+{
+    "strategy": "calendarYear"
+}

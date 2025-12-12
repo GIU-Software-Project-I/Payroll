@@ -95,6 +95,19 @@ export class OnboardingController {
         return this.onboardingService.getContractDetails(contractId);
     }
 
+    @Post('contracts/:contractId/create-employee')
+    @ApiOperation({
+        summary: 'ONB-002: Create employee profile from signed contract',
+        description: 'HR Manager creates employee profile from signed contract details. BR 17(a, b): Extracts role, salary, benefits from contract.',
+    })
+    @ApiParam({ name: 'contractId', description: 'Contract ID' })
+    @ApiResponse({ status: 201, description: 'Employee profile created successfully with temporary password' })
+    @ApiResponse({ status: 404, description: 'Contract not found' })
+    @ApiResponse({ status: 400, description: 'Contract not fully signed or employee already exists' })
+    async createEmployeeFromContract(@Param('contractId') contractId: string) {
+        return this.onboardingService.createEmployeeFromContract(contractId);
+    }
+
     // ============================================================
     // ONB-004: View Onboarding Steps (Tracker)
     // ============================================================
