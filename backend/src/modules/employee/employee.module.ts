@@ -14,9 +14,9 @@ import {
 import {EmployeeProfileChangeRequest,
   EmployeeProfileChangeRequestSchema
 } from "./models/employee/ep-change-request.schema";
-import { OrganizationStructureModule } from './controllers/organization-structure.module';
+import { OrganizationStructureModule } from './organization-structure.module';
 import {EmployeeProfileController} from "./controllers/employee-profile.controller";
-import {EmployeeProfileService} from "./services/Employee-Profile.Service";
+import {EmployeeProfileService} from "./services/employee-profile.service";
 
 
 @Module({

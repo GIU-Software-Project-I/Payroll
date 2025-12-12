@@ -5,7 +5,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { PayrollConfigurationController } from './controllers/payroll-configuration.controller';
 import { PayrollConfigurationService } from './services/payroll-configuration.service';
 import { EmployeeModule } from '../../employee/employee.module';
-import { OrganizationStructureModule } from '../../employee/controllers/organization-structure.module';
+import { OrganizationStructureModule } from '../../employee/organization-structure.module';
 
 
 import { CompanyWideSettings, CompanyWideSettingsSchema } from './models/CompanyWideSettings.schema';

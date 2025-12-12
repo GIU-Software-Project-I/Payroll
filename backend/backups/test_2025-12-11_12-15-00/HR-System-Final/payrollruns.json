@@ -1,0 +1,238 @@
+{
+  "collection": "payrollruns",
+  "documents": [
+    {
+      "_id": {
+        "$oid": "693a80087e07119e5fd6a96b"
+      },
+      "runId": "PR-2025-11",
+      "payrollPeriod": {
+        "$date": {
+          "$numberLong": "1764460800000"
+        }
+      },
+      "status": "approved",
+      "entity": "Company ABC",
+      "employees": {
+        "$numberInt": "5"
+      },
+      "exceptions": {
+        "$numberInt": "0"
+      },
+      "totalnetpay": {
+        "$numberInt": "340000"
+      },
+      "payrollSpecialistId": {
+        "$oid": "693a80047e07119e5fd6a8da"
+      },
+      "paymentStatus": "paid",
+      "payrollManagerId": {
+        "$oid": "693a80047e07119e5fd6a8da"
+      },
+      "financeStaffId": {
+        "$oid": "693a80047e07119e5fd6a8da"
+      },
+      "managerApprovalDate": {
+        "$date": {
+          "$numberLong": "1764806400000"
+        }
+      },
+      "financeApprovalDate": {
+        "$date": {
+          "$numberLong": "1764892800000"
+        }
+      },
+      "__v": {
+        "$numberInt": "0"
+      },
+      "createdAt": {
+        "$date": {
+          "$numberLong": "1765441544248"
+        }
+      },
+      "updatedAt": {
+        "$date": {
+          "$numberLong": "1765441544248"
+        }
+      }
+    },
+    {
+      "_id": {
+        "$oid": "693a80087e07119e5fd6a96c"
+      },
+      "runId": "PR-2025-12",
+      "payrollPeriod": {
+        "$date": {
+          "$numberLong": "1767139200000"
+        }
+      },
+      "status": "draft",
+      "entity": "Company ABC",
+      "employees": {
+        "$numberInt": "5"
+      },
+      "exceptions": {
+        "$numberInt": "1"
+      },
+      "totalnetpay": {
+        "$numberInt": "0"
+      },
+      "payrollSpecialistId": {
+        "$oid": "693a80047e07119e5fd6a8da"
+      },
+      "paymentStatus": "pending",
+      "__v": {
+        "$numberInt": "0"
+      },
+      "createdAt": {
+        "$date": {
+          "$numberLong": "1765441544249"
+        }
+      },
+      "updatedAt": {
+        "$date": {
+          "$numberLong": "1765441544249"
+        }
+      }
+    },
+    {
+      "_id": {
+        "$oid": "693a80087e07119e5fd6a96d"
+      },
+      "runId": "PR-2025-10",
+      "payrollPeriod": {
+        "$date": {
+          "$numberLong": "1761868800000"
+        }
+      },
+      "status": "approved",
+      "entity": "Company ABC",
+      "employees": {
+        "$numberInt": "5"
+      },
+      "exceptions": {
+        "$numberInt": "0"
+      },
+      "totalnetpay": {
+        "$numberInt": "336000"
+      },
+      "payrollSpecialistId": {
+        "$oid": "693a80047e07119e5fd6a8da"
+      },
+      "paymentStatus": "paid",
+      "payrollManagerId": {
+        "$oid": "693a80047e07119e5fd6a8da"
+      },
+      "financeStaffId": {
+        "$oid": "693a80047e07119e5fd6a8da"
+      },
+      "managerApprovalDate": {
+        "$date": {
+          "$numberLong": "1762214400000"
+        }
+      },
+      "financeApprovalDate": {
+        "$date": {
+          "$numberLong": "1762300800000"
+        }
+      },
+      "__v": {
+        "$numberInt": "0"
+      },
+      "createdAt": {
+        "$date": {
+          "$numberLong": "1765441544249"
+        }
+      },
+      "updatedAt": {
+        "$date": {
+          "$numberLong": "1765441544249"
+        }
+      }
+    },
+    {
+      "_id": {
+        "$oid": "693a80087e07119e5fd6a96e"
+      },
+      "runId": "PR-2026-01",
+      "payrollPeriod": {
+        "$date": {
+          "$numberLong": "1769817600000"
+        }
+      },
+      "status": "draft",
+      "entity": "Company ABC",
+      "employees": {
+        "$numberInt": "5"
+      },
+      "exceptions": {
+        "$numberInt": "0"
+      },
+      "totalnetpay": {
+        "$numberInt": "0"
+      },
+      "payrollSpecialistId": {
+        "$oid": "693a80047e07119e5fd6a8da"
+      },
+      "paymentStatus": "pending",
+      "__v": {
+        "$numberInt": "0"
+      },
+      "createdAt": {
+        "$date": {
+          "$numberLong": "1765441544249"
+        }
+      },
+      "updatedAt": {
+        "$date": {
+          "$numberLong": "1765441544249"
+        }
+      }
+    },
+    {
+      "_id": {
+        "$oid": "693a80087e07119e5fd6a96f"
+      },
+      "runId": "PR-2025-09",
+      "payrollPeriod": {
+        "$date": {
+          "$numberLong": "1759190400000"
+        }
+      },
+      "status": "locked",
+      "entity": "Company ABC",
+      "employees": {
+        "$numberInt": "5"
+      },
+      "exceptions": {
+        "$numberInt": "0"
+      },
+      "totalnetpay": {
+        "$numberInt": "332000"
+      },
+      "payrollSpecialistId": {
+        "$oid": "693a80047e07119e5fd6a8da"
+      },
+      "paymentStatus": "paid",
+      "payrollManagerId": {
+        "$oid": "693a80047e07119e5fd6a8da"
+      },
+      "financeStaffId": {
+        "$oid": "693a80047e07119e5fd6a8da"
+      },
+      "__v": {
+        "$numberInt": "0"
+      },
+      "createdAt": {
+        "$date": {
+          "$numberLong": "1765441544249"
+        }
+      },
+      "updatedAt": {
+        "$date": {
+          "$numberLong": "1765441544249"
+        }
+      }
+    }
+  ]
+}

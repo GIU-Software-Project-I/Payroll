@@ -1,0 +1,910 @@
+Employee:
+
+
+Requirement Name	User Stories Needed (IDs/titles)	Inputs Needed from Other Sub‑Systems	Downstream Sub‑Systems Depending on This Output	Key BRs (IDs)
+1. Employee Self-Service (View, Photo Update, Request Correction)
+
+"US-E2-04: As an employee, I want to view my full employee profile.
+US-E2-05: As an employee, I want to update my contact information (e.g., phone number, address).
+US-E2-12: As an employee, I want to add a short biography and upload a profile picture.
+US-E6-02: As an employee, I want to request corrections of data (e.g., job title or department)."
+
+"Performance Module: Appraisal history (Date, Type, Score).
+
+Organizational Structure: Employee’s assigned Position and Department."	Organizational Structure: If a correction request involves Position/Department, it might trigger an update/review in the Org Structure module. HR Admin/Manager
+
+Roles: All requests (US-E6-02, US-E2-06) feed directly into the HR Manager/Admin’s approval queue.
+
+"BR 2g, 2n, 2o (Address, Phone, Email requirement).
+BR 3h (Education Details storage requirement).
+BR 16 (Appraisal records saved on profile).
+BR 20a (Only authorized roles can modify data)."
+
+
+2. Department Manager View (Insight & Brief of Team)
+
+"US-E4-01: As a manager, I want to view my team members’ profiles (excluding sensitive info).
+US-E4-02: As a manager, I want to see a summary of my team’s job titles, and departments.
+US-E6-03: As an HR Admin, I want to be able to search for employees data."
+
+Organizational Structure: Defines the direct supervisor/reporting line by position, which determines the team (direct reports) shown in this view.
+
+Performance Module: Manager’s review of employee profile data supports initiating performance reviews or setting objectives. 	"BR 3d, 3e (Department/Supervisor links required).
+
+BR 10c (Pay Grade/Band definition).
+BR 18b (Privacy restrictions applied for Line Managers on sensitive data).
+BR 41b (Direct Managers see their team only)."
+
+
+3. HR Manager/System Admin (Master Data Management & Approval)
+
+"US-EP-04: As an HR admin, I want to edit any part of an employee’s profile.
+US-E2-03: As an HR admin, I want to review and approve employee-submitted profile changes before applying them.
+US-EP-05: As an HR admin, I want to deactivate an employee’s profile upon termination or resignation.
+US-E7-05: As an HR admin, I want to assign roles and access permissions to each employee."
+
+"Onboarding Module: Triggers the creation of the employee profile upon contract signing, setting initial Name, ID, DOB, Date of Hire, and Contract Type.
+Leaves Module / Offboarding Module: Actions (Resignation/Termination) automatically set the Current Status field (Active, Suspended, Retired, etc.)."
+
+Payroll & Benefits Module: Updates to Pay Grade, Contract Type, or Status (Active/Suspended/Terminated) directly impact payroll calculations and payment blocking.
+Time Management Module: Status updates (e.g., On Leave, Suspended) must sync to time tracking.
+
+"BR 20a (Only authorized roles can create/modify data).
+BR 3j (Employee status definition for system access control).
+BR 3b, 3f, 3g (Date of Hire, Contract Type requirements).
+BR 22 (Trace all editing, changes, and cancellations in a timestamped and trailed manner)."
+
+
+Action	Actor	Action/Process	Supporting User Stories (US) and Rules (BR)	Outputs & Data Flow
+
+
+
+1. View Personal Profile (Self-Service)
+
+
+Employee
+
+Secure access, authentication, and retrieval of PII (personally identifiable information), employment details (Position, Department, Pay Grade, Appraisals History)	"US-E2-04: As an employee, I want to view my full employee profile.
+
+
+BR 2a-r: System must record specific personal and job data.
+NFR-14: All users shall authenticate via secure login and role-based access control."
+
+Outputs: Display of Employee Profile data (Name, ID, Status, Pay Grade, etc.).
+
+Data Flow: Retrieves Appraisal history from the Performance module.
+
+
+2. Update Self-Service Data (Immediate Update)
+
+Department Employee
+
+Direct modification and saving of non-critical data points (Profile Picture, Phone, Email, Address).
+
+"US-E2-12: As an employee, I want to upload a profile picture.
+US-E2-05: As an employee, I want to update my contact information (e.g., phone number, address).
+
+BR 2n, 2o, 2g: Requirements for Phone, Email, and Address data."
+
+Output: Update Employee Profile Master Data. Data Flow: Triggers Notification N-037 (Profile updated) to employee & HR. All actions traced per BR 22.
+
+
+3. Submit Request for Correction/Change
+
+Department Employee
+
+Submission of formal request to modify critical, HR-governed data (e.g., Name, National ID, Position, Marital Status).
+
+"US-E6-02: As an employee, I want to request corrections of data (e.g., job title or department).
+US-E2-06: As an employee, I want to submit requests to change legal name or marital status.
+
+BR 20a: Only authorized roles can create and/or modify profile data."
+
+Output: Creation of a Pending Change Request record.
+Data Flow: Notification N-040 (Profile change request submitted) sent to HR/Manager.
+
+
+
+4. View Team Brief (Manager Insight)
+
+Department Manager
+
+Secure access to team list, displaying non-sensitive, summarized profile data filtered by direct reporting line hierarchy.
+
+"US-E4-01: As a manager, I want to view my team members’ profiles (excluding sensitive info).
+US-E4-02: As a manager, I want to see a summary of my team’s job titles, and departments.
+
+BR 41b: Direct Managers see their team only.
+BR 18b: Privacy restrictions should be applied for Department Managers on sensitive data."
+
+Output: Display of summarized team list (Name, Position, Department, Date of Hire, Status).
+
+Data Flow: Retrieves team structure from Organizational Structure Module.
+
+
+5. Review and Process Change Request
+
+HR Manager, HR Admin
+
+Review pending change request, validate compliance, and either approve (apply changes to master record) or reject.
+
+"US-E2-03: As an HR admin, I want to review and approve employee-submitted profile changes before applying them.
+US-E7-04: As a system admin, I want to configure workflow rules.
+
+BR 36: All changes must be made via workflow approval.
+BR 22: Traces any editing, changes, and cancellations in a timestamped and trailed manner."
+
+Output: If Approved: Update Employee Profile Master Data. If change affects hierarchy (Position/Department), trigger update/request in Organizational Structure Module (Dependency 13).
+If Rejected: Status of request updated to "Rejected."
+
+Data Flow: Notification N-037 (Profile updated/rejected) sent to employee.
+
+
+6. Master Data Edit/Management
+
+HR Manager, HR Admin
+
+Direct access to edit/modify any employee profile field (PII, Pay Grade, Status, Hire Date) and configure system rules.
+
+"US-EP-04: As an HR admin, I want to edit any part of an employee’s profile.
+US-E7-05: As an HR admin, I want to assign roles and access permissions.
+
+BR 3j: Employee status (Active, On Leave, Suspended, Retired) controls system access.
+BR 20a: Only authorized roles can create and/or modify profile data."
+
+Output: Direct update to Employee Profile Master Data.
+
+Data Flow: If Status changes (e.g., Terminated/Suspended), automatic synchronization (BR 20, BR 17) triggers updates to Payroll (to block payment) and Time Management. If Pay Grade changes, automatically updates salary/payroll module (Dependency 40).
+
+
+
+
+Organizational Structure:
+
+Organization Structure Module
+
+Description: This module defines how the company is organized. It allows the System Administrator to
+create departments and positions, update them when changes happen, and deactivate positions that are
+no longer needed while keeping their history. Managers can request changes to reporting lines or positions,
+and these requests go through an approval process to keep the structure accurate and logical. Role-based
+views allow employees and managers to see the org chart appropriately. Changes automatically update
+dependent modules (e.g., Payroll, Recruitment, Employee Profiles) to keep data consistent.
+
+
+Organization Structure Flow
+
+The Organizational Structure Management (OSM) Module governs how departments, positions,
+and hierarchical structures are created, updated, and maintained across the HR system. This ensures that
+the organizational framework remains accurate and aligned with operational and administrative needs,
+serving as a foundation for recruitment, payroll, and performance processes.
+
+Phase 1: Structure Definition The process begins when the System Administrator defines and
+creates new organizational entities such as departments or positions. These additions accommodate new
+roles within the company hierarchy. Each position is linked to a department and assigned its relevant
+attributes including identification codes, reporting lines, and pay grades. Once created, the position
+becomes available for recruitment and integration into downstream HR functions.
+
+Phase 2: Structural Maintenance When modifications are needed, the System Administrator
+performs direct updates or maintenance of existing departments and positions. This may include renaming, reassigning, or updating attributes such as reporting structures or pay grades. Structural changes
+are applied immediately across the system to maintain data consistency between the organizational structure and dependent subsystems.
+
+Phase 3: Deactivation and Synchronization When a position or department becomes obsolete,
+the System Administrator deactivates it from the active structure. Positions with historical employee
+records are not deleted but are delimited—meaning they are closed as of a certain date—to preserve
+organizational history. These updates ensure the system retains full historical accuracy while keeping the
+active organizational chart current and synchronized across all modules.
+
+
+
+Requirement Name	User Stories Needed (IDs/titles)	Inputs Needed from Other Sub‑Systems	Downstream Sub‑Systems Depending on This Output	Key BRs (IDs)
+Structure Creation & Update
+
+REQ-OSM-01: As a System Admin, I want to define and create departments, and positions. 	"
+
+Payroll/Benefits (To define and validate Pay Grades/Pay Scales for positions).
+Employee Profile (EP) (For linking positions to the Employee No./Person who fills them)."
+
+"Employee Profile (EP) (Receives structural changes like position/reporting line updates).
+Payroll & Benefits (Receives Cost Center and Wage Type linkage for calculation)."
+
+"BR 5 (Unique ID for entities).
+BR 10 (Position must have Job Key, Pay Grade, Dept ID).
+BR 30 (Creation requires Cost Center and Reporting Manager)."
+
+
+Structure Creation & Update 	REQ-OSM-02: As a System Admin, I want to update existing departments, and positions.
+Structure Deactivation
+REQ-OSM-05: As a System Admin, I want to deactivate or remove obsolete roles or positions, so that the organizational structure stays clean and up-to-date.
+
+None (Action is on internal OS data)
+
+"Recruitment (Vacant/Frozen positions flagged for posting status).
+Offboarding (Position is delimited upon exit)."
+
+"BR 12 (Positions cannot be deleted if historical employee assignments exist; they can only be delimited).
+BR 16 (Position status includes Frozen/Inactive). BR 37 (Historical records must be preserved using delimiting)."
+
+Hierarchy Change Notification
+
+REQ-OSM-11: As a System Admin, I want the system to notify managers and relevant stakeholders when a structural change occurs or is approved according to hierarchy.
+
+None (Uses internal OS approval data)
+
+None
+
+BR 22 (Changes must retain version history and audit logs with timestamp and user ID).
+
+
+Structure Access & Visibility
+
+"REQ-SANV-01: As an Employee, I want to view the organizational hierarchy.
+REQ-SANV-02: As a Manager, I want to view my team’s structure and reporting lines. "
+
+Employee Profile (EP) (Provides the individual's data—the "Person" who fills the position—to display alongside the position).
+
+None
+
+BR 24 (Organizational structure must be viewable as a graphical chart).
+BR 41 (Access must be role-based, where Direct Managers see their team only and Employees see their own structure).
+
+
+Receive a Request for a new Position in the Department
+
+"REQ-OSM-03: As a Manager, I want to submit requests for changes to the team assignments, so that team structures reflect actual work relationships
+
+REQ-OSM-04: As a System Admin, I want to review and approve manager requests for changes, so that modifications to the hierarchy are controlled and consistent"
+
+"Employee Profile (EP) data, as changes to reporting line or position updates sometimes originate from profile updates or require fetching current employee details
+Organizational Structure (OS) current position details and reporting lines, which the manager intends to modify"
+
+"Organizational Structure (OS): The request is saved in the pending approval queue, triggering.
+Notifications (N): An alert is sent to the System Admin (or relevant approver) that a ""Change request submitted"
+
+
+"BR 36: All changes must be made via workflow approval
+REQ-OSM-09: The process enforces validation rules to prevent circular reporting lines, duplicate positions, or mismatched department assignments"
+
+
+
+
+Action	Actor	Action/Process	Supporting User Stories (US) and Rules (BR)	Outputs & Data Flow
+1: Define and Create Department or Position (Structural Request)
+
+System Admin
+
+Defines and creates the organizational entities (department, position) to structurally accommodate the new role within the hierarchy.
+
+REQ-OSM-01; BR 10 (Position must have Position ID, Pay Grade, Dept ID);
+
+"Vacant Position created in Organizational Structure (OS).
+
+Position automatically flagged as vacant for recruitment. "
+
+
+2.Edit a Position
+
+System Admin
+Direct Update/Maintenance: The System Admin can directly update existing departments and positions.
+The System Admin can also receive a notification from a Head of Department requesting a change.
+
+REQ-OSM-02: As a System Admin, I want to update existing departments, and positions.
+
+System Synchronization: Approved structural changes are immediately applied to the hierarchy in Organizational Structure (OS).
+
+
+3. Deactivate A Position
+
+System Admin
+
+"The System Admin may also deactivate or remove obsolete positions (REQ-OSM-05), although positions with historical assignments can only be ""delimited"" rather than deleted outright (BR 12, BR 37)"
+
+REQ-OSM-05, (BR 12, BR 37)
+
+System Synchronization: Approved structural changes are immediately applied to the hierarchy in Organizational Structure (OS).
+
+
+
+Performance Module
+
+Description: This module is designed to manage the complete employee appraisal (evaluation) cycle in
+a structured, transparent, and automated way. Its main aim is to help HR teams, Department managers,
+and employees participate in fair and consistent performance evaluations that follow standardized rules
+and processes.
+
+Requirements, Dependencies, and Business Rules
+
+Performance Flow
+
+The Performance Appraisal Management Module manages the complete lifecycle of employee
+evaluations, ensuring a structured, fair, and transparent appraisal process. It integrates multiple stages
+from template creation to final archivingâwhile supporting collaboration between HR, managers, and
+employees.
+
+Phase 1: Planning and Setup The process begins when the HR Manager defines standardized
+appraisal templates. These templates establish the rating scales, evaluation criteria, and appraisal types
+(such as annual or probationary), which are then assigned to specific departments or organizational
+units. After the templates are finalized, the HR Manager or HR Employee sets up the appraisal
+cycle, defining its duration, start and end dates, and assigning the appropriate templates to relevant
+managers. The organizational structure data determines reviewer hierarchies and reporting lines for each
+employee.
+
+Phase 2: Evaluation and Review During the active appraisal cycle, each Department Manager
+evaluates assigned employees using the approved templates. The manager provides performance ratings,
+qualitative comments, and development recommendations. Attendance and punctuality information from
+the Time Management module may also inform the assessment. Throughout this phase, the HR Manager
+monitors progress through a centralized dashboard, ensuring timely completion of appraisals. Once all
+evaluations are finalized, HR publishes the official results to employees.
+
+Phase 3: Feedback and Acknowledgment Following publication, the Employee reviews their appraisal results, including performance ratings, comments, and development notes. The system automatically saves the complete appraisal record within the employee profile, maintaining a historical record of
+performance outcomes for future reference and analytics.
+
+Phase 4: Dispute and Resolution After receiving results, employees are granted a defined period to
+raise objections or appeal their evaluations. If a dispute is submitted, it is routed to the HR Manager
+for review. The HR Manager may either uphold the original assessment or adjust the final rating based
+on the justification provided. Once resolved, the decision is logged and the finalized rating updated in
+the system.
+
+
+Phase 5: Closure and Archiving When all evaluations and disputes are complete, the system automatically archives the finalized appraisal data. Historical appraisal records become accessible for reference, reporting, and performance trend analysis. This ensures long-term data integrity and supports
+evidence-based HR decision-making across appraisal cycles.
+
+
+
+ORIGINAL TABLE:
+
+
+Requirement Name
+User Stories Needed (IDs/titles)
+Inputs Needed from Other Sub‑Systems
+Downstream Sub‑Systems Depending on This Output
+Key BRs (IDs)
+
+STEP:
+Actor:
+Action/Process:
+Supporting User Stories (US) and Rules (BR):
+Outputs & Data Flow:
+
+Step 1: Template Definition (HR Manager)
+
+
+REQ-PP-01: As an HR Manager, I want to configure standardized appraisal templates and rating scales so that evaluations are consistent and fair.
+
+None
+
+None
+
+BR 14, 20
+
+
+
+
+
+Step 2: Cycle Creation (HR Employee)
+
+REQ-PP-02: As an HR Manager, I want to define and schedule appraisal cycles (annual, semi-annual, probationary) so that the process runs automatically and on time.
+
+Employee Profile (EP) (Probation dates, contract start/end dates for assignment); Organizational Structure (OS) (Job classifications and grade levels)
+
+Notifications (System triggers alerts for cycle dates)
+
+BR 1, 10, 11
+
+
+
+
+Step 3A: Assignment & Manager Access (HR Employee & Line Manager)
+
+REQ-PP-05: As an HR Employee, I want to assign appraisal forms and templates to employees and managers in bulk so that setup is efficient.
+
+Employee Profile (EP) (Employee list, Status); Organizational Structure (OS) (Reviewer chain, reporting lines)
+
+Notifications (Assignment alerts)
+
+BR 22, 37(a)
+
+
+REQ-PP-13: As a Line manager, I want to be able to view assigned appraisal forms to be able to effectively put goals that match it.
+
+Performance Management (PM) (Assigned appraisal forms)
+
+None
+
+
+BR 41(d)
+
+
+
+Step 3B: Manager Fills Form
+
+
+REQ-AE-03: As a Line Manager, I want to access and complete structured appraisal ratings for my direct reports so performance is evaluated consistently.
+Time Management (TM) (Attendance and punctuality data)
+PM (Manager ratings and scores)
+	BR 7(a), 8, 14, 21
+
+
+REQ-AE-04: As a Line Manager, I want to add comments, examples and development recommendations to each rating so feedback is contextual and actionable.	None
+none
+None
+BR 26, 33(d)
+
+
+Step 4: HR Monitors Progress & Publishes
+
+
+REQ-AE-10: As an HR Manager, I want a consolidated dashboard that tracks appraisal completion across departments and teams so I can quickly spot and act on department-level progress gaps.
+Organizational Structure (OS) (Departmental grouping)
+None
+
+BR 11, 46
+
+
+
+REQ-AE-06: As an HR Employee, I want to monitor appraisal progress and send reminders for pending forms so the cycle completes on time.
+None
+Notifications (Reminder alerts)
+BR 23, 36(b)
+
+
+Step 5: Employee Receives Rating & Profile Update
+
+REQ-OD-01: As an Employee, I want to view final ratings, feedback, and development notes so I understand my performance and next steps.
+Performance Management (PM) (Finalized appraisal record)
+None
+BR 6, 27(a), 28
+
+
+(Supporting Rule for profile update: Employee Appraisals are saved on the profile, where information like appraisal date, method, rating scale and score are recorded.)
+PM (Finalized appraisal record)
+
+Employee Profile (EP) (Record final score/rating)
+BR 6
+
+
+
+Step 6: Employee Objects
+
+REQ-AE-07: As an Employee or HR Employee, I want to flag or raise a concern about a rating during the cycle so disputes can be recorded and handled timely.
+
+None
+
+PM (Dispute log)
+
+BR 31, 32
+
+
+
+Step 7: HR Manager Resolves Objection
+
+REQ-OD-07: As an HR Manager, I want to resolve disputes between employees and managers about ratings so that the appraisal process remains fair and transparent.
+Performance Management (PM) (Dispute log)
+Notifications (Dispute resolution)
+BR 31, 32
+
+ 
+
+
+
+
+FORMAT:
+
+
+STEP:
+Actor:
+Action/Process:
+Supporting User Stories (US) and Rules (BR):
+Outputs & Data Flow:
+
+
+---
+
+1: Template Definition
+
+HR Manager
+
+Configures the standardized appraisal template, defining the rating scales, name, type, and assigning it to organizational units/departments.
+
+US: REQ-PP-01: Configure standardized appraisal templates and rating scales.
+
+Standardized templates are created and saved for re-use.
+
+
+
+
+2: Cycle Creation & Setup
+
+HR Employee / HR Manager
+Defines and schedules the appraisal cycle (Name, Start Date, End Date) and subsequently assigns appraisal forms and templates to the relevant employees and managers (e.g., Line Manager) in bulk for efficiency.
+
+US: REQ-PP-02: Define and schedule appraisal cycles (used for defining dates/scope).<br>US: REQ-PP-05: Assign appraisal forms and templates to employees and managers in bulk.<br>Input: Organizational Structure (OS) is needed for reviewer chain/reporting lines.
+Cycle and template assignments are generated; notifications are sent to the assigned managers.
+
+
+
+3: Manager Evaluation
+
+Line Manager aka Head of Department
+Views the assigned appraisal forms
+(REQ-PP-13) and accesses the system to complete structured appraisal ratings for their direct reports. The manager adds comments, examples, and development recommendations to provide contextual feedback (REQ-AE-04).	US: REQ-AE-03: Access and complete structured appraisal ratings for my direct reports.<br>US: REQ-AE-04: Add comments, examples and development recommendations.<br>Input: Time Management (TM) data (attendance and punctuality) may inform ratings.	M
+
+Manager ratings and scores are recorded in the Performance Management (PM) module.
+
+
+
+
+4: HR Monitoring & Publication
+
+HR Employee / HR Manager
+
+The HR Manager tracks appraisal completion via a consolidated dashboard (REQ-AE-10) and the HR Employee monitors progress (REQ-AE-06). Once the department manager completes the forms, the HR Employee takes the step to publish the final rating to all department employees.	US: REQ-AE-10: Consolidated dashboard that tracks appraisal completion.<br>US: REQ-AE-06: Monitor appraisal progress and send reminders.
+
+Finalized appraisal record is created; employee receives notification (N-022).
+
+
+
+
+5: Employee Receipt & Profile Update
+
+Employee
+
+Employee views the final ratings, feedback, and development notes
+
+ (REQ-OD-01). The system automatically saves the appraisal details (date, method, rating scale, and score) onto the employee's permanent profile data.	US: REQ-OD-01: View final ratings, feedback, and development notes.<br>BR 6: Employee Appraisals are saved on the profile, where information like appraisal date, method, rating scale and score are recorded.
+
+Final score/rating is recorded in the Employee Profile (EP) module.
+
+
+6: Objection Window (Decision Point)
+
+Employee
+
+The employee may use the 7-day window to flag or raise a concern about the rating
+
+(REQ-AE-07) to record a dispute.	US: REQ-AE-07: Flag or raise a concern about a rating during the cycle.<br>BR 31: Employees have the right to file a formal appeal within a pre-set time window after receiving an appraisal’s outcome.
+
+Dispute record is created in the PM module. If no objection is filed, the process proceeds to End (Final Log). If an objection is filed, the process proceeds to Step 7.
+
+
+7: HR Manager Dispute Resolution
+
+HR Manager
+
+The HR Manager resolves the dispute
+
+(REQ-OD-07).<br> A) Deny Objection: The original rating is finalized and locked on the profile.<br>B) Approve & Change: The rating is adjusted, and the new score is reflected on the profile.	US: REQ-OD-07: Resolve disputes between employees and managers about ratings.<br>BR 32: Appeals must be reviewed by HR... and outcomes must be logged in the system.
+
+Final rating (original or changed) is officially logged in the PM module, updating the EP module accordingly.
+
+
+8. End: Final Log
+
+System
+
+Finalized appraisal record is archived and made available for historical trend analysis and outcome reports.
+
+US: REQ-OD-08: Access past appraisal history and multi-cycle trend views.<br>US: REQ-OD-06: Generate and export outcome reports.
+
+Final historical record saved and archived.
+
+
+
+Time management:
+
+
+
+
+Recruitment:
+
+Recruitment Process	Job Design & Posting	REC-003	"As an HR Manager, I want to define standardized job description templates, so that postings are consistent.
+
+
+Each job requisition must include Job details (title, department, location, openings) and Qualifications and skills needed."	Organizational Structure (OS) (Jobs/Positions)	Recruitment (Job Posting)	BR 2	Each job requisition must include Job details (title, department, location, openings) and Qualifications and skills needed.
+
+
+Recruitment Process	Candidate Tracking & Eval.	REC-010	As a HR Employee, I want to schedule and manage interview invitations, so that candidates are engaged efficiently.	Time Management (TM), Email/Calendar systems	Notifications (N)	BR 19(a, c, d)	Recruiters must be able to schedule interviews by selecting time slots, panel members, and modes. Interviewers must receive automatic calendar invites, and candidates must be notified automatically.
+
+
+
+Recruitment Process	Candidate Tracking & Eval.	REC-021	As a HR Employee, I want to coordinate interview panels (members, availability, scoring), so scheduling and feedback collection are centralized.	Calendar/Time Management (Availability)	Recruitment (Interview Scheduling/Feedback)	BR 19(a, b), BR 20	Interview scheduling requires selecting panel members. Panels need to possess the knowledge and/or training to conduct the needed interviews/selection tests.
+
+
+
+Recruitment Process	Offers & Hiring Decisions	REC-018	As a HR Employee/HR Manager, I want to generate, send and collect electronically signed offer letters, so candidates can accept offers quickly and legally.	Offer template, Candidate signature data	Onboarding	BR 26(a, d), BR 37	The system supports issuing an offer letter which needs to be customizable and editable (e.g., include compensation/benefits). Communication logs must be stored.
+
+
+Recruitment Process	Offers & Hiring Decisions	REC-029	As a HR Employee, I want to trigger pre-boarding tasks (contract signing, forms) after offer acceptance and before the start date, so new hire readiness is improved.	Offer Acceptance Status	Onboarding Module (Task Checklist)	BR 26(c)	Once a candidate’s acceptance is received, the next module (Onboarding) should be triggered.
+
+
+
+Onboarding:
+
+Requirement Name: Setup & Task Management
+
+User Stories Needed (IDs/titles): ONB-002 As an HR Manager, I want to be able to access signed contract detail to be able create an employee profile.
+
+Inputs Needed from Other Sub‑Systems: Recruitment (Signed Offer Letter/Contract)	Employee Profile (EP)	BR 17(a, b)
+
+Downstream Sub‑Systems Depending on This Output: Employee Profile (EP)
+
+Key BRs (IDs): BR 17(a, b)
+
+
+
+Requirement Name:  Setup & Task Management
+
+User Stories Needed (IDs/titles): ONB-004 As a New Hire, I want to view my onboarding steps in a tracker, so that I know what to complete next.
+
+Inputs Needed from Other Sub‑Systems: None (Onboarding Checklist Data)
+
+Downstream Sub‑Systems Depending on This Output:  Notifications (N)
+
+Key BRs (IDs): BR 11(a, b)	The orientation program must include an onboarding workflow and support department-specific tasks and training plans.
+
+
+
+Requirement Name: Setup & Task Management
+
+User Stories Needed (IDs/titles): ONB-005	As a New Hire, I want to receive reminders and notifications, so that I don’t miss important onboarding tasks.
+
+Inputs Needed from Other Sub‑Systems: Notifications Module (N)
+
+Downstream Sub‑Systems Depending on This Output: None
+
+Key BRs (IDs): BR 12	The system must support sending reminders and task assignments to responsible parties, and track delivery and status accordingly.
+
+
+
+
+
+Requirement Name: Document Mgmt & Compliance
+
+User Stories Needed (IDs/titles): ONB-007	As a New Hire, I want to upload documents (e.g., ID, contracts, certifications), so that compliance is ensured.
+
+Inputs Needed from Other Sub‑Systems: None (New Hire Input)
+
+Downstream Sub‑Systems Depending on This Output: Employee Profile (EP)
+
+Key BRs (IDs): BR 7	Documents must be collected and verified by the HR department before the first working day.
+
+
+
+
+
+
+Access, Resources & Provisioning
+Payroll & Benefits Initiation	ONB-018	As a HR Manager, I want the system to automatically handle payroll initiation based on the contract signing day for the current payroll cycle.	Recruitment (Contract Signing Date)	Payroll Module (PY)	BR 9(a)	Auto onboarding tasks are generated for HR (payroll & benefits’ creation). This relates to the Payroll requirement REQ-PY-23 to automatically process payroll initiation.
+
+
+
+
+Requirement Name: Access, Resources & Provisioning
+
+User Stories Needed (IDs/titles): ONB-009As a System Admin, I want to provision system access (payroll, email, internal systems), so that the employee can work.
+
+Inputs Needed from Other Sub‑Systems: Employee Profile (New Hire Record)
+
+Downstream Sub‑Systems Depending on This Output: Notifications (N) to IT/Access Systems, Payroll
+
+Key BRs (IDs): BR 9(b)	Auto onboarding tasks are generated for IT (allocation of email, laptop, system access).
+
+
+
+
+Requirement Name: Access, Resources & Provisioning
+
+User Stories Needed (IDs/titles): ONB-012 As a HR Employee, I want to reserve and track equipment, desk and access cards for new hires, so resources are ready on Day 1.
+
+Inputs Needed from Other Sub‑Systems: None
+
+Downstream Sub‑Systems Depending on This Output: Notifications (N) to Facilities/Admin Systems
+
+Key BRs (IDs): BR 9(c)	Auto onboarding tasks are generated for Admin (allocation and assignment of workspace, ID badge).
+
+
+
+
+Requirement Name: Access, Resources & Provisioning
+
+User Stories Needed (IDs/titles): ONB-013As a HR Manager, I want automated account provisioning (SSO/email/tools) on start date and scheduled revocation on exit, so access is consistent and secure.	System Admin Configuration	IT/Access Systems, Offboarding	BR 9(b), 20	IT (allocation of email, laptop, system access) is an automated task. The system should allow onboarding cancellation/termination of the created employee profile in case of a "no show".
+
+Inputs Needed from Other Sub‑Systems: System Admin Configuration
+
+Downstream Sub‑Systems Depending on This Output: IT/Access Systems, Offboarding
+
+Key BRs (IDs): BR 9(b),  IT (allocation of email, laptop, system access) is an automated task.
+
+ BR20, The system should allow onboarding cancellation/termination of the created employee profile in case of a "no show".
+
+
+
+
+
+
+
+
+Requirement Name:Payroll & Benefits Initiation
+
+User Stories Needed (IDs/titles): ONB-018 As a HR Manager, I want the system to automatically handle payroll initiation based on the contract signing day for the current payroll cycle.
+
+Inputs Needed from Other Sub‑Systems: Recruitment (Contract Signing Date)
+
+Downstream Sub‑Systems Depending on This Output: Payroll Module (PY)
+
+Key BRs (IDs): BR 9(a)	Auto onboarding tasks are generated for HR (payroll & benefits’ creation). This relates to the Payroll requirement REQ-PY-23 to automatically process payroll initiation.
+
+
+
+
+
+Requirement Name: Payroll & Benefits Initiation
+
+User Stories Needed (IDs/titles):ONB-019 As a HR Manager, I want the system to automatically process signing bonuses based on contract after a new hire is signed.	Recruitment (Contract Details)	Payroll Module (PY)	BR 9(a)	This relates to the Payroll requirement REQ-PY-27 to automatically process signing bonuses
+
+Inputs Needed from Other Sub‑Systems: Recruitment (Contract Details)
+
+Downstream Sub‑Systems Depending on This Output: Payroll Module (PY)
+
+Key BRs (IDs): BR 9(a)	This relates to the Payroll requirement REQ-PY-27 to automatically process signing bonuses
+
+
+
+
+Offboarding:
+
+Requirement Name: Termination & Resignation Initiation
+
+User Stories Needed (IDs/titles): OFF-001 As an HR Manager, I want to initiate termination reviews based on warnings and performance data / manager requests, so that exits are justified.
+
+Inputs Needed from Other Sub‑Systems: Performance Management (PM) (Warnings/Low Scores)
+
+Downstream Sub‑Systems Depending on This Output: Offboarding Approval Workflow
+
+
+Key BRs (IDs): BR 4	Employee separation needs an effective date and a clearly stated and identified reason for exit. Termination reviews based on performance must follow due process.
+
+
+Requirement Name: Clearance, Handover & Access Revocation
+
+User Stories Needed (IDs/titles): OFF-007 As a System Admin, I want to revoke system and account access upon termination, so security is maintained.
+
+
+Inputs Needed from Other Sub‑Systems: Employee Profile (Inactive Status)	Notifications (N) IT/Access Systems	BR 3(c), 19
+
+
+Downstream Sub‑Systems Depending on This Output: Notifications (N) IT/Access Systems
+
+Key BRs (IDs): BR 3(c), 19
+
+
+
+
+Requirement Name: Clearance, Handover & Access Revocation
+
+User Stories Needed (IDs/titles): OFF-010, As HR Manager, I want multi-department exit clearance sign-offs (IT, Finance, Facilities, Line Manager), with statuses, so the employee is fully cleared..
+
+Inputs Needed from Other Sub‑Systems: Clearance Status Updates (from Depts)
+
+Downstream Sub‑Systems Depending on This Output: Payroll (Final Settlement)
+
+Key BRs (IDs): BR 13(b, c), Clearance checklist required across departments (IT, HR, Admin, Finance).
+
+
+14 Final approvals/signature form should be filed to HR to complete the offboarding process.
+
+
+
+
+
+
+
+
+
+
+
+Requirement Name: Exit Settlements & Benefits
+
+User Stories Needed (IDs/titles): OFF-013, As HR Manager, I want to send offboarding notification to trigger benefits termination and final pay calc (unused leave, deductions), so settlements are accurate.
+
+Inputs Needed from Other Sub‑Systems:  	Leaves Module (Balance), Employee Profile (Benefits)
+
+Downstream Sub‑Systems Depending on This Output: Payroll Module (PY)
+
+Key BRs (IDs): BR 9, 11	Leaves’ Balance must be reviewed and settled (unused annuals to be encashed). Benefits plans are set to be auto-terminated as of the end of the notice period.
+
+
+
+
+
+Requirement Name: Termination & Resignation Initiation
+
+User Stories Needed (IDs/titles): FF-018, OFF-019 As an Employee, I want to be able to request a Resignation request with reasoning. As an Employee, I want to be able to track my resignation request status.
+
+
+Inputs Needed from Other Sub‑Systems: Employee Profile (Resignation Reason)
+
+Downstream Sub‑Systems Depending on This Output: Offboarding Approval Workflow
+
+Key BRs (IDs): BR 6	Employee separation can be triggered by resignation. A clearly identified offboarding approval workflow should be identified (e.g., Employee resigning > Line Manager > Financial approval > HR processing/approval).
+
+
+
+
+
+Payroll Tracking:
+
+View my base salary according to my employment contract (full-time, part-time.)
+
+REQ-PY-3
+
+Employee Profile (Contract/Job info)
+
+N/A
+
+BR 2
+
+
+
+View compensation for unused leave days
+
+REQ-PY-5
+
+Leaves (Encashment calculation)
+
+N/A
+
+N/A
+
+
+
+
+View any salary deductions due to misconduct or unapproved absenteeism (missing days)
+
+REQ-PY-10
+
+Time Management (Absenteeism records)
+
+N/A
+
+N/A
+
+
+View deductions for unpaid leave day
+
+REQ-PY-11
+
+Leaves (Unpaid leave status)
+
+N/A
+
+BR 11
+
+
+
+2. Operational Reports	Payroll specialist generate payroll reports by department
+
+REQ-PY-38
+
+Organizational Structure (Cost Center/Entity)
+
+N/A
+
+BR 23
+
+
+
+REQ-PY-3	As an Employee, I want to see my base salary according to my employment contract (full-time, part-time, temporary, etc.), so that I know my standard monthly earnings.
+REQ-PY-5	As an Employee, I want to see compensation for unused or encashed leave days, so that I understand how my remaining leave converts into pay.
+REQ-PY-10	As an Employee, I want to see any salary deductions due to misconduct or unapproved absenteeism, so that I know why part of my salary was reduced.
+REQ-PY-11	As an Employee, I want to see deductions for unpaid leave days, so that I understand how my time off affects my salary.
+REQ-PY-38	As a Payroll Specialist, I want to generate payroll reports by department, so that I can analyze salary distribution and ensure budget alignment.
+
+BR ID	BR Description
+
+2	The system must calculate base salary according to contract terms and role type.
+5	The system must identify the payroll income taxes’ brackets enforced through Local Tax Law.
+6	The system must support multiple tax components (e.g. income tax, exemption
+11	The system must deduct pay for unpaid leave days based on daily/hourly salary calculations.
+17	An auto-generated Payslip should be available through the system with a clear breakdown of components.
+23	The system must support issuing reports about standard payroll summary, tax reports, and pay slip history.
+

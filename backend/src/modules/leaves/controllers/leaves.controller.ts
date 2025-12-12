@@ -227,7 +227,7 @@ async setEligibility(
   }
 
   // -------------------------
-  // Employee Self-Service Views
+  // employee Self-Service Views
   // -------------------------
   @Get('employees/:employeeId/balances')
   async getEmployeeBalances(@Param('employeeId') employeeId: string) {

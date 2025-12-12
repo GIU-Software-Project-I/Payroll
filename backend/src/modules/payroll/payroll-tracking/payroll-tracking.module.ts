@@ -12,7 +12,7 @@ import {paySlip, paySlipSchema} from "../payroll-execution/models/payslip.schema
 import {PayrollConfigurationModule} from "../payroll-configuration/payroll-configuration.module";
 import {EmployeeModule} from "../../employee/employee.module";
 import {EmployeeProfile, EmployeeProfileSchema} from "../../employee/models/employee/employee-profile.schema";
-// import payroll-execution module & schemas
+// import payroll-execution requirements module & schemas
 
 
 @Module({

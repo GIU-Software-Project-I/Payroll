@@ -1,0 +1,185 @@
+{
+  "collection": "leaveentitlements",
+  "documents": [
+    {
+      "_id": {
+        "$oid": "693a800a7e07119e5fd6a9b4"
+      },
+      "employeeId": {
+        "$oid": "693a80047e07119e5fd6a8d9"
+      },
+      "leaveTypeId": {
+        "$oid": "693a800a7e07119e5fd6a9a9"
+      },
+      "yearlyEntitlement": {
+        "$numberInt": "20"
+      },
+      "accruedActual": {
+        "$numberDouble": "18.5"
+      },
+      "accruedRounded": {
+        "$numberInt": "19"
+      },
+      "carryForward": {
+        "$numberInt": "3"
+      },
+      "taken": {
+        "$numberInt": "5"
+      },
+      "pending": {
+        "$numberInt": "2"
+      },
+      "remaining": {
+        "$numberInt": "15"
+      },
+      "__v": {
+        "$numberInt": "0"
+      },
+      "createdAt": {
+        "$date": {
+          "$numberLong": "1765441546650"
+        }
+      },
+      "updatedAt": {
+        "$date": {
+          "$numberLong": "1765441546650"
+        }
+      }
+    },
+    {
+      "_id": {
+        "$oid": "693a800a7e07119e5fd6a9b5"
+      },
+      "employeeId": {
+        "$oid": "693a80047e07119e5fd6a8da"
+      },
+      "leaveTypeId": {
+        "$oid": "693a800a7e07119e5fd6a9a9"
+      },
+      "yearlyEntitlement": {
+        "$numberInt": "20"
+      },
+      "accruedActual": {
+        "$numberInt": "20"
+      },
+      "accruedRounded": {
+        "$numberInt": "20"
+      },
+      "carryForward": {
+        "$numberInt": "5"
+      },
+      "taken": {
+        "$numberInt": "8"
+      },
+      "pending": {
+        "$numberInt": "0"
+      },
+      "remaining": {
+        "$numberInt": "17"
+      },
+      "__v": {
+        "$numberInt": "0"
+      },
+      "createdAt": {
+        "$date": {
+          "$numberLong": "1765441546650"
+        }
+      },
+      "updatedAt": {
+        "$date": {
+          "$numberLong": "1765441546650"
+        }
+      }
+    },
+    {
+      "_id": {
+        "$oid": "693a800a7e07119e5fd6a9b6"
+      },
+      "employeeId": {
+        "$oid": "693a80047e07119e5fd6a8db"
+      },
+      "leaveTypeId": {
+        "$oid": "693a800a7e07119e5fd6a9aa"
+      },
+      "yearlyEntitlement": {
+        "$numberInt": "10"
+      },
+      "accruedActual": {
+        "$numberInt": "10"
+      },
+      "accruedRounded": {
+        "$numberInt": "10"
+      },
+      "carryForward": {
+        "$numberInt": "0"
+      },
+      "taken": {
+        "$numberInt": "2"
+      },
+      "pending": {
+        "$numberInt": "1"
+      },
+      "remaining": {
+        "$numberInt": "7"
+      },
+      "__v": {
+        "$numberInt": "0"
+      },
+      "createdAt": {
+        "$date": {
+          "$numberLong": "1765441546650"
+        }
+      },
+      "updatedAt": {
+        "$date": {
+          "$numberLong": "1765441546650"
+        }
+      }
+    },
+    {
+      "_id": {
+        "$oid": "693a800a7e07119e5fd6a9b7"
+      },
+      "employeeId": {
+        "$oid": "693a80047e07119e5fd6a8d9"
+      },
+      "leaveTypeId": {
+        "$oid": "693a800a7e07119e5fd6a9aa"
+      },
+      "yearlyEntitlement": {
+        "$numberInt": "10"
+      },
+      "accruedActual": {
+        "$numberInt": "10"
+      },
+      "accruedRounded": {
+        "$numberInt": "10"
+      },
+      "carryForward": {
+        "$numberInt": "0"
+      },
+      "taken": {
+        "$numberInt": "3"
+      },
+      "pending": {
+        "$numberInt": "0"
+      },
+      "remaining": {
+        "$numberInt": "7"
+      },
+      "__v": {
+        "$numberInt": "0"
+      },
+      "createdAt": {
+        "$date": {
+          "$numberLong": "1765441546650"
+        }
+      },
+      "updatedAt": {
+        "$date": {
+          "$numberLong": "1765441546650"
+        }
+      }
+    }
+  ]
+}

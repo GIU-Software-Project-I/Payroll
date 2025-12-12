@@ -216,7 +216,7 @@
 //                 { upsert: true }
 //             );
 //
-//             this.logger.debug(`Synced to payroll: Employee ${record.employeeId}, Date ${date.toISOString()}`);
+//             this.logger.debug(`Synced to payroll: employee ${record.employeeId}, Date ${date.toISOString()}`);
 //
 //             return { success: true, errors: [] };
 //         } catch (error) {
@@ -247,12 +247,12 @@
 //             });
 //
 //             if (leaveRecord) {
-//                 // Employee has approved leave on this date
+//                 // employee has approved leave on this date
 //                 const workMinutes = record.totalWorkMinutes || 0;
 //
 //                 if (workMinutes > 0) {
-//                     // Employee worked on a leave day - mark as conflict
-//                     this.logger.warn(`Conflict detected: Employee ${record.employeeId} has approved leave but also attendance on ${date.toISOString()}`);
+//                     // employee worked on a leave day - mark as conflict
+//                     this.logger.warn(`Conflict detected: employee ${record.employeeId} has approved leave but also attendance on ${date.toISOString()}`);
 //
 //                     // Create conflict record
 //                     const conflictCollection = this.connection.db!.collection('attendanceleavesyncconflicts');
@@ -270,7 +270,7 @@
 //                         resolution: null,
 //                     });
 //
-//                     errors.push(`Leave conflict: Employee has approved leave but recorded attendance`);
+//                     errors.push(`Leave conflict: employee has approved leave but recorded attendance`);
 //                 }
 //
 //                 // Update leave balance if this was a partial attendance
@@ -327,7 +327,7 @@
 //                 }
 //             }
 //
-//             this.logger.debug(`Synced to leave system: Employee ${record.employeeId}, Date ${date.toISOString()}`);
+//             this.logger.debug(`Synced to leave system: employee ${record.employeeId}, Date ${date.toISOString()}`);
 //
 //             return { success: true, errors };
 //         } catch (error) {
@@ -426,7 +426,7 @@
 //                     {
 //                         $set: {
 //                             status: 'CANCELLED',
-//                             cancellationReason: 'Employee was present - attendance takes precedence',
+//                             cancellationReason: 'employee was present - attendance takes precedence',
 //                             cancelledBy: resolution.resolvedBy,
 //                             cancelledAt: new Date(),
 //                         }
@@ -441,7 +441,7 @@
 //                     {
 //                         $set: {
 //                             invalidated: true,
-//                             invalidationReason: 'Employee on approved leave',
+//                             invalidationReason: 'employee on approved leave',
 //                             invalidatedBy: resolution.resolvedBy,
 //                             invalidatedAt: new Date(),
 //                         }

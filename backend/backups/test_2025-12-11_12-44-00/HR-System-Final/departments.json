@@ -1,0 +1,115 @@
+{
+  "collection": "departments",
+  "documents": [
+    {
+      "_id": {
+        "$oid": "693a80037e07119e5fd6a888"
+      },
+      "code": "IT",
+      "name": "Information Technology",
+      "description": "Manages all IT infrastructure and software development",
+      "isActive": true,
+      "__v": {
+        "$numberInt": "0"
+      },
+      "createdAt": {
+        "$date": {
+          "$numberLong": "1765441539099"
+        }
+      },
+      "updatedAt": {
+        "$date": {
+          "$numberLong": "1765441539099"
+        }
+      }
+    },
+    {
+      "_id": {
+        "$oid": "693a80037e07119e5fd6a889"
+      },
+      "code": "HR",
+      "name": "Human Resources",
+      "description": "Handles recruitment, employee relations, and benefits",
+      "isActive": true,
+      "__v": {
+        "$numberInt": "0"
+      },
+      "createdAt": {
+        "$date": {
+          "$numberLong": "1765441539102"
+        }
+      },
+      "updatedAt": {
+        "$date": {
+          "$numberLong": "1765441539102"
+        }
+      }
+    },
+    {
+      "_id": {
+        "$oid": "693a80037e07119e5fd6a88a"
+      },
+      "code": "FIN",
+      "name": "Finance",
+      "description": "Manages financial operations and accounting",
+      "isActive": true,
+      "__v": {
+        "$numberInt": "0"
+      },
+      "createdAt": {
+        "$date": {
+          "$numberLong": "1765441539102"
+        }
+      },
+      "updatedAt": {
+        "$date": {
+          "$numberLong": "1765441539102"
+        }
+      }
+    },
+    {
+      "_id": {
+        "$oid": "693a80037e07119e5fd6a88b"
+      },
+      "code": "MKT",
+      "name": "Marketing",
+      "description": "Handles marketing strategies and campaigns",
+      "isActive": true,
+      "__v": {
+        "$numberInt": "0"
+      },
+      "createdAt": {
+        "$date": {
+          "$numberLong": "1765441539102"
+        }
+      },
+      "updatedAt": {
+        "$date": {
+          "$numberLong": "1765441539102"
+        }
+      }
+    },
+    {
+      "_id": {
+        "$oid": "693a80037e07119e5fd6a88c"
+      },
+      "code": "OPS",
+      "name": "Operations",
+      "description": "Manages day-to-day business operations",
+      "isActive": true,
+      "__v": {
+        "$numberInt": "0"
+      },
+      "createdAt": {
+        "$date": {
+          "$numberLong": "1765441539103"
+        }
+      },
+      "updatedAt": {
+        "$date": {
+          "$numberLong": "1765441539103"
+        }
+      }
+    }
+  ]
+}

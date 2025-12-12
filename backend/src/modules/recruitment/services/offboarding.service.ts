@@ -69,7 +69,7 @@ export class OffboardingService {
         }).exec();
 
         if (existingApprovedRequest) {
-            throw new ConflictException('Employee already has an approved termination request');
+            throw new ConflictException('employee already has an approved termination request');
         }
 
         if (dto.terminationDate) {
@@ -216,7 +216,7 @@ export class OffboardingService {
         }).exec();
 
         if (existingApprovedRequest) {
-            throw new ConflictException('Employee already has an approved termination/resignation request');
+            throw new ConflictException('employee already has an approved termination/resignation request');
         }
 
         if (dto.terminationDate) {

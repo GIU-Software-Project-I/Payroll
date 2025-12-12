@@ -1236,7 +1236,7 @@ export class PayrollConfigurationService {
 // } from '@nestjs/common';
 // import { InjectModel } from '@nestjs/mongoose';
 // import { Model, Types } from 'mongoose';
-// import { ConfigStatus } from '../enums/payroll-configuration-enums';
+// import { ConfigStatus } from '../enums/payroll-configuration-requirements-enums';
 // import { allowance } from '../models/allowance.schema';
 // import { payType } from '../models/payType.schema';
 // import { payGrade } from '../models/payGrades.schema';
@@ -1256,7 +1256,7 @@ export class PayrollConfigurationService {
 // import { UpdatePayrollPolicyDto } from '../dto/update-payrollpolicy.dto';
 // import { UpdateSigningBonusDto } from '../dto/update-signingbonus.dto';
 // import { UpdateTerminationBenefitDto } from '../dto/update-terminationbenefit.dto';
-// import { OrganizationStructureService } from '../../../employee/Services/Organization-Structure.Service';
+// import { OrganizationStructureService } from '../../../employee/Services/organization-structure.Service';
 // import {ApproveTaxRuleDto} from "../dto/approve-tax-rule.dto";
 // import {CreateInsuranceDto} from "../dto/create-insurance.dto";
 // import {UpdateInsuranceDto} from "../dto/update-insurance.dto";
@@ -1516,7 +1516,7 @@ export class PayrollConfigurationService {
 //     /**
 //      * Create pay grades from organizational structure job grades/bands
 //      * Requirement: REQ-PY-2 - Inputs Needed: Organizational Structure → Job Grades/Bands
-//      * @param createdByEmployeeId - Employee ID creating the pay grades
+//      * @param createdByEmployeeId - employee ID creating the pay grades
 //      * @param jobGradeIds - Optional array of job grade IDs to create pay grades for. If not provided, creates for all active job grades.
 //      * @returns Array of created pay grades
 //      */
@@ -1525,7 +1525,7 @@ export class PayrollConfigurationService {
 //         jobGradeIds?: string[],
 //     ) {
 //         // TODO: Implement findJobGradeById and getAllJobGrades methods in OrganizationStructureService
-//         // These methods need to be added to: backend/src/modules/employee/Services/Organization-Structure.Service.ts
+//         // These methods need to be added to: backend/src/modules/employee/Services/organization-structure.service.ts
 //         //
 //         // Expected interface:
 //         // - findJobGradeById(id: string): Promise<{ name: string; baseSalary?: number; minSalary?: number; maxSalary?: number; isActive: boolean } | null>

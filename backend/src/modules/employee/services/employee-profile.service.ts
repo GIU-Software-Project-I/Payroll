@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { EmployeeProfile, EmployeeProfileDocument } from '../models/employee/employee-profile.schema';
@@ -9,9 +9,8 @@ import { UpdateBioDto } from '../dto/employee-profile/update-bio.dto';
 import { CreateCorrectionRequestDto } from '../dto/employee-profile/create-correction-request.dto';
 import { AdminUpdateProfileDto } from '../dto/employee-profile/admin-update-profile.dto';
 import { AdminAssignRoleDto } from '../dto/employee-profile/admin-assign-role.dto';
+import { SearchEmployeesDto, PaginatedResult, PaginationQueryDto } from '../dto/employee-profile/search-employees.dto';
 import { EmployeeStatus, ProfileChangeStatus } from '../enums/employee-profile.enums';
-
-
 
 @Injectable()
 export class EmployeeProfileService {
@@ -22,10 +21,52 @@ export class EmployeeProfileService {
         private changeRequestModel: Model<EmployeeProfileChangeRequestDocument>,
         @InjectModel(EmployeeSystemRole.name)
         private systemRoleModel: Model<EmployeeSystemRoleDocument>,
-    ) { }
+    ) {}
 
+    private validateObjectId(id: string, fieldName: string): void {
+        if (!Types.ObjectId.isValid(id)) {
+            throw new BadRequestException(`Invalid ${fieldName} format: ${id}`);
+        }
+    }
+
+    private createPaginatedResponse<T>(
+        data: T[],
+        total: number,
+        page: number,
+        limit: number
+    ): PaginatedResult<T> {
+        const totalPages = Math.ceil(total / limit);
+        return {
+            data,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages,
+                hasNextPage: page < totalPages,
+                hasPrevPage: page > 1,
+            },
+        };
+    }
+
+    private readonly validStatusTransitions: Record<EmployeeStatus, EmployeeStatus[]> = {
+        [EmployeeStatus.PROBATION]: [EmployeeStatus.ACTIVE, EmployeeStatus.TERMINATED],
+        [EmployeeStatus.ACTIVE]: [EmployeeStatus.ON_LEAVE, EmployeeStatus.SUSPENDED, EmployeeStatus.INACTIVE, EmployeeStatus.RETIRED, EmployeeStatus.TERMINATED],
+        [EmployeeStatus.ON_LEAVE]: [EmployeeStatus.ACTIVE, EmployeeStatus.TERMINATED],
+        [EmployeeStatus.SUSPENDED]: [EmployeeStatus.ACTIVE, EmployeeStatus.TERMINATED],
+        [EmployeeStatus.INACTIVE]: [EmployeeStatus.ACTIVE, EmployeeStatus.TERMINATED],
+        [EmployeeStatus.RETIRED]: [EmployeeStatus.TERMINATED],
+        [EmployeeStatus.TERMINATED]: [],
+    };
+
+    private isValidStatusTransition(currentStatus: EmployeeStatus, newStatus: EmployeeStatus): boolean {
+        if (currentStatus === newStatus) return true;
+        return this.validStatusTransitions[currentStatus]?.includes(newStatus) ?? false;
+    }
 
     async getProfile(userId: string): Promise<EmployeeProfile> {
+        this.validateObjectId(userId, 'userId');
+
         const profile = await this.employeeProfileModel.findById(userId)
             .populate('primaryPositionId')
             .populate('primaryDepartmentId')
@@ -36,53 +77,80 @@ export class EmployeeProfileService {
             .populate('accessProfileId');
 
         if (!profile) {
-            throw new NotFoundException('employee profile not found');
+            throw new NotFoundException('Employee profile not found');
         }
         return profile;
     }
 
-
     async updateContactInfo(userId: string, dto: UpdateContactInfoDto): Promise<EmployeeProfile> {
+        this.validateObjectId(userId, 'userId');
+
         const profile = await this.employeeProfileModel.findById(userId);
         if (!profile) {
-            throw new NotFoundException('employee profile not found');
+            throw new NotFoundException('Employee profile not found');
         }
 
-        if (dto.mobilePhone) profile.mobilePhone = dto.mobilePhone;
-        if (dto.homePhone) profile.homePhone = dto.homePhone;
-        if (dto.personalEmail) profile.personalEmail = dto.personalEmail;
+        if (profile.status === EmployeeStatus.TERMINATED) {
+            throw new BadRequestException('Cannot update contact info for terminated employee');
+        }
+
+        if (dto.mobilePhone !== undefined) profile.mobilePhone = dto.mobilePhone;
+        if (dto.homePhone !== undefined) profile.homePhone = dto.homePhone;
+        if (dto.personalEmail !== undefined) profile.personalEmail = dto.personalEmail;
         if (dto.address) {
             profile.address = { ...profile.address, ...dto.address };
         }
 
-        // TODO: Trigger N-037 (Profile updated) notification
+        // TODO: Trigger N-037 notification (use NotificationService from time-management module)
 
         return profile.save();
     }
 
-
     async updateBio(userId: string, dto: UpdateBioDto): Promise<EmployeeProfile> {
+        this.validateObjectId(userId, 'userId');
+
         const profile = await this.employeeProfileModel.findById(userId);
         if (!profile) {
-            throw new NotFoundException('employee profile not found');
+            throw new NotFoundException('Employee profile not found');
+        }
+
+        if (profile.status === EmployeeStatus.TERMINATED) {
+            throw new BadRequestException('Cannot update bio for terminated employee');
         }
 
         if (dto.biography !== undefined) profile.biography = dto.biography;
         if (dto.profilePictureUrl !== undefined) profile.profilePictureUrl = dto.profilePictureUrl;
 
-        // TODO: Trigger N-037 (Profile updated) notification
+        // TODO: Trigger N-037 notification (use NotificationService from time-management module)
 
         return profile.save();
     }
 
     async createCorrectionRequest(userId: string, dto: CreateCorrectionRequestDto): Promise<EmployeeProfileChangeRequest> {
+        this.validateObjectId(userId, 'userId');
+
         const profile = await this.employeeProfileModel.findById(userId);
         if (!profile) {
-            throw new NotFoundException('employee profile not found');
+            throw new NotFoundException('Employee profile not found');
+        }
+
+        if (profile.status === EmployeeStatus.TERMINATED) {
+            throw new BadRequestException('Terminated employees cannot submit correction requests');
+        }
+
+        const existingPendingRequest = await this.changeRequestModel.findOne({
+            employeeProfileId: new Types.ObjectId(userId),
+            status: ProfileChangeStatus.PENDING,
+        });
+
+        if (existingPendingRequest) {
+            throw new ConflictException(
+                'You already have a pending correction request. Please wait for it to be processed or cancel it before submitting a new one.'
+            );
         }
 
         const request = new this.changeRequestModel({
-            requestId: `REQ-${Date.now()}`,
+            requestId: `REQ-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
             employeeProfileId: new Types.ObjectId(userId),
             requestDescription: dto.requestDescription,
             reason: dto.reason,
@@ -90,69 +158,204 @@ export class EmployeeProfileService {
             submittedAt: new Date(),
         });
 
-        // TODO: Trigger N-040 (Profile change request submitted) notification to HR/Manager
+        // TODO: Trigger N-040 notification (use NotificationService from time-management module)
 
         return request.save();
     }
 
+    async getMyChangeRequests(
+        userId: string,
+        queryDto: PaginationQueryDto
+    ): Promise<PaginatedResult<EmployeeProfileChangeRequest>> {
+        this.validateObjectId(userId, 'userId');
+
+        const { page = 1, limit = 20 } = queryDto;
+        const skip = (page - 1) * limit;
+
+        const filter = { employeeProfileId: new Types.ObjectId(userId) };
+
+        const [data, total] = await Promise.all([
+            this.changeRequestModel
+                .find(filter)
+                .sort({ submittedAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .exec(),
+            this.changeRequestModel.countDocuments(filter).exec(),
+        ]);
+
+        return this.createPaginatedResponse(data, total, page, limit);
+    }
+
+    async cancelMyChangeRequest(userId: string, requestId: string): Promise<EmployeeProfileChangeRequest> {
+        this.validateObjectId(userId, 'userId');
+
+        const request = await this.changeRequestModel.findOne({ requestId });
+
+        if (!request) {
+            throw new NotFoundException('Change request not found');
+        }
+
+        if (request.employeeProfileId.toString() !== userId) {
+            throw new BadRequestException('You can only cancel your own change requests');
+        }
+
+        if (request.status !== ProfileChangeStatus.PENDING) {
+            throw new BadRequestException(
+                `Cannot cancel a request with status ${request.status}. Only PENDING requests can be canceled.`
+            );
+        }
+
+        request.status = ProfileChangeStatus.CANCELED;
+        request.processedAt = new Date();
+
+        return request.save();
+    }
 
     async getTeamProfiles(managerId: string): Promise<EmployeeProfile[]> {
+        this.validateObjectId(managerId, 'managerId');
+
         const managerProfile = await this.employeeProfileModel.findById(managerId);
-        if (!managerProfile || !managerProfile.primaryPositionId) {
+        if (!managerProfile) {
+            throw new NotFoundException('Manager profile not found');
+        }
+
+        if (!managerProfile.primaryPositionId) {
             return [];
         }
 
-        const team = await this.employeeProfileModel.find({
+        return this.employeeProfileModel.find({
             supervisorPositionId: managerProfile.primaryPositionId,
-            status: EmployeeStatus.ACTIVE
+            status: { $ne: EmployeeStatus.TERMINATED },
         })
-            // Exclude sensitive info per BR 18b: payGrade, homePhone, personalEmail, address
-            .select('firstName lastName fullName primaryPositionId primaryDepartmentId workEmail mobilePhone status dateOfHire')
+            .select('firstName lastName fullName employeeNumber primaryPositionId primaryDepartmentId workEmail mobilePhone status dateOfHire profilePictureUrl')
             .populate('primaryPositionId', 'title')
             .populate('primaryDepartmentId', 'name');
-
-        return team;
     }
 
+    async getTeamProfilesPaginated(
+        managerId: string,
+        queryDto: PaginationQueryDto
+    ): Promise<PaginatedResult<EmployeeProfile>> {
+        this.validateObjectId(managerId, 'managerId');
+
+        const { page = 1, limit = 20 } = queryDto;
+        const skip = (page - 1) * limit;
+
+        const managerProfile = await this.employeeProfileModel.findById(managerId);
+        if (!managerProfile) {
+            throw new NotFoundException('Manager profile not found');
+        }
+
+        if (!managerProfile.primaryPositionId) {
+            return this.createPaginatedResponse([], 0, page, limit);
+        }
+
+        const filter = {
+            supervisorPositionId: managerProfile.primaryPositionId,
+            status: { $ne: EmployeeStatus.TERMINATED },
+        };
+
+        const [data, total] = await Promise.all([
+            this.employeeProfileModel.find(filter)
+                .select('firstName lastName fullName employeeNumber primaryPositionId primaryDepartmentId workEmail mobilePhone status dateOfHire profilePictureUrl')
+                .populate('primaryPositionId', 'title')
+                .populate('primaryDepartmentId', 'name')
+                .skip(skip)
+                .limit(limit)
+                .exec(),
+            this.employeeProfileModel.countDocuments(filter).exec(),
+        ]);
+
+        return this.createPaginatedResponse(data, total, page, limit);
+    }
 
     async searchEmployees(
-        query: string,
-        filters?: {
-            status?: EmployeeStatus;
-            departmentId?: string;
-            positionId?: string;
-        }
-    ): Promise<EmployeeProfile[]> {
-        const searchFilter: any = {
-            $or: [
+        queryDto: SearchEmployeesDto
+    ): Promise<PaginatedResult<EmployeeProfile>> {
+        const { query, status, departmentId, positionId, page = 1, limit = 20 } = queryDto;
+        const skip = (page - 1) * limit;
+
+        const searchFilter: any = {};
+
+        if (query && query.trim()) {
+            searchFilter.$or = [
                 { firstName: { $regex: query, $options: 'i' } },
                 { lastName: { $regex: query, $options: 'i' } },
                 { fullName: { $regex: query, $options: 'i' } },
                 { workEmail: { $regex: query, $options: 'i' } },
                 { employeeNumber: { $regex: query, $options: 'i' } },
                 { nationalId: { $regex: query, $options: 'i' } },
-            ]
-        };
-
-        if (filters?.status) {
-            searchFilter.status = filters.status;
-        }
-        if (filters?.departmentId) {
-            searchFilter.primaryDepartmentId = new Types.ObjectId(filters.departmentId);
-        }
-        if (filters?.positionId) {
-            searchFilter.primaryPositionId = new Types.ObjectId(filters.positionId);
+            ];
         }
 
-        return this.employeeProfileModel.find(searchFilter)
-            .populate('primaryPositionId', 'title')
-            .populate('primaryDepartmentId', 'name')
-            .select('firstName lastName fullName employeeNumber workEmail primaryPositionId primaryDepartmentId status dateOfHire')
-            .lean()
-            .exec();
+        if (status) {
+            searchFilter.status = status;
+        }
+        if (departmentId) {
+            this.validateObjectId(departmentId, 'departmentId');
+            searchFilter.primaryDepartmentId = new Types.ObjectId(departmentId);
+        }
+        if (positionId) {
+            this.validateObjectId(positionId, 'positionId');
+            searchFilter.primaryPositionId = new Types.ObjectId(positionId);
+        }
+
+        const [data, total] = await Promise.all([
+            this.employeeProfileModel.find(searchFilter)
+                .populate('primaryPositionId', 'title')
+                .populate('primaryDepartmentId', 'name')
+                .select('firstName lastName fullName employeeNumber workEmail primaryPositionId primaryDepartmentId status dateOfHire')
+                .sort({ lastName: 1, firstName: 1 })
+                .skip(skip)
+                .limit(limit)
+                .lean()
+                .exec(),
+            this.employeeProfileModel.countDocuments(searchFilter).exec(),
+        ]);
+
+        return this.createPaginatedResponse(data, total, page, limit);
+    }
+
+    async getAllEmployees(
+        queryDto: SearchEmployeesDto
+    ): Promise<PaginatedResult<EmployeeProfile>> {
+        const { status, departmentId, positionId, page = 1, limit = 20 } = queryDto;
+        const skip = (page - 1) * limit;
+
+        const filter: any = {};
+
+        if (status) {
+            filter.status = status;
+        }
+        if (departmentId) {
+            this.validateObjectId(departmentId, 'departmentId');
+            filter.primaryDepartmentId = new Types.ObjectId(departmentId);
+        }
+        if (positionId) {
+            this.validateObjectId(positionId, 'positionId');
+            filter.primaryPositionId = new Types.ObjectId(positionId);
+        }
+
+        const [data, total] = await Promise.all([
+            this.employeeProfileModel.find(filter)
+                .populate('primaryPositionId', 'title')
+                .populate('primaryDepartmentId', 'name')
+                .select('firstName lastName fullName employeeNumber workEmail primaryPositionId primaryDepartmentId status dateOfHire contractType workType')
+                .sort({ lastName: 1, firstName: 1 })
+                .skip(skip)
+                .limit(limit)
+                .lean()
+                .exec(),
+            this.employeeProfileModel.countDocuments(filter).exec(),
+        ]);
+
+        return this.createPaginatedResponse(data, total, page, limit);
     }
 
     async adminGetProfile(id: string): Promise<EmployeeProfile> {
+        this.validateObjectId(id, 'id');
+
         const profile = await this.employeeProfileModel.findById(id)
             .populate('primaryPositionId')
             .populate('primaryDepartmentId')
@@ -163,105 +366,161 @@ export class EmployeeProfileService {
             .populate('accessProfileId');
 
         if (!profile) {
-            throw new NotFoundException('employee profile not found');
+            throw new NotFoundException('Employee profile not found');
         }
         return profile;
     }
 
-    async adminUpdateProfile(id: string, dto: AdminUpdateProfileDto, userId?: string): Promise<EmployeeProfile> {
+    async adminUpdateProfile(id: string, dto: AdminUpdateProfileDto, adminUserId?: string): Promise<EmployeeProfile> {
+        this.validateObjectId(id, 'id');
+
         const profile = await this.employeeProfileModel.findById(id);
         if (!profile) {
-            throw new NotFoundException('employee profile not found');
+            throw new NotFoundException('Employee profile not found');
         }
 
-        // Update Position
-        if (dto.primaryPositionId && dto.primaryPositionId !== profile.primaryPositionId?.toString()) {
+        const oldStatus = profile.status;
+
+        if (dto.status && dto.status !== profile.status) {
+            if (!this.isValidStatusTransition(profile.status, dto.status)) {
+                throw new BadRequestException(
+                    `Invalid status transition from ${profile.status} to ${dto.status}. ` +
+                    (profile.status === EmployeeStatus.TERMINATED
+                        ? 'TERMINATED is a terminal state and cannot be changed.'
+                        : `Allowed transitions from ${profile.status}: ${this.validStatusTransitions[profile.status].join(', ') || 'none'}`)
+                );
+            }
+        }
+
+        if (dto.nationalId !== undefined && dto.nationalId !== profile.nationalId) {
+            const existingWithNationalId = await this.employeeProfileModel.findOne({
+                nationalId: dto.nationalId,
+                _id: { $ne: new Types.ObjectId(id) }
+            });
+            if (existingWithNationalId) {
+                throw new ConflictException('An employee with this national ID already exists');
+            }
+        }
+
+        if (dto.workEmail !== undefined && dto.workEmail !== profile.workEmail) {
+            const existingWithEmail = await this.employeeProfileModel.findOne({
+                workEmail: dto.workEmail,
+                _id: { $ne: new Types.ObjectId(id) }
+            });
+            if (existingWithEmail) {
+                throw new ConflictException('An employee with this work email already exists');
+            }
+        }
+
+        if (dto.firstName !== undefined) profile.firstName = dto.firstName;
+        if (dto.middleName !== undefined) profile.middleName = dto.middleName;
+        if (dto.lastName !== undefined) profile.lastName = dto.lastName;
+        if (dto.firstName !== undefined || dto.middleName !== undefined || dto.lastName !== undefined) {
+            profile.fullName = [dto.firstName || profile.firstName, dto.middleName || profile.middleName, dto.lastName || profile.lastName]
+                .filter(Boolean)
+                .join(' ');
+        }
+        if (dto.nationalId !== undefined) profile.nationalId = dto.nationalId;
+        if (dto.gender !== undefined) profile.gender = dto.gender;
+        if (dto.maritalStatus !== undefined) profile.maritalStatus = dto.maritalStatus;
+        if (dto.dateOfBirth) profile.dateOfBirth = new Date(dto.dateOfBirth);
+
+        if (dto.personalEmail !== undefined) profile.personalEmail = dto.personalEmail;
+        if (dto.mobilePhone !== undefined) profile.mobilePhone = dto.mobilePhone;
+        if (dto.homePhone !== undefined) profile.homePhone = dto.homePhone;
+        if (dto.address) {
+            profile.address = { ...profile.address, ...dto.address };
+        }
+
+        if (dto.biography !== undefined) profile.biography = dto.biography;
+        if (dto.profilePictureUrl !== undefined) profile.profilePictureUrl = dto.profilePictureUrl;
+
+        if (dto.primaryPositionId) {
+            this.validateObjectId(dto.primaryPositionId, 'primaryPositionId');
             profile.primaryPositionId = new Types.ObjectId(dto.primaryPositionId);
         }
-
-        // Update Department
-        if (dto.primaryDepartmentId && dto.primaryDepartmentId !== profile.primaryDepartmentId?.toString()) {
+        if (dto.primaryDepartmentId) {
+            this.validateObjectId(dto.primaryDepartmentId, 'primaryDepartmentId');
             profile.primaryDepartmentId = new Types.ObjectId(dto.primaryDepartmentId);
         }
-
-        // Update Supervisor Position
-        if (dto.supervisorPositionId && dto.supervisorPositionId !== profile.supervisorPositionId?.toString()) {
+        if (dto.supervisorPositionId) {
+            this.validateObjectId(dto.supervisorPositionId, 'supervisorPositionId');
             profile.supervisorPositionId = new Types.ObjectId(dto.supervisorPositionId);
         }
 
-        // Update Status (BR 3j: employee status definition for system access control)
-        if (dto.status && dto.status !== profile.status) {
+        if (dto.status && dto.status !== oldStatus) {
             profile.status = dto.status;
             profile.statusEffectiveFrom = new Date();
         }
 
-        // Update Contract Type (BR 3f, 3g)
-        if (dto.contractType && dto.contractType !== profile.contractType) {
-            profile.contractType = dto.contractType;
-        }
+        if (dto.contractType !== undefined) profile.contractType = dto.contractType;
+        if (dto.workType !== undefined) profile.workType = dto.workType;
+        if (dto.dateOfHire) profile.dateOfHire = new Date(dto.dateOfHire);
+        if (dto.contractStartDate) profile.contractStartDate = new Date(dto.contractStartDate);
+        if (dto.contractEndDate) profile.contractEndDate = new Date(dto.contractEndDate);
+        if (dto.workEmail !== undefined) profile.workEmail = dto.workEmail;
 
-        // Update Work Type
-        if (dto.workType && dto.workType !== profile.workType) {
-            profile.workType = dto.workType;
-        }
+        if (dto.bankName !== undefined) profile.bankName = dto.bankName;
+        if (dto.bankAccountNumber !== undefined) profile.bankAccountNumber = dto.bankAccountNumber;
 
-        // Update Date of Hire (BR 3b)
-        if (dto.dateOfHire) {
-            const newDate = new Date(dto.dateOfHire);
-            if (newDate.getTime() !== profile.dateOfHire?.getTime()) {
-                profile.dateOfHire = newDate;
-            }
-        }
-
-        // Update Contract Start Date
-        if (dto.contractStartDate) {
-            const newDate = new Date(dto.contractStartDate);
-            if (newDate.getTime() !== profile.contractStartDate?.getTime()) {
-                profile.contractStartDate = newDate;
-            }
-        }
-
-        // Update Contract End Date
-        if (dto.contractEndDate) {
-            const newDate = new Date(dto.contractEndDate);
-            if (newDate.getTime() !== profile.contractEndDate?.getTime()) {
-                profile.contractEndDate = newDate;
-            }
-        }
-
-        // Update Work Email
-        if (dto.workEmail && dto.workEmail !== profile.workEmail) {
-            profile.workEmail = dto.workEmail;
-        }
-
-        // TODO: Trigger N-037 (Profile updated) notification
-        // TODO: If position/department changed, trigger Org Structure Module update
+        // TODO: Trigger N-037 notification (use NotificationService from time-management module)
+        // TODO: If position/department changed, use OrgStructureIntegrationService from shared module
+        // TODO: If status changed to TERMINATED/SUSPENDED, use PayrollIntegrationService and TimeManagementIntegrationService from shared module
 
         return profile.save();
     }
 
+    async adminDeactivateEmployee(id: string, adminUserId?: string): Promise<EmployeeProfile> {
+        this.validateObjectId(id, 'id');
 
-    async adminDeactivateEmployee(id: string, userId?: string): Promise<EmployeeProfile> {
         const profile = await this.employeeProfileModel.findById(id);
         if (!profile) {
-            throw new NotFoundException('employee profile not found');
+            throw new NotFoundException('Employee profile not found');
         }
+
+        if (profile.status === EmployeeStatus.TERMINATED) {
+            throw new BadRequestException('Employee is already terminated');
+        }
+
+        await this.changeRequestModel.updateMany(
+            {
+                employeeProfileId: new Types.ObjectId(id),
+                status: ProfileChangeStatus.PENDING,
+            },
+            {
+                $set: {
+                    status: ProfileChangeStatus.CANCELED,
+                    processedAt: new Date(),
+                },
+            }
+        );
 
         profile.status = EmployeeStatus.TERMINATED;
         profile.statusEffectiveFrom = new Date();
 
-        // TODO: BR 20, BR 17 - Trigger notifications to:
-        //   - Payroll Module: Block payment
-        //   - Time Management Module: Sync status update
-        //   - Analytics Module: Update compliance reports
+        // TODO: Use PayrollIntegrationService.syncEmployeeStatus() from shared module to block payment
+        // TODO: Use TimeManagementIntegrationService.syncEmployeeStatus() from shared module
+        // TODO: Use TimeManagementIntegrationService.deactivateTimeTracking() from shared module
+        // TODO: Trigger N-037 notification (use NotificationService from time-management module)
 
         return profile.save();
     }
 
-    async adminAssignRole(id: string, dto: AdminAssignRoleDto, userId?: string): Promise<EmployeeProfile> {
+    async adminAssignRole(id: string, dto: AdminAssignRoleDto, adminUserId?: string): Promise<EmployeeProfile> {
+        this.validateObjectId(id, 'id');
+        this.validateObjectId(dto.accessProfileId, 'accessProfileId');
+
         const profile = await this.employeeProfileModel.findById(id);
         if (!profile) {
-            throw new NotFoundException('employee profile not found');
+            throw new NotFoundException('Employee profile not found');
+        }
+
+        if (profile.status === EmployeeStatus.TERMINATED) {
+            throw new BadRequestException('Cannot assign role to terminated employee');
+        }
+
+        if (profile.status === EmployeeStatus.SUSPENDED) {
+            throw new BadRequestException('Cannot assign role to suspended employee');
         }
 
         const role = await this.systemRoleModel.findById(dto.accessProfileId);
@@ -269,24 +528,52 @@ export class EmployeeProfileService {
             throw new NotFoundException('System role not found');
         }
 
-        profile.accessProfileId = new Types.ObjectId(dto.accessProfileId);
+        if (!role.isActive) {
+            throw new BadRequestException('Cannot assign an inactive role');
+        }
 
+        profile.accessProfileId = new Types.ObjectId(dto.accessProfileId);
 
         return profile.save();
     }
 
-    async getChangeRequests(status?: ProfileChangeStatus): Promise<EmployeeProfileChangeRequest[]> {
+    async getChangeRequests(
+        status?: ProfileChangeStatus,
+        page: number = 1,
+        limit: number = 20
+    ): Promise<PaginatedResult<EmployeeProfileChangeRequest>> {
+        const skip = (page - 1) * limit;
         const filter = status ? { status } : {};
-        return this.changeRequestModel.find(filter)
-            .populate('employeeProfileId', 'firstName lastName fullName employeeNumber')
-            .sort({ submittedAt: -1 });
+
+        const [data, total] = await Promise.all([
+            this.changeRequestModel.find(filter)
+                .populate('employeeProfileId', 'firstName lastName fullName employeeNumber workEmail')
+                .sort({ submittedAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .exec(),
+            this.changeRequestModel.countDocuments(filter).exec(),
+        ]);
+
+        return this.createPaginatedResponse(data, total, page, limit);
     }
 
+    async getChangeRequestById(requestId: string): Promise<EmployeeProfileChangeRequest> {
+        const request = await this.changeRequestModel.findOne({ requestId })
+            .populate('employeeProfileId', 'firstName lastName fullName employeeNumber workEmail primaryDepartmentId primaryPositionId');
+
+        if (!request) {
+            throw new NotFoundException('Change request not found');
+        }
+
+        return request;
+    }
 
     async processChangeRequest(
         requestId: string,
         status: ProfileChangeStatus.APPROVED | ProfileChangeStatus.REJECTED,
-        userId?: string
+        adminUserId?: string,
+        rejectionReason?: string
     ): Promise<EmployeeProfileChangeRequest> {
         const request = await this.changeRequestModel.findOne({ requestId })
             .populate('employeeProfileId');
@@ -296,22 +583,78 @@ export class EmployeeProfileService {
         }
 
         if (request.status !== ProfileChangeStatus.PENDING) {
-            throw new BadRequestException('Request is not pending');
+            throw new BadRequestException(
+                `Cannot process a request with status ${request.status}. Only PENDING requests can be processed.`
+            );
+        }
+
+        if (status === ProfileChangeStatus.REJECTED && !rejectionReason) {
+            throw new BadRequestException('Rejection reason is required when rejecting a request');
         }
 
         request.status = status;
         request.processedAt = new Date();
 
-        if (status === ProfileChangeStatus.APPROVED) {
-            // TODO: Apply changes to profile if data fields are tracked in change request
-            // TODO: Trigger notification N-037 (Profile updated) to employee & HR
-            // TODO: If change affects Position/Department, trigger Org Structure Module update
-        } else {
-            // TODO: Trigger notification N-037 (Profile rejected) to employee
-        }
-
+        // TODO: If APPROVED, apply changes to profile
+        // TODO: Trigger N-037 notification (use NotificationService from time-management module)
 
         return request.save();
+    }
+
+    async getEmployeeCountByStatus(): Promise<Record<string, number>> {
+        const counts = await this.employeeProfileModel.aggregate([
+            {
+                $group: {
+                    _id: '$status',
+                    count: { $sum: 1 },
+                },
+            },
+        ]);
+
+        const result: Record<string, number> = {};
+        for (const item of counts) {
+            result[item._id] = item.count;
+        }
+        return result;
+    }
+
+    async getEmployeeCountByDepartment(): Promise<any[]> {
+        return this.employeeProfileModel.aggregate([
+            {
+                $match: { status: { $ne: EmployeeStatus.TERMINATED } },
+            },
+            {
+                $group: {
+                    _id: '$primaryDepartmentId',
+                    count: { $sum: 1 },
+                },
+            },
+            {
+                $lookup: {
+                    from: 'departments',
+                    localField: '_id',
+                    foreignField: '_id',
+                    as: 'department',
+                },
+            },
+            {
+                $unwind: { path: '$department', preserveNullAndEmptyArrays: true },
+            },
+            {
+                $project: {
+                    departmentId: '$_id',
+                    departmentName: '$department.name',
+                    count: 1,
+                },
+            },
+            {
+                $sort: { count: -1 },
+            },
+        ]);
+    }
+
+    async getPendingChangeRequestsCount(): Promise<number> {
+        return this.changeRequestModel.countDocuments({ status: ProfileChangeStatus.PENDING });
     }
 }
 

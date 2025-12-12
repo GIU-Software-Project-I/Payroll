@@ -1,5 +1,5 @@
 // import { Controller, Post, Body, Param, UseGuards, HttpCode, HttpStatus, Get, Query, Patch, Req } from '@nestjs/common';
-// import { PayrollExecutionService } from '../services/payroll-execution.service';
+// import { PayrollExecutionService } from '../services/payroll-execution requirements.service';
 // import { SigningBonusEditDto } from '../dto/signing-bonus-edit.dto';
 // import { PayrollInitiationDto } from '../dto/payroll-initiation.dto';
 // import { PayrollInitiationCreateDto } from '../dto/payroll-initiation-create.dto';
@@ -9,8 +9,8 @@
 // import { PayrollApproveDto } from '../dto/approve.dto';
 // import { employeeSigningBonusSchema } from '../models/EmployeeSigningBonus.schema';
 // import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, getSchemaPath, ApiBody, ApiParam, ApiQuery, ApiConsumes } from '@nestjs/swagger';
-// import { BonusStatus } from '../enums/payroll-execution-enum';
-// import { BenefitStatus } from '../enums/payroll-execution-enum';
+// import { BonusStatus } from '../enums/payroll-execution requirements-enum';
+// import { BenefitStatus } from '../enums/payroll-execution requirements-enum';
 // import { AuthenticationGuard } from '../../../auth/guards/authentication-guard';
 // import { AuthorizationGuard } from '../../../auth/guards/authorization-guard';
 // import { Roles } from '../../../auth/decorators/roles-decorator';
@@ -19,7 +19,7 @@
 // import type { JwtPayload } from '../../../auth/token/jwt-payload';
 // import { TerminationBenefitEditDto } from '../dto/termination-benefit-edit.dto';
 //
-// @Controller('payroll-execution')
+// @Controller('payroll-execution requirements')
 // @ApiTags('Payroll Execution')
 // @ApiBearerAuth()
 // export class PayrollExecutionController {

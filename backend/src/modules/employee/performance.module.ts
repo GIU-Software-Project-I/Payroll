@@ -9,7 +9,7 @@ import {AppraisalDispute, AppraisalDisputeSchema} from "./models/performance/app
 
 
 import {PerformanceController} from "./controllers/performance.controller";
-import {PerformanceService} from "./services/Performance.Service";
+import {PerformanceService} from "./services/performance.service";
 
 
 

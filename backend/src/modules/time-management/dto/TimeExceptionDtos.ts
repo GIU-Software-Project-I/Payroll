@@ -5,7 +5,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateExceptionDto {
     @IsNotEmpty()
-    @ApiProperty({ description: 'Employee id (string)', example: '674c1a1b2c3d4e5f6a7b8c9d' })
+    @ApiProperty({ description: 'employee id (string)', example: '674c1a1b2c3d4e5f6a7b8c9d' })
     employeeId!: string;
 
     @IsNotEmpty()
