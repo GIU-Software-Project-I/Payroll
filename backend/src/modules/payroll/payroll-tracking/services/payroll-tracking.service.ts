@@ -6,11 +6,12 @@ import { disputes, disputesDocument } from '../models/disputes.schema';
 import { refunds, refundsDocument } from '../models/refunds.schema';
 
 import { ClaimStatus, DisputeStatus, RefundStatus } from '../enums/payroll-tracking-enum';
-import { paySlip, PayslipDocument } from '../../payroll-execution/models/payslip.schema';
-import { EmployeeProfile } from '../../../employee/models/employee/employee-profile.schema';
-import { ContractType, WorkType } from '../../../employee/enums/employee-profile.enums';
-import { CreateClaimDto, CreateDisputeDto, UpdateClaimDto, UpdateDisputeDto, UpdateRefundDto } from '../dtos';
-import { PaginationDto } from '../dtos/pagination.dto';
+import {paySlip, PayslipDocument} from "../../payroll-execution/models/payslip.schema";
+import {employeePayrollDetails, employeePayrollDetailsDocument} from "../../payroll-execution/models/employeePayrollDetails.schema";
+import {EmployeeProfile} from "../../../employee/models/employee/employee-profile.schema";
+import {ContractType, WorkType} from "../../../employee/enums/employee-profile.enums";
+import { PayrollConfigurationService } from "../../payroll-configuration/services/payroll-configuration.service";
+import { UnifiedLeaveService } from "../../../leaves/services/leaves.service";
 
 @Injectable()
 export class PayrollTrackingService {
@@ -19,10 +20,13 @@ export class PayrollTrackingService {
     @InjectModel(disputes.name) private disputesModel: Model<disputesDocument>,
     @InjectModel(refunds.name) private refundsModel: Model<refundsDocument>,
     @InjectModel(paySlip.name) private payslipModel: Model<PayslipDocument>,
+    @InjectModel(employeePayrollDetails.name) private employeePayrollDetailsModel: Model<employeePayrollDetailsDocument>,
     @InjectModel(EmployeeProfile.name) private employeeModel: Model<EmployeeProfile>,
+    private readonly payrollConfigService: PayrollConfigurationService,
+    private readonly leavesService: UnifiedLeaveService,
   ) {}
 
-  // ========== employee Self-Service Methods ==========
+  // ========== Employee Self-Service Methods ==========
 
   // REQ-PY-1: View and download payslip
   async getEmployeePayslips(employeeId: string) {
@@ -85,70 +89,274 @@ export class PayrollTrackingService {
     };
   }
 
-  // REQ-PY-3: View base salary
+  // REQ-PY-3: View base salary according to employment contract (full-time, part-time)
   async getBaseSalary(employeeId: string) {
     const employee = await this.employeeModel.findById(employeeId).exec();
     if (!employee) {
-      throw new NotFoundException('employee not found');
+      throw new NotFoundException('Employee not found');
     }
     
-    // Derive contract/work type with sensible defaults
-    const contractType: ContractType = employee.contractType || ContractType.FULL_TIME_CONTRACT;
-    const workType: WorkType = employee.workType || WorkType.FULL_TIME;
+    // Get contract type and work type from employee profile
+    const contractType: ContractType | undefined = employee.contractType;
+    const workType: WorkType | undefined = employee.workType;
 
-    // Try to use baseSalary from employee profile if present
-    let contractualBaseSalary = (employee as any)?.baseSalary as number | undefined;
+    let baseSalary: number | undefined;
+    let payGradeName: string | undefined;
+    let grossSalary: number | undefined;
 
-    // If not available on profile, fall back to latest payslip base salary
-    if (contractualBaseSalary == null) {
+    // STEP 1: Try employeePayrollDetails first (most reliable source)
+    const latestPayrollDetails = await this.employeePayrollDetailsModel
+      .findOne({ employeeId: new Types.ObjectId(employeeId) })
+      .sort({ createdAt: -1 })
+      .exec();
+
+    if (latestPayrollDetails?.baseSalary) {
+      baseSalary = latestPayrollDetails.baseSalary;
+    }
+
+    // STEP 2: If not found, try paygrade from employee profile
+    if (baseSalary == null && (employee as any)?.payGradeId) {
+      try {
+        const payGradeData = await this.payrollConfigService.findOnePayGrade((employee as any).payGradeId.toString());
+        if (payGradeData) {
+          baseSalary = payGradeData.baseSalary;
+          payGradeName = payGradeData.grade;
+          grossSalary = payGradeData.grossSalary;
+        }
+      } catch (error) {
+        // PayGrade not found, continue to fallback
+      }
+    }
+
+    // STEP 3: If still not found, fall back to latest payslip
+    if (baseSalary == null) {
       const latestPayslip = await this.payslipModel.findOne({
         employeeId: new Types.ObjectId(employeeId),
       })
         .sort({ createdAt: -1 })
         .exec();
 
-      if (latestPayslip?.earningsDetails?.baseSalary != null) {
-        contractualBaseSalary = latestPayslip.earningsDetails.baseSalary;
+      if (latestPayslip) {
+        baseSalary = 
+          (latestPayslip as any).baseSalary ?? 
+          latestPayslip.earningsDetails?.baseSalary ?? 
+          undefined;
       }
     }
 
-    const baseMonthlySalary = contractualBaseSalary || 0;
-
-    // Simple working-hours assumption for hourly-rate view
-    const STANDARD_FULL_TIME_HOURS_PER_MONTH = 160; // 8h * 5d * 4w
-    const STANDARD_PART_TIME_HOURS_PER_MONTH = 80;  // example: 4h * 5d * 4w
-
-    const hoursPerMonth =
-      workType === WorkType.PART_TIME
-        ? STANDARD_PART_TIME_HOURS_PER_MONTH
-        : STANDARD_FULL_TIME_HOURS_PER_MONTH;
-
-    const hourlyRate = hoursPerMonth > 0 ? baseMonthlySalary / hoursPerMonth : 0;
+    // STEP 4: Try to find matching payGrade if we have baseSalary but no payGradeName
+    if (baseSalary != null && !payGradeName) {
+      try {
+        const allPayGrades = await this.payrollConfigService.findAllPayGrades();
+        if (allPayGrades && allPayGrades.length > 0) {
+          const exactMatch = allPayGrades.find((pg: any) => pg.baseSalary === baseSalary);
+          if (exactMatch) {
+            payGradeName = exactMatch.grade;
+            grossSalary = exactMatch.grossSalary;
+          } else {
+            const closest = allPayGrades.reduce((prev: any, curr: any) => {
+              return Math.abs(curr.baseSalary - (baseSalary || 0)) < Math.abs(prev.baseSalary - (baseSalary || 0)) ? curr : prev;
+            });
+            payGradeName = closest.grade;
+            grossSalary = closest.grossSalary;
+          }
+        }
+      } catch (error) {
+        // Could not fetch pay grades
+      }
+    }
 
     return {
       employeeId: employee._id,
       fullName: `${employee.firstName} ${employee.lastName}`,
-      contractType,
-      workType,
-      jobTitle: (employee as any)?.jobTitle || 'N/A',
-      baseMonthlySalary,
-      hoursPerMonth,
-      hourlyRate,
-      currency: (employee as any)?.currency || 'USD',
+      contractType: contractType || null,
+      workType: workType || null,
+      payGrade: payGradeName || null,
+      baseSalary: baseSalary || 0,
+      grossSalary: grossSalary || null,
+      currency: 'EGP',
     };
   }
 
-  // REQ-PY-5: View leave compensation (integration placeholder)
-  async getLeaveCompensation(employeeId: string) {
-    // This method would integrate with Leaves module
-    // For now, return placeholder data
+  // REQ-PY-5: View compensation for unused leave days (integrated with Leaves module)
+async getLeaveCompensation(employeeId: string) {
+    // Validate employee exists
+    const employee = await this.employeeModel.findById(employeeId).exec();
+    if (!employee) {
+      throw new NotFoundException('Employee not found');
+    }
+
+    let baseSalary = 0;
+    let payGradeInfo: any = null;
+
+    // STEP 1: Try to get base salary from employeePayrollDetails (most reliable source)
+    const latestPayrollDetails = await this.employeePayrollDetailsModel
+      .findOne({ employeeId: new Types.ObjectId(employeeId) })
+      .sort({ createdAt: -1 })
+      .exec();
+
+    if (latestPayrollDetails?.baseSalary) {
+      baseSalary = latestPayrollDetails.baseSalary;
+    }
+
+    // STEP 2: If not found, try to get pay grade from employee's assigned payGradeId
+    if (baseSalary === 0 && (employee as any)?.payGradeId) {
+      try {
+        const payGradeData = await this.payrollConfigService.findOnePayGrade(
+          (employee as any).payGradeId.toString()
+        );
+        if (payGradeData) {
+          payGradeInfo = {
+            grade: payGradeData.grade,
+            baseSalary: payGradeData.baseSalary,
+            grossSalary: payGradeData.grossSalary,
+          };
+          baseSalary = payGradeData.baseSalary || 0;
+        }
+      } catch (error) {
+        // PayGrade not found, continue to fallbacks
+      }
+    }
+
+    // STEP 3: If still no baseSalary, try to get from latest payslip
+    if (baseSalary === 0) {
+      const latestPayslip = await this.payslipModel
+        .findOne({ employeeId: new Types.ObjectId(employeeId) })
+        .sort({ createdAt: -1 })
+        .exec();
+
+      if (latestPayslip) {
+        baseSalary = (latestPayslip as any)?.baseSalary ?? latestPayslip?.earningsDetails?.baseSalary ?? 0;
+      }
+    }
+
+    // STEP 4: If we have baseSalary but no payGradeInfo, try to find matching pay grade
+    if (baseSalary > 0 && !payGradeInfo) {
+      try {
+        const allPayGrades = await this.payrollConfigService.findAllPayGrades();
+        if (allPayGrades && allPayGrades.length > 0) {
+          // Find pay grade with exact base salary match
+          const exactMatch = allPayGrades.find((pg: any) => pg.baseSalary === baseSalary);
+          if (exactMatch) {
+            payGradeInfo = {
+              grade: exactMatch.grade,
+              baseSalary: exactMatch.baseSalary,
+              grossSalary: exactMatch.grossSalary,
+            };
+          } else {
+            // Find the pay grade with closest base salary
+            const closest = allPayGrades.reduce((prev: any, curr: any) => {
+              return Math.abs(curr.baseSalary - baseSalary) < Math.abs(prev.baseSalary - baseSalary) ? curr : prev;
+            });
+            payGradeInfo = {
+              grade: closest.grade,
+              baseSalary: closest.baseSalary,
+              grossSalary: closest.grossSalary,
+              note: 'Closest matching pay grade',
+            };
+          }
+        }
+      } catch (error) {
+        // Could not fetch pay grades, continue without
+      }
+    }
+
+    // STEP 4: Get unused leave days from Leaves module
+    let totalUnusedDays = 0;
+    const leaveEntitlements: any[] = [];
+
+    try {
+      const balances = await this.leavesService.getEmployeeBalances(employeeId);
+      const allLeaveTypes = await this.leavesService.getAllLeaveTypes();
+      
+      // Build a map of unpaid leave type IDs (we want to EXCLUDE unpaid leave from compensation)
+      const unpaidLeaveTypeIds = allLeaveTypes
+        .filter((lt: any) => lt.paid === false)
+        .map((lt: any) => lt._id.toString());
+
+      if (Array.isArray(balances) && balances.length > 0) {
+        for (const balance of balances) {
+          const leaveTypeIdStr = balance.leaveTypeId?.toString();
+          
+          // Skip only if explicitly marked as unpaid leave
+          // If leave type not found, include it (safer to include than exclude)
+          if (unpaidLeaveTypeIds.includes(leaveTypeIdStr)) {
+            continue;
+          }
+
+          const leaveType = allLeaveTypes.find((lt: any) => lt._id.toString() === leaveTypeIdStr);
+          const remaining = balance.remaining || 0;
+
+          if (remaining > 0) {
+            totalUnusedDays += remaining;
+          }
+
+          leaveEntitlements.push({
+            leaveTypeId: leaveTypeIdStr,
+            leaveTypeName: leaveType?.name || 'Unknown Leave Type',
+            remaining: remaining,
+            carryForward: balance.carryForward || 0,
+          });
+        }
+      }
+    } catch (error) {
+      // Could not fetch leave balances
+    }
+
+    // STEP 5: Get leave encashment policy (only if it's specifically for leave encashment)
+    let encashmentRate = 100; // Default to 100% if no specific leave policy
+    let policyDetails: any = null;
+
+    try {
+      const leavePolicies = await this.payrollConfigService.findAll({
+        page: 1,
+        limit: 50,
+      });
+
+      if (leavePolicies.data && leavePolicies.data.length > 0) {
+        // Look for a leave encashment specific policy (not general deduction policies)
+        const leavePolicy = leavePolicies.data.find((policy: any) => {
+          const policyName = policy.policyName?.toLowerCase() || '';
+          const description = policy.description?.toLowerCase() || '';
+          // Only match if it's specifically about leave/encashment
+          return policyName.includes('leave') || policyName.includes('encashment') ||
+                 description.includes('leave') || description.includes('encashment');
+        });
+
+        if (leavePolicy) {
+          encashmentRate = leavePolicy.ruleDefinition?.percentage || 100;
+          policyDetails = {
+            policyName: leavePolicy.policyName,
+            description: leavePolicy.description,
+            effectiveDate: leavePolicy.effectiveDate,
+            percentage: leavePolicy.ruleDefinition?.percentage || 0,
+            fixedAmount: leavePolicy.ruleDefinition?.fixedAmount || 0,
+          };
+        }
+        // If no leave-specific policy found, keep default 100% and policyDetails = null
+      }
+    } catch (error) {
+      // Could not fetch policies, use default encashment rate
+    }
+
+    // STEP 6: Calculate daily rate and total compensation
+    const dailyRate = baseSalary > 0 ? baseSalary / 30 : 0;
+    const totalCompensation = dailyRate * totalUnusedDays * (encashmentRate / 100);
+
     return {
-      employeeId,
-      unusedLeaveDays: 0, // Would come from Leaves module
-      encashmentRate: 0, // Would come from Payroll Configuration
-      totalCompensation: 0,
+      employeeId: employee._id,
+      employeeName: `${employee.firstName} ${employee.lastName}`,
+      employeeNumber: (employee as any).employeeNumber || null,
+      baseSalary,
+      payGrade: payGradeInfo,
+      unusedLeaveDays: totalUnusedDays,
+      leaveEntitlements: leaveEntitlements,
+      encashmentRate: encashmentRate,
+      dailyRate: Math.round(dailyRate * 100) / 100,
+      totalCompensation: Math.round(totalCompensation * 100) / 100,
+      currency: 'EGP',
+      policyDetails,
       lastUpdated: new Date().toISOString(),
-      note: 'Integration with Leaves module required'
     };
   }
 
@@ -267,33 +475,220 @@ export class PayrollTrackingService {
     }));
   }
 
-  // REQ-PY-11: View unpaid leave deductions
-  async getUnpaidLeaveDeductions(employeeId: string, payslipId?: string) {
-    let query: any = { employeeId: new Types.ObjectId(employeeId) };
-    
-    if (payslipId) {
-      query._id = new Types.ObjectId(payslipId);
+  // REQ-PY-11: View unpaid leave deductions (integrated with Leaves module)
+  async getUnpaidLeaveDeductions(employeeId: string, payslipId?: string, dateRange?: { from?: Date; to?: Date }) {
+    // Validate employee exists
+    if (!employeeId) {
+      throw new BadRequestException('Employee ID is required');
     }
-    
-    const payslips = await this.payslipModel.find(query)
+
+    const employee = await this.employeeModel.findById(employeeId).exec();
+    if (!employee) {
+      throw new NotFoundException('Employee not found');
+    }
+
+    // STEP 1: Get base salary for deduction calculation
+    let baseSalary = 0;
+
+    // Try employeePayrollDetails first
+    const latestPayrollDetails = await this.employeePayrollDetailsModel
+      .findOne({ employeeId: new Types.ObjectId(employeeId) })
       .sort({ createdAt: -1 })
       .exec();
+
+    if (latestPayrollDetails?.baseSalary) {
+      baseSalary = latestPayrollDetails.baseSalary;
+    }
+
+    // Fallback to paygrade
+    if (baseSalary === 0 && (employee as any)?.payGradeId) {
+      try {
+        const payGradeData = await this.payrollConfigService.findOnePayGrade(
+          (employee as any).payGradeId.toString()
+        );
+        if (payGradeData?.baseSalary) {
+          baseSalary = payGradeData.baseSalary;
+        }
+      } catch (error) {
+        // Continue
+      }
+    }
+
+    // Fallback to payslip
+    if (baseSalary === 0) {
+      const latestPayslip = await this.payslipModel
+        .findOne({ employeeId: new Types.ObjectId(employeeId) })
+        .sort({ createdAt: -1 })
+        .exec();
+
+      if (latestPayslip) {
+        baseSalary = (latestPayslip as any)?.baseSalary ?? latestPayslip?.earningsDetails?.baseSalary ?? 0;
+      }
+    }
+
+    // Calculate daily rate for unpaid leave deductions
+    const dailyRate = baseSalary > 0 ? Math.round((baseSalary / 30) * 100) / 100 : 0;
+
+    // Get unpaid leave types from Leaves module (where paid === false)
+    const unpaidLeaveTypes = await this.leavesService.getAllLeaveTypes();
+    const unpaidLeaveTypeIds = unpaidLeaveTypes
+      .filter((lt: any) => lt.paid === false)
+      .map((lt: any) => lt._id.toString());
     
-    return payslips.map(payslip => ({
-      payslipId: payslip._id,
-      unpaidLeaveDeduction: (payslip.deductionsDetails?.penalties as any)?.amount || 0,
-      // This would integrate with Leaves module
-    }));
+    // Get unpaid leave type names for reference
+    const unpaidLeaveTypeNames = unpaidLeaveTypes
+      .filter((lt: any) => lt.paid === false)
+      .map((lt: any) => ({ id: lt._id.toString(), name: lt.name, code: lt.code }));
+
+    if (unpaidLeaveTypeIds.length === 0) {
+      // No unpaid leave types configured in the system
+      return {
+        employeeId: employee._id,
+        fullName: `${employee.firstName} ${employee.lastName}`,
+        unpaidLeaveRequests: [],
+        payslipDeductions: [],
+        totalUnpaidLeaveDays: 0,
+        message: 'No unpaid leave types configured in the system',
+      };
+    }
+
+    // Get employee's leave history filtered by unpaid leave types and approved status
+    const historyOpts: any = {
+      status: 'approved',
+    };
+    if (dateRange?.from) {
+      historyOpts.from = dateRange.from.toISOString();
+    }
+    if (dateRange?.to) {
+      historyOpts.to = dateRange.to.toISOString();
+    }
+
+    const leaveHistory = await this.leavesService.getEmployeeHistory(employeeId, historyOpts);
+
+    // Filter to only unpaid leave requests
+    const unpaidLeaveRequests = (leaveHistory.data || []).filter((req: any) =>
+      unpaidLeaveTypeIds.includes(req.leaveTypeId?.toString())
+    );
+
+    // Calculate total unpaid leave days from approved unpaid leave requests
+    const totalUnpaidLeaveDays = unpaidLeaveRequests.reduce(
+      (sum: number, req: any) => sum + (req.durationDays || 0),
+      0
+    );
+
+    // Get unpaid leave type details for breakdown
+    const unpaidLeaveBreakdown = await Promise.all(
+      unpaidLeaveRequests.map(async (req: any) => {
+        const leaveType = unpaidLeaveTypes.find(
+          (lt: any) => lt._id.toString() === req.leaveTypeId?.toString()
+        );
+        return {
+          leaveRequestId: req._id,
+          leaveTypeId: req.leaveTypeId,
+          leaveTypeName: leaveType?.name || 'Unknown',
+          leaveTypeCode: leaveType?.code || 'UNKNOWN',
+          durationDays: req.durationDays || 0,
+          dates: req.dates,
+          status: req.status,
+          justification: req.justification || null,
+        };
+      })
+    );
+
+    // Get payslip deductions related to unpaid leave
+    let payslipQuery: any = { employeeId: new Types.ObjectId(employeeId) };
+    if (payslipId) {
+      payslipQuery._id = new Types.ObjectId(payslipId);
+    }
+
+    const payslips = await this.payslipModel
+      .find(payslipQuery)
+      .sort({ createdAt: -1 })
+      .exec();
+
+    // Extract unpaid leave deductions from payslips
+    const payslipDeductions = payslips.map((payslip) => {
+      // Check penalties for unpaid leave deductions
+      const penalties = payslip.deductionsDetails?.penalties as any;
+      let unpaidLeaveDeductionAmount = 0;
+      let unpaidLeaveDeductionDetails: any = null;
+
+      if (penalties) {
+        // If penalties is an object with amount
+        if (typeof penalties.amount === 'number') {
+          unpaidLeaveDeductionAmount = penalties.amount;
+          unpaidLeaveDeductionDetails = {
+            reason: penalties.reason || 'Unpaid leave deduction',
+            description: penalties.description || null,
+          };
+        }
+        // If penalties is an array, filter for unpaid leave related penalties
+        if (Array.isArray(penalties)) {
+          const unpaidPenalties = penalties.filter(
+            (p: any) =>
+              p.type === 'unpaid_leave' ||
+              p.reason?.toLowerCase().includes('unpaid') ||
+              p.reason?.toLowerCase().includes('leave')
+          );
+          unpaidLeaveDeductionAmount = unpaidPenalties.reduce(
+            (sum: number, p: any) => sum + (p.amount || 0),
+            0
+          );
+          unpaidLeaveDeductionDetails = unpaidPenalties.length > 0 ? unpaidPenalties : null;
+        }
+      }
+
+      return {
+        payslipId: payslip._id,
+        payrollRunId: payslip.payrollRunId,
+        paymentStatus: payslip.paymentStatus,
+        unpaidLeaveDeduction: unpaidLeaveDeductionAmount,
+        deductionDetails: unpaidLeaveDeductionDetails,
+        createdAt: (payslip as any)?.createdAt,
+      };
+    });
+
+    // Filter out payslips with no unpaid leave deductions if specific payslipId not requested
+    const relevantPayslipDeductions = payslipId
+      ? payslipDeductions
+      : payslipDeductions.filter((p) => p.unpaidLeaveDeduction > 0);
+
+    return {
+      employeeId: employee._id,
+      fullName: `${employee.firstName} ${employee.lastName}`,
+      // Salary & deduction calculation details
+      baseSalary,
+      dailyRate,
+      currency: 'EGP',
+      // Unpaid leave types in the system
+      unpaidLeaveTypes: unpaidLeaveTypeNames,
+      unpaidLeaveTypeCount: unpaidLeaveTypeIds.length,
+      // Approved unpaid leave requests
+      unpaidLeaveRequests: unpaidLeaveBreakdown,
+      totalUnpaidLeaveDays,
+      // Calculated deduction amount
+      calculatedDeduction: Math.round(dailyRate * totalUnpaidLeaveDays * 100) / 100,
+      // Historical payslip deductions
+      payslipDeductions: relevantPayslipDeductions,
+      totalDeductedFromPayslips: payslipDeductions.reduce(
+        (sum, p) => sum + p.unpaidLeaveDeduction,
+        0
+      ),
+      lastUpdated: new Date().toISOString(),
+      note: totalUnpaidLeaveDays === 0 
+        ? 'No approved unpaid leave requests found. The daily rate shown is the deduction amount per unpaid leave day.'
+        : 'Unpaid leave deduction amounts are calculated based on daily rate × unpaid leave days.',
+    };
   }
 
   // REQ-PY-13: View salary history
   async getSalaryHistory(employeeId: string) {
-    const payslips = await this.payslipModel.find({
-      employeeId: new Types.ObjectId(employeeId)
+    const payslips = await this.payslipModel.find({ 
+      employeeId: new Types.ObjectId(employeeId) 
     })
     .sort({ createdAt: -1 })
     .exec();
-
+    
     return payslips.map(payslip => ({
       payslipId: payslip._id,
       grossSalary: payslip.totalGrossSalary || 0,
@@ -446,10 +841,10 @@ export class PayrollTrackingService {
       acc[dept].totalTax += payslip.deductionsDetails?.taxes?.reduce((sum, t) => sum + ((t as any)?.amount || 0), 0) || 0;
       acc[dept].totalInsurance += payslip.deductionsDetails?.insurances?.reduce((sum, i) => sum + ((i as any)?.amount || 0), 0) || 0;
       acc[dept].employeeCount++;
-
+      
       return acc;
     }, {});
-
+    
     return {
       reportType: 'DEPARTMENT_PAYROLL_SUMMARY',
       generatedDate: new Date().toISOString(),
@@ -516,7 +911,7 @@ export class PayrollTrackingService {
     const targetYear = year || new Date().getFullYear();
     const startDate = new Date(targetYear, 0, 1);
     const endDate = new Date(targetYear, 11, 31);
-
+    
     const payslips = await this.payslipModel.find({
       createdAt: {
         $gte: startDate,
@@ -525,7 +920,7 @@ export class PayrollTrackingService {
     }).exec();
     
     let reportData;
-
+    
     switch (reportType.toLowerCase()) {
       case 'tax':
         reportData = this.generateTaxReport(payslips, targetYear);
@@ -539,7 +934,7 @@ export class PayrollTrackingService {
       default:
         throw new BadRequestException('Invalid report type');
     }
-
+    
     return reportData;
   }
 
@@ -593,7 +988,7 @@ export class PayrollTrackingService {
     if (financeStaffId) {
       query.financeStaffId = new Types.ObjectId(financeStaffId);
     }
-
+    
     return this.disputesModel.find(query)
       .populate('employeeId', 'firstName lastName employeeId')
       .populate('payslipId', 'payPeriod netSalary')
@@ -648,7 +1043,7 @@ export class PayrollTrackingService {
     if (financeStaffId) {
       query.financeStaffId = new Types.ObjectId(financeStaffId);
     }
-
+    
     return this.claimsModel.find(query)
       .populate('employeeId', 'firstName lastName employeeId')
       .exec();
@@ -666,7 +1061,7 @@ export class PayrollTrackingService {
     if (dispute.status !== DisputeStatus.APPROVED) {
       throw new BadRequestException('Only approved disputes can generate refunds');
     }
-
+    
     // Check if refund already exists
     const existingRefund = await this.refundsModel.findOne({ disputeId: new Types.ObjectId(disputeId) });
     if (existingRefund) {
@@ -697,7 +1092,7 @@ export class PayrollTrackingService {
     if (claim.status !== ClaimStatus.APPROVED) {
       throw new BadRequestException('Only approved claims can generate refunds');
     }
-
+    
     // Check if refund already exists
     const existingRefund = await this.refundsModel.findOne({ claimId: new Types.ObjectId(claimId) });
     if (existingRefund) {
@@ -733,7 +1128,7 @@ export class PayrollTrackingService {
     if (!refund) {
       throw new NotFoundException('Refund not found');
     }
-
+    
     refund.status = RefundStatus.PAID;
     refund.paidInPayrollRunId = new Types.ObjectId(payrollRunId);
     
@@ -752,11 +1147,11 @@ export class PayrollTrackingService {
           employeeCount: new Set()
         };
       }
-
+      
       acc[dept].totalGross += payslip.totalGrossSalary || 0;
       acc[dept].totalNet += payslip.netPay || 0;
       acc[dept].employeeCount.add(payslip.employeeId.toString());
-
+      
       return acc;
     }, {});
   }
@@ -883,7 +1278,7 @@ export class PayrollTrackingService {
     const query: any = {};
     if (status) query.status = status;
     if (employeeId) query.employeeId = new Types.ObjectId(employeeId);
-
+    
     return this.claimsModel.find(query)
       .populate('employeeId', 'firstName lastName employeeId')
       .populate('financeStaffId', 'firstName lastName employeeId')
@@ -913,13 +1308,13 @@ export class PayrollTrackingService {
     if (!claim) {
       throw new NotFoundException('Claim not found');
     }
-
+    
     return claim;
   }
 
   async deleteClaimById(id: string) {
     const result = await this.claimsModel.findByIdAndDelete(id).exec();
-
+    
     if (!result) {
       throw new NotFoundException('Claim not found');
     }
@@ -931,7 +1326,7 @@ export class PayrollTrackingService {
     const query: any = {};
     if (status) query.status = status;
     if (employeeId) query.employeeId = new Types.ObjectId(employeeId);
-
+    
     return this.disputesModel.find(query)
       .populate('employeeId', 'firstName lastName employeeId')
       .populate('payslipId', 'payPeriod netSalary')
@@ -963,13 +1358,13 @@ export class PayrollTrackingService {
     if (!dispute) {
       throw new NotFoundException('Dispute not found');
     }
-
+    
     return dispute;
   }
 
   async deleteDisputeById(id: string) {
     const result = await this.disputesModel.findByIdAndDelete(id).exec();
-
+    
     if (!result) {
       throw new NotFoundException('Dispute not found');
     }
@@ -1017,13 +1412,13 @@ export class PayrollTrackingService {
     if (!refund) {
       throw new NotFoundException('Refund not found');
     }
-
+    
     return refund;
   }
 
   async deleteRefundById(id: string) {
     const result = await this.refundsModel.findByIdAndDelete(id).exec();
-
+    
     if (!result) {
       throw new NotFoundException('Refund not found');
     }
@@ -1037,7 +1432,7 @@ async createDispute(employeeId: string, createDisputeDto: any) {
   const latestDispute = await this.disputesModel.findOne()
     .sort({ createdAt: -1 })
     .exec();
-
+  
   let nextNumber = 1;
   if (latestDispute && latestDispute.disputeId) {
     const match = latestDispute.disputeId.match(/DISP-(\d+)/);
@@ -1045,9 +1440,9 @@ async createDispute(employeeId: string, createDisputeDto: any) {
       nextNumber = parseInt(match[1]) + 1;
     }
   }
-
+  
   const disputeId = `DISP-${nextNumber.toString().padStart(4, '0')}`;
-
+  
   const dispute = new this.disputesModel({
     disputeId,
     employeeId: new Types.ObjectId(employeeId),
@@ -1055,7 +1450,7 @@ async createDispute(employeeId: string, createDisputeDto: any) {
     payslipId: new Types.ObjectId(createDisputeDto.payslipId),
     status: DisputeStatus.UNDER_REVIEW
   });
-
+  
   return dispute.save();
 }
 
@@ -1065,7 +1460,7 @@ async createClaim(employeeId: string, createClaimDto: any) {
   const latestClaim = await this.claimsModel.findOne()
     .sort({ createdAt: -1 })
     .exec();
-
+  
   let nextNumber = 1;
   if (latestClaim && latestClaim.claimId) {
     const match = latestClaim.claimId.match(/CLAIM-(\d+)/);
@@ -1073,16 +1468,16 @@ async createClaim(employeeId: string, createClaimDto: any) {
       nextNumber = parseInt(match[1]) + 1;
     }
   }
-
+  
   const claimId = `CLAIM-${nextNumber.toString().padStart(4, '0')}`;
-
+  
   const claim = new this.claimsModel({
     claimId,
     employeeId: new Types.ObjectId(employeeId),
     ...createClaimDto,
     status: ClaimStatus.UNDER_REVIEW
   });
-
+  
   return claim.save();
 }
 
