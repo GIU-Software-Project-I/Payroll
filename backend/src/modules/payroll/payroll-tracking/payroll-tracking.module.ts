@@ -16,6 +16,7 @@ import {EmployeeProfile, EmployeeProfileSchema} from "../../employee/models/empl
 import {Department, DepartmentSchema} from "../../employee/models/organization-structure/department.schema";
 import {LeavesModule} from "../../leaves/leaves.module";
 import {TimeManagementModule} from "../../time-management/time-management.module";
+import {AuthModule} from "../../auth/auth-module";
 // import payroll-execution module & schemas
 
 
@@ -25,6 +26,7 @@ import {TimeManagementModule} from "../../time-management/time-management.module
       EmployeeModule,
       LeavesModule,
       TimeManagementModule,
+      AuthModule,
     forwardRef(() => PayrollExecutionModule),
     MongooseModule.forFeature([
       { name: refunds.name, schema: refundsSchema },

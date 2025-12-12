@@ -22,6 +22,13 @@ import {
 } from '@nestjs/swagger';
 
 import { RecruitmentService } from '../services/recruitment.service';
+import { AuthenticationGuard } from '../../auth/guards/authentication-guard';
+import { AuthorizationGuard } from '../../auth/guards/authorization-guard';
+import { Roles } from '../../auth/decorators/roles-decorator';
+import { Public } from '../../auth/decorators/public-decorator';
+import { CurrentUser } from '../../auth/decorators/current-user';
+import type { JwtPayload } from '../../auth/token/jwt-payload';
+import { SystemRole } from '../../employee/enums/employee-profile.enums';
 
 // DTOs
 import {
@@ -51,9 +58,9 @@ import { ApplicationStage } from '../enums/application-stage.enum';
 import { ApplicationStatus } from '../enums/application-status.enum';
 
 @ApiTags('Recruitment')
+@ApiBearerAuth('access-token')
 @Controller('recruitment')
-// @ApiBearerAuth('access-token')
-// @UseGuards(JwtAuthGuard)
+@UseGuards(AuthenticationGuard, AuthorizationGuard)
 export class RecruitmentController {
     constructor(private readonly recruitmentService: RecruitmentService) {}
 
@@ -63,6 +70,7 @@ export class RecruitmentController {
     // ============================================================
 
     @Post('job-templates')
+    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-003: Create a standardized job description template' })
     @ApiResponse({ status: 201, description: 'Job template created successfully' })
     async createJobTemplate(@Body() dto: CreateJobTemplateDto) {
@@ -70,6 +78,7 @@ export class RecruitmentController {
     }
 
     @Get('job-templates')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-003: Get all job templates' })
     @ApiResponse({ status: 200, description: 'List of all job templates' })
     async getAllJobTemplates() {
@@ -77,6 +86,7 @@ export class RecruitmentController {
     }
 
     @Get('job-templates/:id')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-003: Get job template by ID' })
     @ApiParam({ name: 'id', description: 'Job template ID' })
     @ApiResponse({ status: 200, description: 'Job template details' })
@@ -86,6 +96,7 @@ export class RecruitmentController {
     }
 
     @Put('job-templates/:id')
+    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-003: Update job template' })
     @ApiParam({ name: 'id', description: 'Job template ID' })
     @ApiResponse({ status: 200, description: 'Job template updated' })
@@ -94,6 +105,7 @@ export class RecruitmentController {
     }
 
     @Delete('job-templates/:id')
+    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     @ApiOperation({ summary: 'REC-003: Delete job template' })
     @ApiParam({ name: 'id', description: 'Job template ID' })
     @ApiResponse({ status: 200, description: 'Job template deleted' })
@@ -107,6 +119,7 @@ export class RecruitmentController {
     // ============================================================
 
     @Post('job-requisitions')
+    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER, SystemRole.DEPARTMENT_HEAD)
     @ApiOperation({ summary: 'REC-004: Create a new job requisition' })
     @ApiResponse({ status: 201, description: 'Job requisition created successfully' })
     async createJobRequisition(@Body() dto: CreateJobRequisitionDto) {
@@ -114,6 +127,7 @@ export class RecruitmentController {
     }
 
     @Get('job-requisitions')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER, SystemRole.DEPARTMENT_HEAD)
     @ApiOperation({ summary: 'REC-004: Get all job requisitions' })
     @ApiQuery({ name: 'status', required: false, enum: ['draft', 'published', 'closed'] })
     @ApiQuery({ name: 'managerId', required: false, description: 'Filter by hiring manager' })
@@ -126,6 +140,7 @@ export class RecruitmentController {
     }
 
     @Get('job-requisitions/published')
+    @Public()
     @ApiOperation({ summary: 'REC-023: Get published jobs for careers page' })
     @ApiResponse({ status: 200, description: 'List of published job openings' })
     async getPublishedJobs() {
@@ -133,6 +148,7 @@ export class RecruitmentController {
     }
 
     @Get('job-requisitions/:id')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER, SystemRole.DEPARTMENT_HEAD)
     @ApiOperation({ summary: 'REC-004: Get job requisition by ID' })
     @ApiParam({ name: 'id', description: 'Job requisition ID' })
     @ApiResponse({ status: 200, description: 'Job requisition details' })
@@ -141,6 +157,7 @@ export class RecruitmentController {
     }
 
     @Get('job-requisitions/:id/progress')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-009: Get recruitment progress for a requisition' })
     @ApiParam({ name: 'id', description: 'Job requisition ID' })
     @ApiResponse({ status: 200, description: 'Recruitment progress data' })
@@ -149,6 +166,7 @@ export class RecruitmentController {
     }
 
     @Put('job-requisitions/:id')
+    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-004: Update job requisition' })
     @ApiParam({ name: 'id', description: 'Job requisition ID' })
     @ApiResponse({ status: 200, description: 'Job requisition updated' })
@@ -157,6 +175,7 @@ export class RecruitmentController {
     }
 
     @Patch('job-requisitions/:id/publish')
+    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-023: Publish or unpublish job requisition' })
     @ApiParam({ name: 'id', description: 'Job requisition ID' })
     @ApiResponse({ status: 200, description: 'Job requisition publish status updated' })
@@ -165,6 +184,7 @@ export class RecruitmentController {
     }
 
     @Patch('job-requisitions/:id/close')
+    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-004: Close a job requisition' })
     @ApiParam({ name: 'id', description: 'Job requisition ID' })
     @ApiResponse({ status: 200, description: 'Job requisition closed' })
@@ -178,6 +198,7 @@ export class RecruitmentController {
     // ============================================================
 
     @Post('applications')
+    @Public()
     @ApiOperation({ summary: 'REC-007 & REC-028: Submit a new job application with consent' })
     @ApiResponse({ status: 201, description: 'Application submitted successfully' })
     @ApiResponse({ status: 400, description: 'Invalid application or missing consent' })
@@ -187,6 +208,7 @@ export class RecruitmentController {
     }
 
     @Get('applications')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-008: Get all applications with filters' })
     @ApiQuery({ name: 'requisitionId', required: false })
     @ApiQuery({ name: 'status', required: false, enum: ApplicationStatus })
@@ -203,6 +225,7 @@ export class RecruitmentController {
     }
 
     @Get('applications/:id')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-008: Get application by ID' })
     @ApiParam({ name: 'id', description: 'Application ID' })
     @ApiResponse({ status: 200, description: 'Application details' })
@@ -211,6 +234,7 @@ export class RecruitmentController {
     }
 
     @Get('applications/:id/history')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-017: Get application status history' })
     @ApiParam({ name: 'id', description: 'Application ID' })
     @ApiResponse({ status: 200, description: 'Application status change history' })
@@ -219,6 +243,7 @@ export class RecruitmentController {
     }
 
     @Get('candidates/:candidateId/applications')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER, SystemRole.JOB_CANDIDATE)
     @ApiOperation({ summary: 'REC-017: Get all applications by candidate' })
     @ApiParam({ name: 'candidateId', description: 'Candidate ID' })
     @ApiResponse({ status: 200, description: 'Candidate applications list' })
@@ -227,6 +252,7 @@ export class RecruitmentController {
     }
 
     @Patch('applications/:id/assign-hr')
+    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-008: Assign HR employee to application' })
     @ApiParam({ name: 'id', description: 'Application ID' })
     @ApiResponse({ status: 200, description: 'HR assigned successfully' })
@@ -235,6 +261,7 @@ export class RecruitmentController {
     }
 
     @Patch('applications/:id/stage')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-008: Update application stage' })
     @ApiParam({ name: 'id', description: 'Application ID' })
     @ApiResponse({ status: 200, description: 'Application stage updated' })
@@ -243,6 +270,7 @@ export class RecruitmentController {
     }
 
     @Patch('applications/:id/status')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-008: Update application status' })
     @ApiParam({ name: 'id', description: 'Application ID' })
     @ApiResponse({ status: 200, description: 'Application status updated' })
@@ -251,6 +279,7 @@ export class RecruitmentController {
     }
 
     @Patch('applications/:id/reject')
+    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-022: Reject application' })
     @ApiParam({ name: 'id', description: 'Application ID' })
     @ApiResponse({ status: 200, description: 'Application rejected' })
@@ -268,6 +297,7 @@ export class RecruitmentController {
     // ============================================================
 
     @Get('dashboard')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-009: Get recruitment dashboard data' })
     @ApiResponse({ status: 200, description: 'Recruitment dashboard metrics' })
     async getRecruitmentDashboard() {
@@ -280,6 +310,7 @@ export class RecruitmentController {
     // ============================================================
 
     @Post('referrals')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER, SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD)
     @ApiOperation({ summary: 'REC-030: Create employee referral' })
     @ApiResponse({ status: 201, description: 'Referral created successfully' })
     @ApiResponse({ status: 409, description: 'Candidate already referred' })
@@ -288,6 +319,7 @@ export class RecruitmentController {
     }
 
     @Get('referrals')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-030: Get all referrals' })
     @ApiResponse({ status: 200, description: 'List of all referrals' })
     async getAllReferrals() {
@@ -295,6 +327,7 @@ export class RecruitmentController {
     }
 
     @Get('referrals/candidate/:candidateId')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-030: Get referral by candidate ID' })
     @ApiParam({ name: 'candidateId', description: 'Candidate ID' })
     @ApiResponse({ status: 200, description: 'Referral details' })
@@ -303,6 +336,7 @@ export class RecruitmentController {
     }
 
     @Get('referrals/check/:candidateId')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-030: Check if candidate is a referral' })
     @ApiParam({ name: 'candidateId', description: 'Candidate ID' })
     @ApiResponse({ status: 200, description: 'Referral status' })
@@ -317,6 +351,7 @@ export class RecruitmentController {
     // ============================================================
 
     @Post('interviews')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-010: Schedule a new interview' })
     @ApiResponse({ status: 201, description: 'Interview scheduled successfully' })
     async scheduleInterview(@Body() dto: ScheduleInterviewDto) {
@@ -324,6 +359,7 @@ export class RecruitmentController {
     }
 
     @Get('interviews')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER, SystemRole.DEPARTMENT_HEAD)
     @ApiOperation({ summary: 'REC-010: Get upcoming interviews' })
     @ApiQuery({ name: 'days', required: false, description: 'Number of days ahead (default 7)' })
     @ApiResponse({ status: 200, description: 'List of upcoming interviews' })
@@ -332,6 +368,7 @@ export class RecruitmentController {
     }
 
     @Get('interviews/:id')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER, SystemRole.DEPARTMENT_HEAD)
     @ApiOperation({ summary: 'REC-010: Get interview by ID' })
     @ApiParam({ name: 'id', description: 'Interview ID' })
     @ApiResponse({ status: 200, description: 'Interview details' })
@@ -340,6 +377,7 @@ export class RecruitmentController {
     }
 
     @Get('interviews/application/:applicationId')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-010: Get interviews for an application' })
     @ApiParam({ name: 'applicationId', description: 'Application ID' })
     @ApiResponse({ status: 200, description: 'List of interviews for application' })
@@ -348,6 +386,7 @@ export class RecruitmentController {
     }
 
     @Get('interviews/panelist/:panelistId')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER, SystemRole.DEPARTMENT_HEAD, SystemRole.DEPARTMENT_EMPLOYEE)
     @ApiOperation({ summary: 'REC-021: Get interviews for a panelist' })
     @ApiParam({ name: 'panelistId', description: 'Panelist/User ID' })
     @ApiResponse({ status: 200, description: 'List of interviews for panelist' })
@@ -356,6 +395,7 @@ export class RecruitmentController {
     }
 
     @Put('interviews/:id')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-010: Update interview details' })
     @ApiParam({ name: 'id', description: 'Interview ID' })
     @ApiResponse({ status: 200, description: 'Interview updated' })
@@ -364,6 +404,7 @@ export class RecruitmentController {
     }
 
     @Patch('interviews/:id/complete')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-010: Mark interview as completed' })
     @ApiParam({ name: 'id', description: 'Interview ID' })
     @ApiResponse({ status: 200, description: 'Interview marked as completed' })
@@ -372,6 +413,7 @@ export class RecruitmentController {
     }
 
     @Patch('interviews/:id/cancel')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-010: Cancel an interview' })
     @ApiParam({ name: 'id', description: 'Interview ID' })
     @ApiResponse({ status: 200, description: 'Interview cancelled' })
@@ -385,6 +427,7 @@ export class RecruitmentController {
     // ============================================================
 
     @Post('feedback')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER, SystemRole.DEPARTMENT_HEAD, SystemRole.DEPARTMENT_EMPLOYEE)
     @ApiOperation({ summary: 'REC-011: Submit interview feedback and scores' })
     @ApiResponse({ status: 201, description: 'Feedback submitted successfully' })
     async submitFeedback(@Body() dto: SubmitFeedbackDto) {
@@ -392,6 +435,7 @@ export class RecruitmentController {
     }
 
     @Get('feedback/interview/:interviewId')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-011: Get feedback for an interview' })
     @ApiParam({ name: 'interviewId', description: 'Interview ID' })
     @ApiResponse({ status: 200, description: 'Interview feedback list' })
@@ -400,6 +444,7 @@ export class RecruitmentController {
     }
 
     @Get('feedback/application/:applicationId')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-020: Get all feedback for an application' })
     @ApiParam({ name: 'applicationId', description: 'Application ID' })
     @ApiResponse({ status: 200, description: 'All feedback for application' })
@@ -408,6 +453,7 @@ export class RecruitmentController {
     }
 
     @Get('feedback/application/:applicationId/average-score')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-020: Get average score for an application' })
     @ApiParam({ name: 'applicationId', description: 'Application ID' })
     @ApiResponse({ status: 200, description: 'Average assessment score' })
@@ -422,6 +468,7 @@ export class RecruitmentController {
     // ============================================================
 
     @Post('offers')
+    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-014: Create a new job offer' })
     @ApiResponse({ status: 201, description: 'Offer created successfully' })
     @ApiResponse({ status: 409, description: 'Active offer already exists' })
@@ -430,6 +477,7 @@ export class RecruitmentController {
     }
 
     @Get('offers')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-014: Get pending offers' })
     @ApiResponse({ status: 200, description: 'List of pending offers' })
     async getPendingOffers() {
@@ -437,6 +485,7 @@ export class RecruitmentController {
     }
 
     @Get('offers/:id')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-014: Get offer by ID' })
     @ApiParam({ name: 'id', description: 'Offer ID' })
     @ApiResponse({ status: 200, description: 'Offer details' })
@@ -445,6 +494,7 @@ export class RecruitmentController {
     }
 
     @Get('offers/application/:applicationId')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-014: Get offer for an application' })
     @ApiParam({ name: 'applicationId', description: 'Application ID' })
     @ApiResponse({ status: 200, description: 'Offer for application' })
@@ -453,6 +503,7 @@ export class RecruitmentController {
     }
 
     @Patch('offers/:id/approve')
+    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     @ApiOperation({ summary: 'REC-014: Approve or reject an offer' })
     @ApiParam({ name: 'id', description: 'Offer ID' })
     @ApiResponse({ status: 200, description: 'Offer approval status updated' })
@@ -461,6 +512,7 @@ export class RecruitmentController {
     }
 
     @Patch('offers/:id/candidate-response')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER, SystemRole.JOB_CANDIDATE)
     @ApiOperation({ summary: 'REC-018: Record candidate response to offer' })
     @ApiParam({ name: 'id', description: 'Offer ID' })
     @ApiResponse({ status: 200, description: 'Candidate response recorded' })
@@ -469,6 +521,7 @@ export class RecruitmentController {
     }
 
     @Post('offers/:id/send')
+    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-018: Send offer letter electronically to candidate' })
     @ApiParam({ name: 'id', description: 'Offer ID' })
     @ApiResponse({ status: 200, description: 'Offer letter sent successfully' })
@@ -483,6 +536,7 @@ export class RecruitmentController {
     // ============================================================
 
     @Post('notifications/status-update')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-017: Send status update notification to candidate' })
     @ApiResponse({ status: 200, description: 'Status update notification sent' })
     @ApiResponse({ status: 400, description: 'Invalid notification data' })
@@ -491,6 +545,7 @@ export class RecruitmentController {
     }
 
     @Post('notifications/rejection')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-022: Send automated rejection notification' })
     @ApiResponse({ status: 200, description: 'Rejection notification sent successfully' })
     @ApiResponse({ status: 400, description: 'Invalid rejection data' })
@@ -499,6 +554,7 @@ export class RecruitmentController {
     }
 
     @Get('notifications/templates')
+    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-022: Get available email templates' })
     @ApiResponse({ status: 200, description: 'List of email templates' })
     async getEmailTemplates() {
@@ -511,6 +567,7 @@ export class RecruitmentController {
     // ============================================================
 
     @Post('applications/:id/trigger-preboarding')
+    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.RECRUITER)
     @ApiOperation({ summary: 'REC-029: Trigger pre-boarding after offer acceptance' })
     @ApiParam({ name: 'id', description: 'Application ID' })
     @ApiResponse({ status: 200, description: 'Pre-boarding triggered' })
