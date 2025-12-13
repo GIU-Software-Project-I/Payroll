@@ -1,0 +1,1278 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { InjectModel, InjectConnection } from '@nestjs/mongoose';
+import { Model, Connection, Types } from 'mongoose';
+import { Cron } from '@nestjs/schedule';
+import { NotificationLog, NotificationLogDocument } from '../models/notification-log.schema';
+import { AttendanceRecord, AttendanceRecordDocument } from '../models/attendance-record.schema';
+import { ShiftAssignment, ShiftAssignmentDocument } from '../models/shift-assignment.schema';
+import { ScheduleRule, ScheduleRuleDocument } from '../models/schedule-rule.schema';
+import { TimeException, TimeExceptionDocument } from '../models/time-exception.schema';
+import { TimeExceptionStatus } from '../models/enums';
+
+// ==================== EXPORTED TYPE DEFINITIONS ====================
+
+export interface DailyAttendanceStatus {
+    date: string; // YYYY-MM-DD
+    employeeId: string;
+    status: 'ABSENT' | 'PRESENT' | 'HOLIDAY' | 'REST_DAY' | 'NO_SHIFT' | 'SCHEDULE_DAY_OFF' | 'ON_LEAVE';
+    reason?: string;
+    scheduledMinutes?: number;
+    actualMinutes?: number;
+}
+
+export interface AbsencePeriod {
+    status: 'ABSENT' | 'PRESENT' | 'HOLIDAY' | 'REST_DAY' | 'NO_SHIFT' | 'SCHEDULE_DAY_OFF' | 'ON_LEAVE';
+    startDate: Date;
+    endDate: Date;
+    dayCount: number;
+    reason?: string;
+}
+
+export interface PayrollAbsenceData {
+    employeeId: string;
+    month: number;
+    year: number;
+    totalAbsenceMinutes: number;
+    totalAbsentDays: number;
+    approvedAbsenceMinutes: number;
+    unapprovedAbsenceMinutes: number;
+    absenceDays: Array<{ date: string; minutes: number; type: string; approved: boolean }>;
+}
+
+export interface RepeatedAbsenceResult {
+    employeeId: string;
+    lookbackDays: number;
+    totalAbsenceDays: number;
+    consecutiveAbsenceDays: number;
+    absencePercentage: number;
+    hasPattern: boolean;
+    escalationLevel: 'NONE' | 'WARNING' | 'ALERT' | 'CRITICAL';
+    recommendedAction?: string;
+}
+
+export interface MonthlyAttendanceReport {
+    employeeId: string;
+    month: number;
+    year: number;
+    presentDays: number;
+    absentDays: number;
+    holidayDays: number;
+    restDays: number;
+    leaveDays: number;
+    totalScheduledDays: number;
+    totalScheduledMinutes: number;
+    totalActualMinutes: number;
+    attendanceRate: number;
+    absenceRate: number;
+    absenceDetails: AbsencePeriod[];
+    payrollData?: PayrollAbsenceData;
+}
+
+export interface SyncResult {
+    date: string;
+    totalRecords: number;
+    payrollNotifications: number;
+    leaveNotifications: number;
+    skipped: number;
+    errors: Array<{ recordId: any; error: string }>;
+}
+
+/**
+ * AttendanceSyncService
+ *
+ * Handles:
+ * - Absence detection and tracking
+ * - Payroll synchronization
+ * - Leave system integration
+ * - Repeated absence monitoring
+ * - Attendance reporting
+ */
+@Injectable()
+export class AttendanceSyncService {
+    private readonly logger = new Logger(AttendanceSyncService.name);
+
+    constructor(
+        @InjectModel('AttendanceRecord') private attendanceModel: Model<AttendanceRecordDocument>,
+        @InjectModel(NotificationLog.name) private notificationModel: Model<NotificationLogDocument>,
+        @InjectModel(ShiftAssignment.name) private shiftAssignmentModel: Model<ShiftAssignmentDocument>,
+        @InjectModel(ScheduleRule.name) private scheduleRuleModel: Model<ScheduleRuleDocument>,
+        @InjectModel(TimeException.name) private exceptionModel: Model<TimeExceptionDocument>,
+        @InjectConnection() private connection: Connection,
+    ) {}
+
+    // ==================== CRON JOB ====================
+    /**
+     * Daily sync scheduler - runs at 2 AM every day
+     * Syncs previous day's attendance to payroll and leave systems
+     */
+    @Cron('0 2 * * *', {
+        name: 'daily-attendance-sync',
+        timeZone: 'UTC',
+    })
+    async scheduledDailySync() {
+        this.logger.log('Starting scheduled daily attendance sync...');
+
+        try {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            yesterday.setHours(0, 0, 0, 0);
+
+            const result = await this.syncAttendanceForDate(yesterday);
+
+            this.logger.log(`Scheduled sync completed: ${JSON.stringify(result)}`);
+        } catch (error) {
+            this.logger.error('Scheduled sync failed:', error);
+        }
+    }
+
+    // ==================== MAIN SYNC METHOD ====================
+    /**
+     * Sync attendance records for a specific date
+     * Creates notification log entries for payroll and absence data
+     *
+     * Business Logic:
+     * - PRESENT: workMinutes > 0
+     * - ABSENT: workMinutes = 0 AND scheduled to work AND not holiday/rest day
+     * - HOLIDAY: workMinutes = 0 AND is holiday
+     * - REST_DAY: workMinutes = 0 AND is weekly rest day
+     * - NO_SHIFT: workMinutes = 0 AND no shift assignment
+     * - SCHEDULE_DAY_OFF: workMinutes = 0 AND not scheduled to work
+     */
+    async syncAttendanceForDate(date: Date): Promise<SyncResult> {
+        const startOfDay = new Date(date);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        this.logger.log(`Syncing attendance for date: ${startOfDay.toISOString()}`);
+
+        const hrUserId = this.getHrUserId();
+
+        // Get all attendance records marked as finalized for payroll
+        const records = await this.attendanceModel.find({
+            finalisedForPayroll: true,
+            'punches.time': { $gte: startOfDay, $lte: endOfDay },
+        }).lean();
+
+        this.logger.log(`Found ${records.length} attendance records to sync`);
+
+        const result: SyncResult = {
+            date: date.toISOString().split('T')[0],
+            totalRecords: records.length,
+            payrollNotifications: 0,
+            leaveNotifications: 0,
+            skipped: 0,
+            errors: [],
+        };
+
+        for (const record of records) {
+            try {
+                const recordId = (record as any)._id?.toString();
+                const employeeId = (record as any).employeeId?.toString();
+
+                if (!recordId || !employeeId) {
+                    result.errors.push({
+                        recordId: recordId || 'unknown',
+                        error: 'Record has no ID or employee ID',
+                    });
+                    continue;
+                }
+
+                // Check if notification already exists for this record on this date
+                const existing = await this.notificationModel.findOne({
+                    type: 'PAYROLL_SYNC_DATA',
+                    createdAt: { $gte: startOfDay, $lte: endOfDay },
+                    message: { $regex: `"attendanceRecordId":"${recordId}"` },
+                });
+
+                if (existing) {
+                    result.skipped++;
+                    continue;
+                }
+
+                // Determine the attendance status
+                const status = await this.determineAttendanceStatus(
+                    new Types.ObjectId(employeeId),
+                    date,
+                    record as any
+                );
+
+                // Create payroll notification with proper status
+                await this.createPayrollNotification(record, date, status, hrUserId);
+                result.payrollNotifications++;
+
+                // Create absence notification ONLY if actually absent
+                if (status === 'ABSENT') {
+                    await this.createAbsenceNotification(record, date, hrUserId);
+                    result.leaveNotifications++;
+                }
+            } catch (error: any) {
+                result.errors.push({
+                    recordId: (record as any)._id,
+                    error: error.message,
+                });
+                this.logger.error(`Failed to sync record ${(record as any)._id}:`, error);
+            }
+        }
+
+        return result;
+    }
+
+    // ==================== PAYROLL NOTIFICATION ====================
+    /**
+     * Create payroll sync notification with attendance data
+     */
+    private async createPayrollNotification(
+        record: any,
+        date: Date,
+        status: 'PRESENT' | 'ABSENT' | 'HOLIDAY' | 'REST_DAY' | 'NO_SHIFT' | 'SCHEDULE_DAY_OFF' | 'ON_LEAVE',
+        hrUserId: Types.ObjectId
+    ): Promise<void> {
+        const workMinutes = record.totalWorkMinutes || 0;
+        const workHours = workMinutes / 60;
+        const dateStr = date.toISOString().split('T')[0];
+        const recordId = (record as any)._id?.toString();
+        const employeeId = (record as any).employeeId?.toString();
+
+        if (!recordId || !employeeId) {
+            throw new Error('Invalid record data - missing ID');
+        }
+
+        const payrollData = {
+            employeeId: employeeId,
+            attendanceRecordId: recordId,
+            date: dateStr,
+            workHours: Number(workHours.toFixed(2)),
+            totalWorkMinutes: workMinutes,
+            status: status,
+            syncedAt: new Date().toISOString(),
+        };
+
+        await this.notificationModel.create({
+            to: hrUserId,
+            type: 'PAYROLL_SYNC_DATA',
+            message: JSON.stringify(payrollData),
+            createdAt: new Date(),
+        });
+
+        this.logger.debug(`Created payroll notification for employee ${employeeId} with status: ${status}`);
+    }
+
+    // ==================== ABSENCE NOTIFICATION ====================
+    /**
+     * Create absence notification for employees marked as ABSENT
+     * Only called when employee was scheduled to work but didn't attend
+     */
+    private async createAbsenceNotification(record: any, date: Date, hrUserId: Types.ObjectId): Promise<void> {
+        const dateStr = date.toISOString().split('T')[0];
+        const recordId = (record as any)._id?.toString();
+        const employeeId = (record as any).employeeId?.toString();
+
+        if (!recordId || !employeeId) {
+            throw new Error('Invalid record data - missing ID');
+        }
+
+        const absenceData = {
+            employeeId: employeeId,
+            attendanceRecordId: recordId,
+            date: dateStr,
+            workHours: 0,
+            totalWorkMinutes: 0,
+            status: 'ABSENT',
+            syncedAt: new Date().toISOString(),
+            reason: 'Scheduled work day with no attendance punches',
+        };
+
+        await this.notificationModel.create({
+            to: hrUserId,
+            type: 'LEAVE_SYNC_ABSENCE',
+            message: JSON.stringify(absenceData),
+            createdAt: new Date(),
+        });
+
+        this.logger.debug(`Created absence notification for employee ${employeeId} on ${dateStr}`);
+    }
+
+    // ==================== MANUAL SYNC ====================
+    /**
+     * Manual sync for date range
+     */
+    async syncDateRange(startDate: Date, endDate: Date): Promise<any> {
+        this.logger.log(`Manual sync requested: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+
+        const results: SyncResult[] = [];
+        const currentDate = new Date(startDate);
+
+        while (currentDate <= endDate) {
+            const result = await this.syncAttendanceForDate(new Date(currentDate));
+            results.push(result);
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        return {
+            startDate,
+            endDate,
+            totalDays: results.length,
+            totalRecords: results.reduce((sum, r) => sum + r.totalRecords, 0),
+            totalPayrollNotifications: results.reduce((sum, r) => sum + r.payrollNotifications, 0),
+            totalAbsenceNotifications: results.reduce((sum, r) => sum + r.leaveNotifications, 0),
+            dailyResults: results,
+        };
+    }
+
+    // ==================== ABSENCE DETECTION ====================
+    /**
+     * Determine the attendance status for a specific record and date
+     *
+     * Returns:
+     * - PRESENT: if workMinutes > 0
+     * - HOLIDAY: if no work and day is holiday
+     * - REST_DAY: if no work and day is weekly rest day
+     * - ABSENT: if no work, scheduled to work, not holiday/rest day
+     * - NO_SHIFT: if no work and no shift assignment
+     * - SCHEDULE_DAY_OFF: if no work and not scheduled to work
+     */
+    private async determineAttendanceStatus(
+        employeeId: Types.ObjectId,
+        date: Date,
+        record: any
+    ): Promise<'PRESENT' | 'ABSENT' | 'HOLIDAY' | 'REST_DAY' | 'NO_SHIFT' | 'SCHEDULE_DAY_OFF' | 'ON_LEAVE'> {
+        const workMinutes = record.totalWorkMinutes || 0;
+
+        // Step 1: If employee worked, they are PRESENT
+        if (workMinutes > 0) {
+            return 'PRESENT';
+        }
+
+        // Step 2: Check for approved leave FIRST (before holiday/rest day checks)
+        const leaveStatus = await this.checkApprovedLeaveForDate(employeeId, date);
+        if (leaveStatus) {
+            return leaveStatus.status; // Returns 'ON_LEAVE' or 'ABSENT'
+        }
+
+        // Step 3: Check if it's a holiday
+        try {
+            const isHoliday = await this.isHoliday(date);
+            if (isHoliday) {
+                return 'HOLIDAY';
+            }
+        } catch (e) {
+            this.logger.warn('Holiday check failed during status determination', e);
+        }
+
+        // Step 4: Check if it's a weekly rest day
+        try {
+            const isRest = await this.isWeeklyRest(employeeId, date);
+            if (isRest) {
+                return 'REST_DAY';
+            }
+        } catch (e) {
+            this.logger.warn('Weekly rest check failed during status determination', e);
+        }
+
+        // Step 5: Check if employee has a shift assignment
+        const dayStart = new Date(date);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(date);
+        dayEnd.setHours(23, 59, 59, 999);
+
+        const assignment = await this.shiftAssignmentModel.findOne({
+            employeeId,
+            startDate: { $lte: dayEnd },
+            $or: [
+                { endDate: { $exists: false } },
+                { endDate: null },
+                { endDate: { $gte: dayStart } }
+            ],
+        }).lean();
+
+        if (!assignment) {
+            return 'NO_SHIFT';
+        }
+
+        // Step 6: Check if scheduled to work on this day
+        const isScheduled = await this.isScheduledForDay(assignment, date);
+        if (!isScheduled) {
+            return 'SCHEDULE_DAY_OFF';
+        }
+
+        // Step 7: Employee was scheduled to work but has no attendance records
+        return 'ABSENT';
+    }
+
+    /**
+     * Calculate daily attendance status for a period
+     * Determines if employee was ABSENT, PRESENT, on HOLIDAY, REST_DAY, NO_SHIFT, or SCHEDULE_DAY_OFF
+     */
+    async calculateAbsencesForPeriod(
+        employeeId: string | Types.ObjectId,
+        startDate: Date,
+        endDate: Date
+    ): Promise<DailyAttendanceStatus[]> {
+        const empOid = typeof employeeId === 'string' ? new Types.ObjectId(employeeId) : employeeId;
+        const results: DailyAttendanceStatus[] = [];
+
+        const dayStart = new Date(startDate);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(endDate);
+        dayEnd.setHours(23, 59, 59, 999);
+
+        // Get all records for this period
+        const records = await this.attendanceModel.find({
+            employeeId: empOid,
+            'punches.time': { $gte: dayStart, $lte: dayEnd },
+        }).lean();
+
+        const recordsByDate = new Map<string, any>();
+        records.forEach(rec => {
+            if (rec.punches && rec.punches.length > 0) {
+                const punchDate = new Date(rec.punches[0].time);
+                const dateStr = punchDate.toISOString().split('T')[0];
+                if (!recordsByDate.has(dateStr)) {
+                    recordsByDate.set(dateStr, rec);
+                }
+            }
+        });
+
+        // Iterate through each day
+        const currentDate = new Date(dayStart);
+        while (currentDate <= dayEnd) {
+            const dateStr = currentDate.toISOString().split('T')[0];
+            const status = await this.determineDailyStatus(empOid, currentDate, recordsByDate.get(dateStr));
+            results.push(status);
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        return results;
+    }
+
+    /**
+     * Determine daily attendance status for an employee on a specific date
+     *
+     * Business Logic Flow:
+     * 1. If workMinutes > 0 → PRESENT
+     * 2. If approved leave with balance → ON_LEAVE (deduct entitlement)
+     * 3. If approved leave no balance → ABSENT
+     * 4. If holiday → HOLIDAY
+     * 5. If weekly rest day → REST_DAY
+     * 6. If no shift → NO_SHIFT
+     * 7. If not scheduled → SCHEDULE_DAY_OFF
+     * 8. Default → ABSENT
+     */
+    private async determineDailyStatus(
+        employeeId: Types.ObjectId,
+        date: Date,
+        record?: any
+    ): Promise<DailyAttendanceStatus> {
+        const dateStr = date.toISOString().split('T')[0];
+
+        // Step 1: Check if employee worked
+        if (record && record.totalWorkMinutes && record.totalWorkMinutes > 0) {
+            return {
+                date: dateStr,
+                employeeId: employeeId.toString(),
+                status: 'PRESENT',
+                actualMinutes: record.totalWorkMinutes,
+                scheduledMinutes: await this.getScheduledMinutesForDate(employeeId, date),
+            };
+        }
+
+        // Step 2: Check for approved leave FIRST (before holiday/rest day checks)
+        const leaveStatus = await this.checkApprovedLeaveForDate(employeeId, date);
+        if (leaveStatus) {
+            return leaveStatus;
+        }
+
+        // Step 3: Check if it's a holiday
+        try {
+            const isHoliday = await this.isHoliday(date);
+            if (isHoliday) {
+                return {
+                    date: dateStr,
+                    employeeId: employeeId.toString(),
+                    status: 'HOLIDAY',
+                    reason: 'National or organizational holiday',
+                };
+            }
+        } catch (e) {
+            this.logger.warn('Holiday check failed', e);
+        }
+
+        // Step 4: Check if it's a weekly rest day
+        try {
+            const isRest = await this.isWeeklyRest(employeeId, date);
+            if (isRest) {
+                return {
+                    date: dateStr,
+                    employeeId: employeeId.toString(),
+                    status: 'REST_DAY',
+                    reason: 'Weekly rest day according to schedule',
+                };
+            }
+        } catch (e) {
+            this.logger.warn('Weekly rest check failed', e);
+        }
+
+        // Step 5: Check if employee has a shift assignment
+        const assignment = await this.getShiftAssignment(employeeId, date);
+        if (!assignment) {
+            return {
+                date: dateStr,
+                employeeId: employeeId.toString(),
+                status: 'NO_SHIFT',
+                reason: 'No shift assignment found for this date',
+            };
+        }
+
+        // Step 6: Check if scheduled to work on this day
+        const isScheduled = await this.isScheduledForDay(assignment, date);
+        if (!isScheduled) {
+            return {
+                date: dateStr,
+                employeeId: employeeId.toString(),
+                status: 'SCHEDULE_DAY_OFF',
+                reason: 'Employee is not scheduled to work on this day',
+            };
+        }
+
+        // Step 7: Employee was scheduled to work but has no attendance
+        return {
+            date: dateStr,
+            employeeId: employeeId.toString(),
+            status: 'ABSENT',
+            reason: 'No attendance recorded on scheduled work day',
+            scheduledMinutes: await this.getScheduledMinutesForDate(employeeId, date),
+            actualMinutes: 0,
+        };
+    }
+
+    /**
+     * Check if employee has approved leave for the given date
+     * Returns DailyAttendanceStatus if on leave, null otherwise
+     */
+    /**
+     * Check if employee has approved leave for the given date
+     * Returns DailyAttendanceStatus if on leave, null otherwise
+     */
+    private async checkApprovedLeaveForDate(employeeId: Types.ObjectId, date: Date): Promise<DailyAttendanceStatus | null> {
+        try {
+            const dateStr = date.toISOString().split('T')[0];
+            const dayStart = new Date(date);
+            dayStart.setHours(0, 0, 0, 0);
+            const dayEnd = new Date(date);
+            dayEnd.setHours(23, 59, 59, 999);
+
+            this.logger.debug(`[DEBUG] Checking leave for ${employeeId} on ${dateStr}`);
+
+            // IMPORTANT: Check what status values exist in your database
+            const leaveRequest = await this.connection.db!.collection('leaverequests').findOne({
+                employeeId: employeeId,
+                'dates.from': { $lte: dayEnd },
+                'dates.to': { $gte: dayStart },
+                status: { $in: ['APPROVED', 'Approved', 'approved', '2', 2] } // Try multiple values
+            });
+
+            if (!leaveRequest) {
+                this.logger.debug(`[DEBUG] No leave request found for ${employeeId} on ${dateStr}`);
+
+                // Debug: Check what IS in the database
+                const allRequests = await this.connection.db!.collection('leaverequests')
+                    .find({ employeeId: employeeId })
+                    .toArray();
+
+                this.logger.debug(`[DEBUG] All leave requests for employee: ${JSON.stringify(allRequests.map(r => ({
+                    id: r._id,
+                    status: r.status,
+                    from: r.dates?.from,
+                    to: r.dates?.to,
+                    leaveTypeId: r.leaveTypeId
+                })), null, 2)}`);
+
+                return null;
+            }
+
+            this.logger.debug(`[DEBUG] Found leave request: ${JSON.stringify({
+                id: leaveRequest._id,
+                status: leaveRequest.status,
+                from: leaveRequest.dates?.from,
+                to: leaveRequest.dates?.to,
+                leaveTypeId: leaveRequest.leaveTypeId
+            }, null, 2)}`);
+
+            // Check entitlement - use proper field names from your schema
+            const hasBalance = await this.checkEntitlementBalance(employeeId, leaveRequest.leaveTypeId);
+            this.logger.debug(`[DEBUG] Entitlement balance: ${hasBalance}`);
+
+            if (!hasBalance) {
+                return {
+                    date: dateStr,
+                    employeeId: employeeId.toString(),
+                    status: 'ABSENT' as const,
+                    reason: 'Approved leave but insufficient entitlement balance',
+                    scheduledMinutes: await this.getScheduledMinutesForDate(employeeId, date),
+                    actualMinutes: 0,
+                };
+            }
+
+            // Deduct entitlement
+            await this.deductEntitlementForLeaveDay(employeeId, leaveRequest.leaveTypeId, date);
+
+            return {
+                date: dateStr,
+                employeeId: employeeId.toString(),
+                status: 'ON_LEAVE' as const,
+                reason: `On approved ${leaveRequest.leaveType || 'leave'}`,
+                scheduledMinutes: await this.getScheduledMinutesForDate(employeeId, date),
+                actualMinutes: 0,
+            };
+        } catch (error: any) {
+            this.logger.error(`[ERROR] checkApprovedLeaveForDate failed:`, error);
+            return null;
+        }
+    }
+    /**
+     * Check if employee has available entitlement balance for a leave type
+     *
+     * @param employeeId - Employee ID
+     * @param leaveTypeId - Leave type ID
+     * @returns true if balance > 0, false otherwise
+     */
+    /**
+     * Check if employee has available entitlement balance for a leave type
+     */
+    private async checkEntitlementBalance(employeeId: Types.ObjectId, leaveTypeId: Types.ObjectId): Promise<boolean> {
+        try {
+            // Query entitlements collection - use correct schema fields
+            const entitlement = await this.connection.db!.collection('leaveentitlements').findOne({
+                employeeId: employeeId,
+                leaveTypeId: leaveTypeId,
+            });
+
+            if (!entitlement) {
+                this.logger.warn(`No entitlement record found for employee ${employeeId} and leave type ${leaveTypeId}`);
+                return false;
+            }
+
+            // ✅ Use correct field names from your schema
+            const remaining = entitlement.remaining || 0;
+            const taken = entitlement.taken || 0;
+            const pending = entitlement.pending || 0;
+            const yearly = entitlement.yearlyEntitlement || 0;
+            const accrued = entitlement.accruedRounded || entitlement.accruedActual || 0;
+            const carryForward = entitlement.carryForward || 0;
+
+            // Calculate available balance
+            const availableBalance = remaining > 0 ? remaining : (accrued + carryForward - taken - pending);
+
+            this.logger.debug(`Entitlement check: employee ${employeeId}, remaining: ${remaining}, available: ${availableBalance}`);
+
+            return availableBalance > 0;
+        } catch (error: any) {
+            this.logger.error(`Error checking entitlement balance:`, error);
+            return false;
+        }
+    }
+    /**
+     * Deduct 1 day (or proportional minutes) from entitlement balance
+     * This prevents double deduction and tracks which days were deducted
+     *
+     * @param employeeId - Employee ID
+     * @param leaveTypeId - Leave type ID
+     * @param date - Date of leave
+     */
+    private async deductEntitlementForLeaveDay(employeeId: Types.ObjectId, leaveTypeId: Types.ObjectId, date: Date): Promise<void> {
+        try {
+            const dateStr = date.toISOString().split('T')[0];
+
+            // Check if already deducted for this day (idempotency check)
+            const existing = await this.connection.db!.collection('leave_deductions').findOne({
+                employeeId: employeeId,
+                leaveTypeId: leaveTypeId,
+                date: dateStr,
+            });
+
+            if (existing) {
+                this.logger.debug(`Entitlement already deducted for ${employeeId} on ${dateStr}`);
+                return;
+            }
+
+            // Update entitlement record in correct collection
+            const result = await this.connection.db!.collection('leaveentitlements').updateOne(
+                {
+                    employeeId: employeeId,
+                    leaveTypeId: leaveTypeId,
+                },
+                {
+                    $inc: {
+                        taken: 1,  // Increment taken days by 1
+                        remaining: -1  // Decrement remaining by 1
+                    },
+                    $set: { lastAccrualDate: new Date() },
+                }
+            );
+
+            if (result.modifiedCount === 0) {
+                this.logger.warn(`No entitlement record updated for ${employeeId} and leave type ${leaveTypeId}`);
+                return;
+            }
+
+            // Record the deduction for audit trail
+            await this.connection.db!.collection('leave_deductions').insertOne({
+                employeeId: employeeId,
+                leaveTypeId: leaveTypeId,
+                date: dateStr,
+                daysDeducted: 1,  // Changed from minutesDeducted to daysDeducted
+                createdAt: new Date(),
+                _id: new Types.ObjectId(),
+            });
+
+            this.logger.debug(`Deducted 1 day from entitlement for employee ${employeeId} on ${dateStr}`);
+        } catch (error: any) {
+            this.logger.error(`Error deducting entitlement:`, error);
+            // Don't throw - log error and continue
+        }
+    }
+
+    /**
+     * Get shift assignment for employee on a given date
+     * Extracted helper method for reusability
+     */
+    private async getShiftAssignment(employeeId: Types.ObjectId, date: Date): Promise<any | null> {
+        try {
+            const dayStart = new Date(date);
+            dayStart.setHours(0, 0, 0, 0);
+            const dayEnd = new Date(date);
+            dayEnd.setHours(23, 59, 59, 999);
+
+            const assignment = await this.shiftAssignmentModel.findOne({
+                employeeId,
+                startDate: { $lte: dayEnd },
+                $or: [
+                    { endDate: { $exists: false } },
+                    { endDate: null },
+                    { endDate: { $gte: dayStart } }
+                ],
+            }).lean();
+
+            return assignment || null;
+        } catch (error: any) {
+            this.logger.error(`Error getting shift assignment:`, error);
+            return null;
+        }
+    }
+
+    /**
+     * Get scheduled minutes for a specific date
+     * Based on shift assignment and schedule rule
+     */
+    private async getScheduledMinutesForDate(employeeId: Types.ObjectId, date: Date): Promise<number> {
+        try {
+            const assignment = await this.getShiftAssignment(employeeId, date);
+            if (!assignment) return 0;
+
+            const shift = await this.connection.db!.collection('shifts').findOne({ _id: assignment.shiftId });
+            if (!shift) return 0;
+
+            const [sh, sm] = (shift.startTime || '00:00').split(':').map(Number);
+            const [eh, em] = (shift.endTime || '00:00').split(':').map(Number);
+
+            const start = new Date(date);
+            start.setHours(sh, sm, 0, 0);
+
+            const end = new Date(date);
+            end.setHours(eh, em, 0, 0);
+
+            // Handle shifts that span midnight
+            if (end.getTime() <= start.getTime()) {
+                end.setDate(end.getDate() + 1);
+            }
+
+            return Math.ceil((end.getTime() - start.getTime()) / 60000);
+        } catch (error: any) {
+            this.logger.warn(`Failed to get scheduled minutes for employee ${employeeId} on ${date.toDateString()}:`, error);
+            return 0;
+        }
+    }
+
+    /**
+     * Check if employee is scheduled for a specific day
+     */
+    private async isScheduledForDay(assignment: any, date: Date): Promise<boolean> {
+        if (!assignment.scheduleRuleId) return true;
+
+        const rule = await this.scheduleRuleModel.findById(assignment.scheduleRuleId).lean();
+        if (!rule || !rule.active || !rule.pattern) return true;
+
+        const pattern = (rule.pattern || '').toUpperCase();
+        if (pattern.startsWith('WEEKLY:')) {
+            const daysPart = pattern.split(':')[1] || '';
+            const allowedDays = daysPart.split(',').map(d => d.trim().slice(0, 3).toUpperCase());
+            const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+            const today = dayNames[date.getDay()];
+            return allowedDays.includes(today);
+        } else if (pattern.startsWith('DAILY')) {
+            return true;
+        }
+
+        return true;
+    }
+
+    /**
+     * Get scheduled minutes for a day
+     */
+    private async getScheduledMinutes(assignment: any, date: Date): Promise<number> {
+        try {
+            const shift = await this.connection.db!.collection('shifts').findOne({ _id: assignment.shiftId });
+            if (!shift) return 0;
+
+            const [sh, sm] = (shift.startTime || '00:00').split(':').map(Number);
+            const [eh, em] = (shift.endTime || '00:00').split(':').map(Number);
+
+            const start = new Date(date);
+            start.setHours(sh, sm, 0, 0);
+
+            const end = new Date(date);
+            end.setHours(eh, em, 0, 0);
+
+            if (end.getTime() <= start.getTime()) {
+                end.setDate(end.getDate() + 1);
+            }
+
+            return Math.ceil((end.getTime() - start.getTime()) / 60000);
+        } catch (e) {
+            this.logger.warn('Failed to get scheduled minutes', e);
+            return 0;
+        }
+    }
+
+    // ==================== PAYROLL ABSENCE SYNC ====================
+    /**
+     * Calculate absence data for payroll for a specific month
+     */
+    async syncAbsencesToPayroll(
+        employeeId: string | Types.ObjectId,
+        month: number,
+        year: number
+    ): Promise<PayrollAbsenceData> {
+        const empOid = typeof employeeId === 'string' ? new Types.ObjectId(employeeId) : employeeId;
+
+        const startDate = new Date(year, month - 1, 1);
+        startDate.setHours(0, 0, 0, 0);
+        const endDate = new Date(year, month, 0);
+        endDate.setHours(23, 59, 59, 999);
+
+        const absences = await this.calculateAbsencesForPeriod(empOid, startDate, endDate);
+
+        const absenceRecords = absences.filter(a => a.status === 'ABSENT');
+        const totalAbsenceMinutes = absenceRecords.reduce((sum, a) => sum + (a.scheduledMinutes || 0), 0);
+
+        // Get approved exceptions for this period
+        const approvedExceptions = await this.exceptionModel.find({
+            employeeId: empOid,
+            status: { $in: [TimeExceptionStatus.APPROVED] },
+            createdAt: { $gte: startDate, $lte: endDate },
+        }).lean();
+
+        const approvedMinutes = approvedExceptions.reduce((sum, ex) => {
+            // Estimate minutes based on type - this would need actual implementation
+            const typeMinutes: Record<string, number> = {
+                MISSED_PUNCH: 480, // 8 hours default
+                SHORT_TIME: 120, // 2 hours default
+            };
+            return sum + (typeMinutes[ex.type] || 0);
+        }, 0);
+
+        const unapprovedMinutes = Math.max(0, totalAbsenceMinutes - approvedMinutes);
+
+        return {
+            employeeId: empOid.toString(),
+            month,
+            year,
+            totalAbsenceMinutes,
+            totalAbsentDays: absenceRecords.length,
+            approvedAbsenceMinutes: approvedMinutes,
+            unapprovedAbsenceMinutes: unapprovedMinutes,
+            absenceDays: absenceRecords.map(a => ({
+                date: a.date,
+                minutes: a.scheduledMinutes || 0,
+                type: a.reason || 'ABSENT',
+                approved: false, // Would need to check exceptions
+            })),
+        };
+    }
+
+    // ==================== REPEATED ABSENCE DETECTION ====================
+    /**
+     * Check for patterns of repeated absences
+     */
+    async checkForRepeatedAbsences(
+        employeeId: string | Types.ObjectId,
+        lookbackDays: number = 30
+    ): Promise<RepeatedAbsenceResult> {
+        const empOid = typeof employeeId === 'string' ? new Types.ObjectId(employeeId) : employeeId;
+
+        const endDate = new Date();
+        endDate.setHours(23, 59, 59, 999);
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - lookbackDays);
+        startDate.setHours(0, 0, 0, 0);
+
+        const absences = await this.calculateAbsencesForPeriod(empOid, startDate, endDate);
+        const absentRecords = absences.filter(a => a.status === 'ABSENT');
+
+        const totalScheduledDays = absences.filter(a =>
+            a.status === 'ABSENT' || a.status === 'PRESENT'
+        ).length;
+
+        const totalAbsentDays = absentRecords.length;
+        const absencePercentage = totalScheduledDays > 0 ? (totalAbsentDays / totalScheduledDays) * 100 : 0;
+
+        // Calculate consecutive absences
+        let maxConsecutive = 0;
+        let currentConsecutive = 0;
+
+        absentRecords.forEach(() => {
+            currentConsecutive++;
+            if (currentConsecutive > maxConsecutive) {
+                maxConsecutive = currentConsecutive;
+            }
+        });
+
+        // Determine escalation level
+        let escalationLevel: 'NONE' | 'WARNING' | 'ALERT' | 'CRITICAL' = 'NONE';
+        let recommendedAction: string | undefined;
+
+        if (maxConsecutive >= 5) {
+            escalationLevel = 'CRITICAL';
+            recommendedAction = 'Immediate disciplinary review recommended';
+        } else if (maxConsecutive >= 3) {
+            escalationLevel = 'ALERT';
+            recommendedAction = 'Manager notification and pattern investigation';
+        } else if (absencePercentage > 20) {
+            escalationLevel = 'WARNING';
+            recommendedAction = 'Monitor attendance closely';
+        }
+
+        return {
+            employeeId: empOid.toString(),
+            lookbackDays,
+            totalAbsenceDays: totalAbsentDays,
+            consecutiveAbsenceDays: maxConsecutive,
+            absencePercentage: Math.round(absencePercentage * 100) / 100,
+            hasPattern: maxConsecutive >= 3 || absencePercentage > 20,
+            escalationLevel,
+            recommendedAction,
+        };
+    }
+
+    // ==================== ATTENDANCE REPORTING ====================
+    /**
+     * Generate monthly attendance report
+     */
+    async generateMonthlyAttendanceReport(
+        employeeId: string | Types.ObjectId,
+        month: number,
+        year: number
+    ): Promise<MonthlyAttendanceReport> {
+        const empOid = typeof employeeId === 'string' ? new Types.ObjectId(employeeId) : employeeId;
+
+        const startDate = new Date(year, month - 1, 1);
+        startDate.setHours(0, 0, 0, 0);
+        const endDate = new Date(year, month, 0);
+        endDate.setHours(23, 59, 59, 999);
+
+        const dailyStatuses = await this.calculateAbsencesForPeriod(empOid, startDate, endDate);
+
+        const presentDays = dailyStatuses.filter(d => d.status === 'PRESENT').length;
+        const absentDays = dailyStatuses.filter(d => d.status === 'ABSENT').length;
+        const holidayDays = dailyStatuses.filter(d => d.status === 'HOLIDAY').length;
+        const restDays = dailyStatuses.filter(d => d.status === 'REST_DAY').length;
+        const leaveDays = dailyStatuses.filter(d => d.status === 'ON_LEAVE').length;
+
+        const totalScheduledDays = presentDays + absentDays;
+        const totalScheduledMinutes = dailyStatuses.reduce((sum, d) => sum + (d.scheduledMinutes || 0), 0);
+        const totalActualMinutes = dailyStatuses.reduce((sum, d) => sum + (d.actualMinutes || 0), 0);
+
+        const attendanceRate = totalScheduledDays > 0
+            ? (presentDays / totalScheduledDays) * 100
+            : 0;
+
+        const absenceRate = 100 - attendanceRate;
+
+        // Build absence periods
+        const absencePeriods: AbsencePeriod[] = [];
+        let currentPeriod: AbsencePeriod | null = null;
+
+        dailyStatuses.forEach(status => {
+            if (status.status === 'ABSENT') {
+                if (!currentPeriod) {
+                    currentPeriod = {
+                        status: 'ABSENT',
+                        startDate: new Date(status.date),
+                        endDate: new Date(status.date),
+                        dayCount: 1,
+                        reason: status.reason,
+                    };
+                } else {
+                    currentPeriod.endDate = new Date(status.date);
+                    currentPeriod.dayCount++;
+                }
+            } else {
+                if (currentPeriod) {
+                    absencePeriods.push(currentPeriod);
+                    currentPeriod = null;
+                }
+            }
+        });
+
+        if (currentPeriod) {
+            absencePeriods.push(currentPeriod);
+        }
+
+        const payrollData = await this.syncAbsencesToPayroll(empOid, month, year);
+
+        return {
+            employeeId: empOid.toString(),
+            month,
+            year,
+            presentDays,
+            absentDays,
+            holidayDays,
+            restDays,
+            leaveDays,
+            totalScheduledDays,
+            totalScheduledMinutes,
+            totalActualMinutes,
+            attendanceRate: Math.round(attendanceRate * 100) / 100,
+            absenceRate: Math.round(absenceRate * 100) / 100,
+            absenceDetails: absencePeriods,
+            payrollData,
+        };
+    }
+
+    // ==================== UTILITY METHODS ====================
+    /**
+     * Check if date is a holiday
+     */
+    private async isHoliday(date: Date): Promise<boolean> {
+        try {
+            const dayStart = new Date(date);
+            dayStart.setHours(0, 0, 0, 0);
+            const dayEnd = new Date(date);
+            dayEnd.setHours(23, 59, 59, 999);
+
+            const holiday = await this.connection.db!.collection('holidays').findOne({
+                date: { $gte: dayStart, $lte: dayEnd },
+                active: true,
+            });
+            return !!holiday;
+        } catch (e) {
+            this.logger.warn('Holiday check failed', e);
+            return false;
+        }
+    }
+
+    /**
+     * Check if date is a weekly rest day based on schedule rule
+     */
+    private async isWeeklyRest(employeeId: Types.ObjectId, date: Date): Promise<boolean> {
+        try {
+            const dayStart = new Date(date);
+            dayStart.setHours(0, 0, 0, 0);
+            const dayEnd = new Date(date);
+            dayEnd.setHours(23, 59, 59, 999);
+
+            const assignment = await this.shiftAssignmentModel.findOne({
+                employeeId,
+                startDate: { $lte: dayEnd },
+                $or: [{ endDate: { $exists: false } }, { endDate: { $gte: dayStart } }],
+            }).lean();
+
+            if (!assignment?.scheduleRuleId) return false;
+
+            const rule = await this.scheduleRuleModel.findById(assignment.scheduleRuleId).lean();
+            if (!rule || !rule.active || !rule.pattern) return false;
+
+            const pattern = (rule.pattern || '').toUpperCase();
+            if (pattern.startsWith('WEEKLY:')) {
+                const daysPart = pattern.split(':')[1] || '';
+                const allowedDays = daysPart.split(',').map(d => d.trim().slice(0, 3).toUpperCase());
+                const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+                const today = dayNames[date.getDay()];
+                return !allowedDays.includes(today);
+            }
+
+            return false;
+        } catch (e) {
+            this.logger.warn('Weekly rest check failed', e);
+            return false;
+        }
+    }
+
+    /**
+     * Get HR user ID from environment or default
+     */
+    private getHrUserId(): Types.ObjectId {
+        const envHrId = process.env.HR_USER_ID;
+        if (envHrId && Types.ObjectId.isValid(envHrId)) {
+            return new Types.ObjectId(envHrId);
+        }
+
+        const systemUserId = process.env.SYSTEM_USER_ID;
+        if (systemUserId && Types.ObjectId.isValid(systemUserId)) {
+            return new Types.ObjectId(systemUserId);
+        }
+
+        return new Types.ObjectId('000000000000000000000001');
+    }
+
+    /**
+     * Get sync statistics based on notification logs
+     */
+    async getSyncStatistics(startDate?: Date, endDate?: Date): Promise<any> {
+        const query: any = {};
+
+        if (startDate || endDate) {
+            query.createdAt = {};
+            if (startDate) query.createdAt.$gte = startDate;
+            if (endDate) query.createdAt.$lte = endDate;
+        }
+
+        const totalNotifications = await this.notificationModel.countDocuments(query);
+        const payrollNotifications = await this.notificationModel.countDocuments({
+            ...query,
+            type: 'PAYROLL_SYNC_DATA',
+        });
+        const leaveNotifications = await this.notificationModel.countDocuments({
+            ...query,
+            type: 'LEAVE_SYNC_ABSENCE',
+        });
+
+        return {
+            period: {
+                startDate: startDate || 'All time',
+                endDate: endDate || 'Present',
+            },
+            totalNotifications,
+            payrollNotifications,
+            leaveNotifications,
+            payrollRate: totalNotifications > 0
+                ? ((payrollNotifications / totalNotifications) * 100).toFixed(2) + '%'
+                : '0%',
+            absenceRate: totalNotifications > 0
+                ? ((leaveNotifications / totalNotifications) * 100).toFixed(2) + '%'
+                : '0%',
+        };
+    }
+
+    // ==================== CONFLICT MANAGEMENT ====================
+    /**
+     * Get sync conflicts (absence notifications that need review)
+     */
+    async getSyncConflicts(filters?: {
+        employeeId?: string;
+        startDate?: Date;
+        endDate?: Date;
+        resolved?: boolean;
+    }): Promise<any[]> {
+        const query: any = { type: 'LEAVE_SYNC_ABSENCE' };
+
+        if (filters?.employeeId) {
+            query.message = { $regex: `"employeeId":"${filters.employeeId}"` };
+        }
+
+        if (filters?.startDate || filters?.endDate) {
+            query.createdAt = {};
+            if (filters.startDate) query.createdAt.$gte = filters.startDate;
+            if (filters.endDate) query.createdAt.$lte = filters.endDate;
+        }
+
+        return this.notificationModel.find(query).sort({ createdAt: -1 }).lean();
+    }
+
+    /**
+     * Resolve a sync conflict by creating a resolution record
+     */
+    async resolveConflict(
+        conflictId: string,
+        resolution: {
+            action: 'KEEP_ATTENDANCE' | 'KEEP_LEAVE' | 'CONVERT_TO_HALF_DAY' | 'MANUAL_REVIEW';
+            note?: string;
+            resolvedBy: string;
+        }
+    ): Promise<void> {
+        // Create a resolution notification log entry
+        await this.notificationModel.create({
+            to: this.getHrUserId(),
+            type: 'CONFLICT_RESOLUTION',
+            message: JSON.stringify({
+                conflictNotificationId: conflictId,
+                resolution: resolution,
+                resolvedAt: new Date().toISOString(),
+                resolvedBy: resolution.resolvedBy,
+            }),
+            createdAt: new Date(),
+        });
+
+        this.logger.log(`Conflict ${conflictId} resolved with action: ${resolution.action}`);
+    }
+
+    /**
+     * Count absences for an employee within a date range
+     * Returns detailed breakdown of absence types and count
+     *
+     * @param employeeId - Employee ID (string or ObjectId)
+     * @param startDate - Start date of the range
+     * @param endDate - End date of the range
+     * @returns Object containing absence count and breakdown
+     */
+    async countAbsencesByDateRange(
+        employeeId: string | Types.ObjectId,
+        startDate: Date,
+        endDate: Date
+    ): Promise<any> {
+        const empOid = typeof employeeId === 'string' ? new Types.ObjectId(employeeId) : employeeId;
+
+        this.logger.log(`Counting absences for employee ${empOid} from ${startDate.toDateString()} to ${endDate.toDateString()}`);
+
+        // Get daily statuses for the period
+        const dailyStatuses = await this.calculateAbsencesForPeriod(empOid, startDate, endDate);
+
+        // Count each status type
+        const absenceDays = dailyStatuses.filter(d => d.status === 'ABSENT');
+        const presentDays = dailyStatuses.filter(d => d.status === 'PRESENT');
+        const holidayDays = dailyStatuses.filter(d => d.status === 'HOLIDAY');
+        const restDays = dailyStatuses.filter(d => d.status === 'REST_DAY');
+        const noShiftDays = dailyStatuses.filter(d => d.status === 'NO_SHIFT');
+        const scheduledDayOffDays = dailyStatuses.filter(d => d.status === 'SCHEDULE_DAY_OFF');
+        const leaveDays = dailyStatuses.filter(d => d.status === 'ON_LEAVE');
+
+        const totalDays = dailyStatuses.length;
+        const absenceCount = absenceDays.length;
+        const absenceRate = totalDays > 0 ? Math.round((absenceCount / totalDays) * 100 * 100) / 100 : 0;
+
+        const result = {
+            employeeId: empOid.toString(),
+            startDate: startDate.toISOString().split('T')[0],
+            endDate: endDate.toISOString().split('T')[0],
+            totalDays,
+            absenceDays: absenceCount,
+            presentDays: presentDays.length,
+            holidayDays: holidayDays.length,
+            restDays: restDays.length,
+            noShiftDays: noShiftDays.length,
+            scheduledDayOffDays: scheduledDayOffDays.length,
+            leaveDays: leaveDays.length,
+            absenceRate, // Percentage (0-100)
+            absences: absenceDays.map(d => ({
+                date: d.date,
+                status: d.status,
+                reason: d.reason || 'No attendance recorded on scheduled work day',
+            })),
+        };
+
+        this.logger.log(`Absence count result: ${absenceCount} absences out of ${totalDays} days (${absenceRate}%)`);
+
+        return result;
+    }
+}

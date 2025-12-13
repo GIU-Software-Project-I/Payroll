@@ -1,0 +1,291 @@
+@import "tailwindcss";
+
+/* ============================================
+   HRMS DESIGN SYSTEM - SLATE + INDIGO THEME
+   ============================================ */
+
+:root {
+  --background: #ffffff;
+  --foreground: #0f172a;
+
+  /* Primary Colors */
+  --color-primary: #4F46E5;           /* indigo-600 */
+  --color-primary-light: #E0E7FF;     /* indigo-100 */
+  --color-primary-dark: #4338CA;      /* indigo-700 */
+
+  /* Status Colors */
+  --color-success: #059669;           /* emerald-600 */
+  --color-success-light: #D1FAE5;     /* emerald-100 */
+  --color-warning: #D97706;           /* amber-600 */
+  --color-warning-light: #FEF3C7;     /* amber-100 */
+  --color-danger: #DC2626;            /* red-600 */
+  --color-danger-light: #FEE2E2;      /* red-100 */
+  --color-info: #2563EB;              /* blue-600 */
+  --color-info-light: #DBEAFE;        /* blue-100 */
+
+  /* Neutral/Gray Scale */
+  --color-bg-primary: #FFFFFF;        /* white */
+  --color-bg-secondary: #F8FAFC;      /* slate-50 */
+  --color-text-primary: #0F172A;      /* slate-900 */
+  --color-text-secondary: #475569;    /* slate-600 */
+  --color-border: #E2E8F0;            /* slate-200 */
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* ============================================
+   REUSABLE COMPONENT CLASSES
+   ============================================ */
+
+@layer components {
+  /* Card Component */
+  .card {
+    @apply bg-white rounded-lg border border-slate-200 shadow-sm p-6;
+  }
+
+  .card-header {
+    @apply border-b border-slate-200 pb-4 mb-4;
+  }
+
+  .card-footer {
+    @apply border-t border-slate-200 pt-4 mt-4;
+  }
+
+  /* Headers & Typography */
+  .page-header {
+    @apply text-3xl font-bold text-slate-900 mb-8;
+  }
+
+  .section-title {
+    @apply text-xl font-semibold text-slate-900 mb-4;
+  }
+
+  .subsection-title {
+    @apply text-lg font-semibold text-slate-900 mb-3;
+  }
+
+  .text-secondary {
+    @apply text-sm text-slate-600;
+  }
+
+  /* Buttons */
+  .btn-primary {
+    @apply px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2;
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 bg-slate-200 text-slate-900 rounded-lg hover:bg-slate-300 font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2;
+  }
+
+  .btn-danger {
+    @apply px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2;
+  }
+
+  .btn-success {
+    @apply px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1.5 text-sm;
+  }
+
+  .btn-lg {
+    @apply px-6 py-3 text-lg;
+  }
+
+  .btn-group {
+    @apply flex gap-3;
+  }
+
+  /* Status Badges */
+  .badge-approved {
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-medium;
+  }
+
+  .badge-pending {
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-xs font-medium;
+  }
+
+  .badge-rejected {
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full bg-red-50 text-red-700 border border-red-200 text-xs font-medium;
+  }
+
+  .badge-draft {
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full bg-slate-50 text-slate-700 border border-slate-200 text-xs font-medium;
+  }
+
+  .badge-active {
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs font-medium;
+  }
+
+  .badge-inactive {
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gray-50 text-gray-700 border border-gray-200 text-xs font-medium;
+  }
+
+  /* Alert Messages */
+  .alert-success {
+    @apply bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-lg;
+  }
+
+  .alert-warning {
+    @apply bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg;
+  }
+
+  .alert-error {
+    @apply bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg;
+  }
+
+  .alert-info {
+    @apply bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg;
+  }
+
+  /* Form Elements */
+  .form-input {
+    @apply w-full px-4 py-2 border border-slate-200 rounded-lg bg-white text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors;
+  }
+
+  .form-label {
+    @apply block text-sm font-medium text-slate-900 mb-2;
+  }
+
+  .form-group {
+    @apply mb-4;
+  }
+
+  .form-error {
+    @apply text-red-600 text-sm mt-1;
+  }
+
+  /* Tables */
+  .table-container {
+    @apply overflow-x-auto;
+  }
+
+  .table-header {
+    @apply bg-slate-50 border-b border-slate-200;
+  }
+
+  .table-row-hover {
+    @apply hover:bg-slate-50 transition-colors;
+  }
+
+  /* Grid Layouts */
+  .grid-cols-auto {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6;
+  }
+
+  /* Status Containers */
+  .status-container-approved {
+    @apply bg-emerald-50 border border-emerald-200 rounded-lg p-4;
+  }
+
+  .status-container-pending {
+    @apply bg-amber-50 border border-amber-200 rounded-lg p-4;
+  }
+
+  .status-container-rejected {
+    @apply bg-red-50 border border-red-200 rounded-lg p-4;
+  }
+}
+
+/* ============================================
+   SCROLLBAR STYLING
+   ============================================ */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Focus ring styling */
+*:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Selection color */
+::selection {
+  background: #bfdbfe;
+  color: #1e40af;
+}
+
+/* Animation utilities */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.3s ease-out;
+}
+
+.animate-slideDown {
+  animation: slideDown 0.3s ease-out;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
