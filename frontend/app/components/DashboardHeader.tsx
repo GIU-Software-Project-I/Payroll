@@ -3,13 +3,15 @@
 import { useAuth } from '@/app/context/AuthContext';
 import NotificationDropdown from './NotificationDropdown';
 import UserMenu from './UserMenu';
+import RoleSwitcher from './RoleSwitcher';
+import { SystemRole } from '@/app/types';
 
 interface DashboardHeaderProps {
   onMenuClick: () => void;
 }
 
 export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
-  const { user } = useAuth();
+  const { user, setMockRole } = useAuth();
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -72,6 +74,14 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
             </svg>
             Quick Action
           </button>
+
+          <div className="h-6 w-px bg-slate-200 hidden lg:block" />
+
+          {/* Role Switcher - Development Mode */}
+          <RoleSwitcher
+            currentRole={user?.role as SystemRole || SystemRole.DEPARTMENT_EMPLOYEE}
+            onRoleChange={setMockRole}
+          />
 
           <div className="h-6 w-px bg-slate-200 hidden lg:block" />
 

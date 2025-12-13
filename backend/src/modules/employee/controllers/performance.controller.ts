@@ -1,7 +1,7 @@
 // COMMENTED OUT FOR TESTING - Using performance-no-auth.controller.ts instead
 // Uncomment this controller and remove the no-auth version for production
 
-/*
+
 import { Controller, Get, Post, Patch, Body, Param, Query, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
 import { PerformanceService, TemplateSearchQuery, CycleSearchQuery, AssignmentSearchQuery, RecordSearchQuery, DisputeSearchQuery } from '../services/performance.service';
 import { CreateAppraisalTemplateDto, UpdateAppraisalTemplateDto } from '../dto/performance/appraisal-template.dto';
@@ -351,7 +351,6 @@ export class PerformanceController {
         return this.performanceService.getCompletionDashboard(cycleId);
     }
 }
-*/
 
-// Export empty to prevent module errors - the no-auth controller is used instead
-export class PerformanceController {}
+
+

@@ -20,6 +20,7 @@ interface AuthContextType {
   markAllNotificationsRead: () => void;
   hasRole: (roles: SystemRole | SystemRole[]) => boolean;
   getDefaultRoute: () => string;
+  setMockRole: (role: SystemRole) => void; // For development testing
 }
 
 interface RegisterData {
@@ -314,6 +315,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return getDefaultRouteForRole(user.role);
   };
 
+  // Set mock role for development testing
+  const setMockRole = (role: SystemRole) => {
+    if (user) {
+      const updatedUser = { ...user, role };
+      setUser(updatedUser);
+      localStorage.setItem('hr_user', JSON.stringify(updatedUser));
+    }
+  };
+
   const markNotificationRead = (id: string) => {
     setNotifications(prev =>
       prev.map(n => (n.id === id ? { ...n, read: true } : n))
@@ -343,6 +353,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         markAllNotificationsRead,
         hasRole,
         getDefaultRoute,
+        setMockRole,
       }}
     >
       {children}
