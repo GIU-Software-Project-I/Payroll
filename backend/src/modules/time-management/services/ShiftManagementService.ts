@@ -1,5 +1,5 @@
 // src/time-management/shift-management/shift-management.service.ts
-import { Injectable, BadRequestException, NotFoundException, ConflictException, Logger } from '@nestjs/common';
+import {Injectable, BadRequestException, NotFoundException, ConflictException, Logger, UseGuards} from '@nestjs/common';
 import { Model, Types } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import {ShiftType, ShiftTypeDocument} from "../models/shift-type.schema";
@@ -21,6 +21,11 @@ import {
     UpdateShiftTypeDto,
     UpdateShiftAssignmentStatusDto, CreateShortTimeRuleDto, UpdateShortTimeRuleDto
 } from "../dto/ShiftManagementDtos";
+import {AuthenticationGuard} from "../../auth/guards/authentication-guard";
+import {AuthorizationGuard} from "../../auth/guards/authorization-guard";
+import {Roles} from "../../auth/decorators/roles-decorator";
+import {SystemRole} from "../../employee/enums/employee-profile.enums";
+import {ApiBearerAuth} from "@nestjs/swagger";
 
 
 /**
@@ -146,6 +151,9 @@ export class ShiftManagementService {
     // Shift Assignment
     // --------------------------
     // FR: assign shifts to employee/department/position; BR: no overlapping assignments
+    @UseGuards(AuthenticationGuard,AuthorizationGuard)
+    @Roles(SystemRole.SYSTEM_ADMIN, SystemRole.HR_ADMIN)
+    @ApiBearerAuth('access-token')
     async assignShiftToEmployee(dto: AssignShiftDto): Promise<ShiftAssignment> {
         // validate shift exists
         const shift = await this.shiftModel.findById(dto.shiftId).lean();
@@ -202,15 +210,125 @@ export class ShiftManagementService {
 
         const saved = await assignment.save();
 
+        // If this was a department or position-level assignment (no employeeId),
+        // expand it into concrete per-employee assignments using the position_assignments collection
+        if (!dto.employeeId && (dto.departmentId || dto.positionId)) {
+            try {
+                const createdIds: string[] = [];
+
+                const skipIfOverlap = async (empId: any) => {
+                    // Check for any overlapping assignment for this employee
+                    const overlap = await this.shiftAssignmentModel.findOne({
+                        employeeId: empId,
+                        status: { $in: ['PENDING', 'APPROVED'] },
+                        $or: [{ endDate: { $exists: false } }, { endDate: { $gte: dto.startDate } }],
+                        startDate: { $lte: dto.endDate ?? new Date('9999-12-31') },
+                    }).lean();
+                    return !!overlap;
+                };
+
+                const paColl = this.shiftAssignmentModel.db.collection('position_assignments');
+
+                if (dto.departmentId) {
+                    const deptId = new Types.ObjectId(dto.departmentId);
+                    const paQuery: any = {
+                        departmentId: deptId,
+                        $or: [{ endDate: { $exists: false } }, { endDate: { $gte: dto.startDate } }],
+                        startDate: { $lte: dto.endDate ?? new Date('9999-12-31') },
+                    };
+                    const pas = await paColl.find(paQuery).toArray();
+                    for (const pa of pas) {
+                        const empId = pa.employeeProfileId;
+                        try {
+                            if (await skipIfOverlap(empId)) {
+                                this.logger.debug(`Skipping per-employee assignment for ${empId} due to overlap`);
+                                continue;
+                            }
+                            const per = new this.shiftAssignmentModel({
+                                employeeId: empId,
+                                departmentId: new Types.ObjectId(dto.departmentId),
+                                positionId: pa.positionId ? new Types.ObjectId(pa.positionId) : undefined,
+                                shiftId: new Types.ObjectId(dto.shiftId),
+                                scheduleRuleId: scheduleRuleOid,
+                                startDate: dto.startDate,
+                                endDate: dto.endDate,
+                                status: dto.status ?? 'PENDING',
+                            });
+                            const savedPer = await per.save();
+                            createdIds.push(savedPer._id.toString());
+                            // notification per employee
+                            try {
+                                await this.notificationModel.create({ to: empId, type: 'SHIFT_ASSIGNED', message: `Shift assignment ${savedPer._id} created for employee ${empId}` });
+                            } catch (ne) {
+                                this.logger.warn('Failed to log per-employee notification: ' + (ne?.message ?? ne));
+                            }
+                        } catch (e) {
+                            this.logger.warn('Failed to create per-employee assignment: ' + (e?.message ?? e));
+                        }
+                    }
+                    this.logger.log(`Created ${createdIds.length} per-employee assignments for department ${dto.departmentId}`);
+                }
+
+                if (dto.positionId) {
+                    const posId = new Types.ObjectId(dto.positionId);
+                    const paQueryPos: any = {
+                        positionId: posId,
+                        $or: [{ endDate: { $exists: false } }, { endDate: { $gte: dto.startDate } }],
+                        startDate: { $lte: dto.endDate ?? new Date('9999-12-31') },
+                    };
+                    const pasPos = await paColl.find(paQueryPos).toArray();
+                    for (const pa of pasPos) {
+                        const empId = pa.employeeProfileId;
+                        try {
+                            if (await skipIfOverlap(empId)) {
+                                this.logger.debug(`Skipping per-employee assignment for ${empId} due to overlap`);
+                                continue;
+                            }
+                            const per = new this.shiftAssignmentModel({
+                                employeeId: empId,
+                                positionId: new Types.ObjectId(dto.positionId),
+                                departmentId: pa.departmentId ? new Types.ObjectId(pa.departmentId) : undefined,
+                                shiftId: new Types.ObjectId(dto.shiftId),
+                                scheduleRuleId: scheduleRuleOid,
+                                startDate: dto.startDate,
+                                endDate: dto.endDate,
+                                status: dto.status ?? 'PENDING',
+                            });
+                            const savedPer = await per.save();
+                            createdIds.push(savedPer._id.toString());
+                            try {
+                                await this.notificationModel.create({ to: empId, type: 'SHIFT_ASSIGNED', message: `Shift assignment ${savedPer._id} created for employee ${empId}` });
+                            } catch (ne) {
+                                this.logger.warn('Failed to log per-employee notification: ' + (ne?.message ?? ne));
+                            }
+                        } catch (e) {
+                            this.logger.warn('Failed to create per-employee assignment: ' + (e?.message ?? e));
+                        }
+                    }
+                    this.logger.log(`Created ${createdIds.length} per-employee assignments for position ${dto.positionId}`);
+                }
+            } catch (e) {
+                this.logger.warn('Error expanding department/position assignment: ' + (e?.message ?? e));
+            }
+        }
+
         // create a notification log entry (FR: notify manager/employee on assignment)
         try {
+            // Always use a valid ObjectId for 'to'
+            const recipientId = dto.createdBy && Types.ObjectId.isValid(dto.createdBy)
+                ? new Types.ObjectId(dto.createdBy)
+                : new Types.ObjectId(process.env.HR_USER_ID || process.env.SYSTEM_USER_ID || '000000000000000000000001');
+
             await this.notificationModel.create({
-                to: dto.createdBy ? new Types.ObjectId(dto.createdBy) : null,
+                to: recipientId,
                 type: 'SHIFT_ASSIGNED',
-                message: `Shift assignment ${saved._id} created`,
+                message: `Shift assignment ${saved._id} created for employee ${saved.employeeId}`,
             });
-        } catch (e) {
-            this.logger.error('Failed to create notification log', e?.message ?? e);
+
+            this.logger.debug(`Notification sent to ${recipientId}`);
+        } catch (e: any) {
+            this.logger.error('Failed to create notification log:', e?.message ?? e);
+            // Don't throw - notifications shouldn't break main functionality
         }
 
         // Return the saved assignment with scheduleRuleId populated (if set) to make the schedule rule visible in API response
@@ -223,37 +341,78 @@ export class ShiftManagementService {
         }
     }
 
-    async bulkAssignShift(dto: BulkAssignShiftDto): Promise<ShiftAssignment[]> {
-        const results: ShiftAssignment[] = [];
-        if (!dto.targets || dto.targets.length === 0) throw new BadRequestException('targets required');
 
-        for (const t of dto.targets) {
-            try {
-                const assignDto: AssignShiftDto = {
-                    employeeId: t.employeeId,
-                    departmentId: t.departmentId,
-                    positionId: t.positionId,
-                    shiftId: dto.shiftId,
-                    scheduleRuleId: dto.scheduleRuleId,
-                    startDate: dto.startDate,
-                    endDate: dto.endDate,
-                    status: dto.status,
-                    createdBy: dto.createdBy,
-                } as AssignShiftDto;
-
-                const created = await this.assignShiftToEmployee(assignDto);
-                results.push(created);
-            } catch (err) {
-                this.logger.warn(`Bulk assign skipped target due to: ${err.message}`);
-                // continue with next target (best-effort as specified in requirements)
-            }
-        }
-
-        return results;
-    }
+    // @UseGuards(AuthenticationGuard,AuthorizationGuard)
+    // @Roles(SystemRole.SYSTEM_ADMIN, SystemRole.HR_ADMIN)
+    // @ApiBearerAuth('access-token')
+    // async bulkAssignShift(dto: BulkAssignShiftDto): Promise<ShiftAssignment[]> {
+    //     const results: ShiftAssignment[] = [];
+    //     if (!dto.targets || dto.targets.length === 0) throw new BadRequestException('targets required');
+    //
+    //     for (const t of dto.targets) {
+    //         try {
+    //             const assignDto: AssignShiftDto = {
+    //                 employeeId: t.employeeId,
+    //                 departmentId: t.departmentId,
+    //                 positionId: t.positionId,
+    //                 shiftId: dto.shiftId,
+    //                 // allow per-target override of scheduleRuleId, fallback to bulk dto
+    //                 scheduleRuleId: t.scheduleRuleId ?? dto.scheduleRuleId,
+    //                 startDate: dto.startDate,
+    //                 endDate: dto.endDate,
+    //                 status: dto.status,
+    //                 createdBy: dto.createdBy,
+    //             } as AssignShiftDto;
+    //
+    //             const created = await this.assignShiftToEmployee(assignDto);
+    //             results.push(created);
+    //         } catch (err) {
+    //             this.logger.warn(`Bulk assign skipped target due to: ${err.message}`);
+    //             // continue with next target (best-effort as specified in requirements)
+    //         }
+    //     }
+    //
+    //     return results;
+    // }
 
     async getAssignmentsForEmployee(employeeId: string): Promise<ShiftAssignment[]> {
-        return this.shiftAssignmentModel.find({ employeeId: new Types.ObjectId(employeeId) }).lean();
+        const eId = new Types.ObjectId(employeeId);
+
+        // direct assignments where employeeId matches
+        const direct = await this.shiftAssignmentModel.find({ employeeId: eId }).lean();
+
+        // find position_assignments for this employee to detect department/position snapshot assignments
+        const paColl = this.shiftAssignmentModel.db.collection('position_assignments');
+        const paQuery: any = { employeeProfileId: eId };
+        // only consider currently effective assignments (optional: include historical if needed)
+        // an assignment is considered active if endDate absent or endDate >= now
+        const now = new Date();
+        paQuery.$or = [ { endDate: { $exists: false } }, { endDate: { $gte: now } } ];
+
+        const pas = await paColl.find(paQuery).toArray();
+        const deptIds: Types.ObjectId[] = [];
+        const posIds: Types.ObjectId[] = [];
+        for (const pa of pas) {
+            if (pa.departmentId) deptIds.push(new Types.ObjectId(pa.departmentId));
+            if (pa.positionId) posIds.push(new Types.ObjectId(pa.positionId));
+        }
+
+        const deptPosAssignments: any[] = [];
+        if (deptIds.length || posIds.length) {
+            const or: any[] = [];
+            if (deptIds.length) or.push({ departmentId: { $in: deptIds } });
+            if (posIds.length) or.push({ positionId: { $in: posIds } });
+            const deptPosQuery = { $or: or };
+            const deptPos = await this.shiftAssignmentModel.find(deptPosQuery).lean();
+            deptPosAssignments.push(...deptPos);
+        }
+
+        // merge and deduplicate by _id
+        const map = new Map<string, any>();
+        for (const a of [...direct, ...deptPosAssignments]) {
+            map.set(a._id.toString(), a);
+        }
+        return Array.from(map.values());
     }
 
     async renewAssignment(id: string, dto: RenewAssignmentDto): Promise<ShiftAssignment> {
@@ -289,6 +448,9 @@ export class ShiftManagementService {
      * US-021: Update shift assignment status
      * Updates the status of a shift assignment (PENDING, APPROVED, CANCELLED, EXPIRED)
      */
+    @UseGuards(AuthenticationGuard,AuthorizationGuard)
+    @Roles(SystemRole.SYSTEM_ADMIN, SystemRole.HR_ADMIN)
+    @ApiBearerAuth('access-token')
     async updateAssignmentStatus(id: string, dto: UpdateShiftAssignmentStatusDto) {
         // Validate status is a valid ShiftAssignmentStatus enum value
         const validStatuses = ['PENDING', 'APPROVED', 'CANCELLED', 'EXPIRED'];
@@ -583,4 +745,10 @@ export class ShiftManagementService {
             return null;
         }
     }
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    async deactivateScheduleRule(id: string) {
+        return this.scheduleRuleModel.findByIdAndUpdate(id, { active: false });
+    }
+
+
 }

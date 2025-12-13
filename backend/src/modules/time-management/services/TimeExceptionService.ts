@@ -87,6 +87,17 @@ export class TimeExceptionService {
         return results.map(r => r.toObject() as TimeException);
     }
 
+    // Get ALL time exceptions from database (no filters)
+    async getAllExceptions(): Promise<TimeException[]> {
+        try {
+            const results = await this.exceptionModel.find({}).sort({ createdAt: -1 }).lean();
+            return results.map(r => r as TimeException);
+        } catch (error: any) {
+            this.logger.error('Failed to fetch all time exceptions:', error);
+            throw new BadRequestException('Failed to fetch time exceptions');
+        }
+    }
+
     // Assign/claim an exception to a handler
     async assignException(dto: AssignExceptionDto): Promise<TimeException> {
         if (!Types.ObjectId.isValid(dto.exceptionId) || !Types.ObjectId.isValid(dto.assigneeId)) {
@@ -216,6 +227,20 @@ export class TimeExceptionService {
                                     this.logger.warn('Failed to remove SHORT_TIME id reference from attendance after deleting exception', e);
                                 }
 
+                                // Also delete any related SHORT_TIME notification logs referencing this exception/attendance
+                                try {
+                                    const dayStart = new Date(recDate); dayStart.setHours(0,0,0,0);
+                                    // Best-effort: delete SHORT_TIME notifications sent to this employee on the same day
+                                    await this.notificationModel.deleteMany({
+                                        type: 'SHORT_TIME',
+                                        to: att.employeeId,
+                                        createdAt: { $gte: dayStart }
+                                    } as any);
+                                 } catch (e) {
+                                     // Best-effort; log and continue
+                                     this.logger.warn('Failed to delete SHORT_TIME notification logs after exception removal', e);
+                                }
+
                                 return; // we're done
                             }
                         }
@@ -241,5 +266,113 @@ export class TimeExceptionService {
         } catch (e) {
             this.logger.error('onResolved failed', e);
         }
+    }
+
+    // ==================== EXPORT METHODS ====================
+    /**
+     * Export all time exceptions to CSV file
+     * Downloads as: time-exceptions-YYYY-MM-DD.csv
+     */
+    async exportToCSV(res: any): Promise<void> {
+        try {
+            const exceptions = await this.getAllExceptions();
+
+            // Convert to CSV format
+            const csv = this.convertToCSV(exceptions);
+
+            // Set response headers for file download
+            const filename = `time-exceptions-${new Date().toISOString().split('T')[0]}.csv`;
+            res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+            res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+            // Send CSV data
+            res.send(csv);
+            this.logger.log(`✅ Exported ${exceptions.length} time exceptions to CSV`);
+        } catch (error: any) {
+            this.logger.error('Failed to export to CSV:', error);
+            res.status(500).json({ error: 'Failed to export file' });
+        }
+    }
+
+    /**
+     * Export all time exceptions to JSON file
+     * Downloads as: time-exceptions-YYYY-MM-DD.json
+     */
+    async exportToJSON(res: any): Promise<void> {
+        try {
+            const exceptions = await this.getAllExceptions();
+
+            // Set response headers for file download
+            const filename = `time-exceptions-${new Date().toISOString().split('T')[0]}.json`;
+            res.setHeader('Content-Type', 'application/json; charset=utf-8');
+            res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+            // Send JSON data with formatting
+            res.json({
+                exportDate: new Date().toISOString(),
+                totalRecords: exceptions.length,
+                data: exceptions
+            });
+
+            this.logger.log(`✅ Exported ${exceptions.length} time exceptions to JSON`);
+        } catch (error: any) {
+            this.logger.error('Failed to export to JSON:', error);
+            res.status(500).json({ error: 'Failed to export file' });
+        }
+    }
+
+    /**
+     * Convert array of exceptions to CSV format
+     */
+    private convertToCSV(exceptions: any[]): string {
+        if (exceptions.length === 0) {
+            return 'No time exceptions found';
+        }
+
+        // Define CSV headers
+        const headers = [
+            'ID',
+            'Employee ID',
+            'Attendance Record ID',
+            'Type',
+            'Status',
+            'Assigned To',
+            'Reason',
+            'Handler Comment',
+            'Created At',
+            'Updated At'
+        ];
+
+        // Create header row
+        const headerRow = headers.join(',');
+
+        // Create data rows
+        const dataRows = exceptions.map(ex => [
+            this.escapeCSVField(ex._id?.toString() || ''),
+            this.escapeCSVField(ex.employeeId?.toString() || ''),
+            this.escapeCSVField(ex.attendanceRecordId?.toString() || ''),
+            this.escapeCSVField(ex.type || ''),
+            this.escapeCSVField(ex.status || ''),
+            this.escapeCSVField(ex.assignedTo?.toString() || ''),
+            this.escapeCSVField(ex.reason || ''),
+            this.escapeCSVField((ex as any).handlerComment || ''),
+            this.escapeCSVField(ex.createdAt ? new Date(ex.createdAt).toISOString() : ''),
+            this.escapeCSVField(ex.updatedAt ? new Date(ex.updatedAt).toISOString() : '')
+        ].join(','));
+
+        // Combine header and data rows
+        return [headerRow, ...dataRows].join('\n');
+    }
+
+    /**
+     * Escape CSV field values to handle commas and quotes
+     */
+    private escapeCSVField(field: string): string {
+        if (!field) return '';
+        // If field contains comma, quote, or newline, wrap in quotes and escape quotes
+        if (field.includes(',') || field.includes('"') || field.includes('\n')) {
+            return `"${field.replace(/"/g, '""')}"`;
+        }
+        return field;
     }
 }
