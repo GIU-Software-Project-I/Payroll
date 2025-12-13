@@ -8,8 +8,8 @@ import { StructureApproval,StructureApprovalSchema } from './models/organization
 import { StructureChangeLog,StructureChangeLogSchema } from './models/organization-structure/structure-change-log.schema';
 import { StructureChangeRequest,StructureChangeRequestSchema } from './models/organization-structure/structure-change-request.schema';
 // COMMENTED OUT FOR TESTING - Using no-auth controller
-// import {OrganizationStructureController} from "./controllers/organization-structure.controller";
-import {OrganizationStructureNoAuthController} from "./controllers/organization-structure-no-auth.controller";
+import {OrganizationStructureController} from "./controllers/organization-structure.controller";
+//import {OrganizationStructureNoAuthController} from "./controllers/organization-structure-no-auth.controller";
 import {OrganizationStructureService} from "./services/organization-structure.service";
 import { SharedModule } from '../shared/shared.module';
 import {AuthModule} from "../auth/auth-module";
@@ -30,7 +30,7 @@ import {AuthModule} from "../auth/auth-module";
   ],
   // COMMENTED OUT FOR TESTING - Using no-auth controller
   // controllers: [OrganizationStructureController],
-  controllers: [OrganizationStructureNoAuthController],
+  controllers: [OrganizationStructureController],
   providers: [OrganizationStructureService],
   exports: [OrganizationStructureService],
 })

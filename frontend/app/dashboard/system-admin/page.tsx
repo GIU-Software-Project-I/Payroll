@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 export default function SystemAdminPage() {
   return (
     <div className="space-y-6">
@@ -32,22 +34,54 @@ export default function SystemAdminPage() {
       <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
         <h2 className="text-lg font-semibold text-slate-900 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <button className="p-4 border border-slate-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors text-center">
-            <div className="text-2xl mb-2">🏢</div>
-            <p className="font-medium text-slate-900">Organization</p>
-          </button>
-          <button className="p-4 border border-slate-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors text-center">
-            <div className="text-2xl mb-2">⚙️</div>
-            <p className="font-medium text-slate-900">Configuration</p>
-          </button>
-          <button className="p-4 border border-slate-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors text-center">
-            <div className="text-2xl mb-2">📊</div>
-            <p className="font-medium text-slate-900">System Health</p>
-          </button>
-          <button className="p-4 border border-slate-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors text-center">
+          <Link href="/dashboard/system-admin/organization">
+            <button className="w-full p-4 border border-slate-200 rounded-lg hover:border-violet-300 hover:bg-violet-50 transition-colors text-center">
+              <div className="text-2xl mb-2">🏢</div>
+              <p className="font-medium text-slate-900">Organization</p>
+              <p className="text-xs text-slate-500 mt-1">View structure</p>
+            </button>
+          </Link>
+          <Link href="/dashboard/system-admin/departments">
+            <button className="w-full p-4 border border-slate-200 rounded-lg hover:border-violet-300 hover:bg-violet-50 transition-colors text-center">
+              <div className="text-2xl mb-2">🏛️</div>
+              <p className="font-medium text-slate-900">Departments</p>
+              <p className="text-xs text-slate-500 mt-1">Manage departments</p>
+            </button>
+          </Link>
+          <Link href="/dashboard/system-admin/positions">
+            <button className="w-full p-4 border border-slate-200 rounded-lg hover:border-violet-300 hover:bg-violet-50 transition-colors text-center">
+              <div className="text-2xl mb-2">💼</div>
+              <p className="font-medium text-slate-900">Positions</p>
+              <p className="text-xs text-slate-500 mt-1">Manage positions</p>
+            </button>
+          </Link>
+          <button className="p-4 border border-slate-200 rounded-lg hover:border-violet-300 hover:bg-violet-50 transition-colors text-center">
             <div className="text-2xl mb-2">🔧</div>
             <p className="font-medium text-slate-900">Maintenance</p>
+            <p className="text-xs text-slate-500 mt-1">System tools</p>
           </button>
+        </div>
+      </div>
+
+      {/* Recent Activity */}
+      <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
+        <h2 className="text-lg font-semibold text-slate-900 mb-4">Recent System Activity</h2>
+        <div className="space-y-3">
+          <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+            <span className="text-sm text-slate-700">System backup completed successfully</span>
+            <span className="text-xs text-slate-500 ml-auto">2 hours ago</span>
+          </div>
+          <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+            <span className="text-sm text-slate-700">New department created: Marketing</span>
+            <span className="text-xs text-slate-500 ml-auto">5 hours ago</span>
+          </div>
+          <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+            <span className="text-sm text-slate-700">Position updated: Senior Developer</span>
+            <span className="text-xs text-slate-500 ml-auto">1 day ago</span>
+          </div>
         </div>
       </div>
     </div>

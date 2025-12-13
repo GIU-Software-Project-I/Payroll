@@ -1,7 +1,7 @@
 // COMMENTED OUT FOR TESTING - Using organization-structure-no-auth.controller.ts instead
 // Uncomment this controller and remove the no-auth version for production
 
-/*
+
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { OrganizationStructureService, DepartmentSearchQuery, PositionSearchQuery, AssignmentSearchQuery, ChangeRequestSearchQuery } from '../services/organization-structure.service';
 import { CreateDepartmentDto, UpdateDepartmentDto, CreatePositionDto, UpdatePositionDto, AssignPositionDto, EndAssignmentDto, SubmitStructureRequestDto, UpdateStructureRequestDto, SubmitApprovalDecisionDto } from '../dto/organization-structure';
@@ -277,7 +277,4 @@ export class OrganizationStructureController {
         );
     }
 }
-*/
 
-// Export empty to prevent module errors - the no-auth controller is used instead
-export class OrganizationStructureController {}

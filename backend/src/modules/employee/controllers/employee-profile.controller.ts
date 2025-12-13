@@ -1,7 +1,7 @@
 // COMMENTED OUT FOR TESTING - Using employee-profile-no-auth.controller.ts instead
 // Uncomment this controller and remove the no-auth version for production
 
-/*
+
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { UpdateContactInfoDto } from '../dto/employee-profile/update-contact-info.dto';
 import { UpdateBioDto } from '../dto/employee-profile/update-bio.dto';
@@ -146,7 +146,4 @@ export class EmployeeProfileController {
         return this.employeeProfileService.adminAssignRole(id, dto);
     }
 }
-*/
 
-// Export empty to prevent module errors - the no-auth controller is used instead
-export class EmployeeProfileController {}

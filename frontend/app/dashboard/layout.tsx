@@ -16,18 +16,16 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    // TODO: Re-enable authentication check when ready
     // Redirect to login if not authenticated
-    // if (!isAuthenticated) {
-    //   router.push('/login');
-    // }
+    if (!isAuthenticated) {
+      router.push('/login');
+    }
   }, [isAuthenticated, router]);
 
-  // TODO: Remove this when auth is re-enabled
-  // Currently allowing access without authentication for development
-  // if (!isAuthenticated) {
-  //   return null;
-  // }
+  // Block rendering if not authenticated
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="flex h-screen bg-slate-50">
