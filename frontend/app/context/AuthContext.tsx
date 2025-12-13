@@ -301,7 +301,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const clearError = () => setError(null);
 
-  // Check if user has one of the specified roles
+  //Check if user has one of the specified roles
   const hasRole = (roles: SystemRole | SystemRole[]): boolean => {
     if (!user) return false;
     const roleArray = Array.isArray(roles) ? roles : [roles];
@@ -356,4 +356,4 @@ export function useAuth() {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}
+ }

@@ -1,8 +1,7 @@
-// COMMENTED OUT FOR TESTING - Using performance-no-auth.controller.ts instead
-// Uncomment this controller and remove the no-auth version for production
+// TEMPORARY CONTROLLER WITHOUT AUTHORIZATION - FOR TESTING PURPOSES ONLY
+// Remove this file and uncomment the original controller in production
 
-/*
-import { Controller, Get, Post, Patch, Body, Param, Query, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
 import { PerformanceService, TemplateSearchQuery, CycleSearchQuery, AssignmentSearchQuery, RecordSearchQuery, DisputeSearchQuery } from '../services/performance.service';
 import { CreateAppraisalTemplateDto, UpdateAppraisalTemplateDto } from '../dto/performance/appraisal-template.dto';
 import { CreateAppraisalCycleDto, UpdateAppraisalCycleDto } from '../dto/performance/appraisal-cycle.dto';
@@ -10,36 +9,27 @@ import { BulkCreateAppraisalAssignmentDto, CreateAppraisalAssignmentDto } from '
 import { SubmitAppraisalRecordDto } from '../dto/performance/appraisal-record.dto';
 import { FileAppraisalDisputeDto, ResolveAppraisalDisputeDto } from '../dto/performance/appraisal-dispute.dto';
 import { AppraisalTemplateType, AppraisalCycleStatus, AppraisalAssignmentStatus, AppraisalRecordStatus, AppraisalDisputeStatus } from '../enums/performance.enums';
-import { SystemRole } from '../enums/employee-profile.enums';
-import { AuthenticationGuard } from '../../auth/guards/authentication-guard';
-import { AuthorizationGuard } from '../../auth/guards/authorization-guard';
-import { Roles } from '../../auth/decorators/roles-decorator';
-import { CurrentUser } from '../../auth/decorators/current-user';
-import type { JwtPayload } from '../../auth/token/jwt-payload';
 
 @Controller('performance')
-@UseGuards(AuthenticationGuard, AuthorizationGuard)
-export class PerformanceController {
+export class PerformanceNoAuthController {
     constructor(private performanceService: PerformanceService) {}
 
     // ==================== TEMPLATES ====================
+    // REQ-PP-01: HR Manager configures standardized appraisal templates
 
     @Post('templates')
     @HttpCode(HttpStatus.CREATED)
-    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     async createTemplate(@Body() dto: CreateAppraisalTemplateDto) {
         return this.performanceService.createTemplate(dto);
     }
 
     @Get('templates')
-    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.DEPARTMENT_HEAD)
     async getAllTemplates(@Query('isActive') isActive?: string) {
         const active = isActive === undefined ? undefined : isActive === 'true';
         return this.performanceService.getAllTemplates(active);
     }
 
     @Get('templates/search')
-    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.DEPARTMENT_HEAD)
     async searchTemplates(
         @Query('page') page?: string,
         @Query('limit') limit?: string,
@@ -58,52 +48,45 @@ export class PerformanceController {
     }
 
     @Get('templates/stats')
-    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     async getTemplateStats() {
         return this.performanceService.getTemplateStats();
     }
 
     @Get('templates/:id')
-    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.DEPARTMENT_HEAD)
     async getTemplateById(@Param('id') id: string) {
         return this.performanceService.getTemplateById(id);
     }
 
     @Patch('templates/:id')
-    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     async updateTemplate(@Param('id') id: string, @Body() dto: UpdateAppraisalTemplateDto) {
         return this.performanceService.updateTemplate(id, dto);
     }
 
     @Patch('templates/:id/deactivate')
-    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     async deactivateTemplate(@Param('id') id: string) {
         return this.performanceService.deactivateTemplate(id);
     }
 
     @Patch('templates/:id/reactivate')
-    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     async reactivateTemplate(@Param('id') id: string) {
         return this.performanceService.reactivateTemplate(id);
     }
 
     // ==================== CYCLES ====================
+    // REQ-PP-02: Define and schedule appraisal cycles
 
     @Post('cycles')
     @HttpCode(HttpStatus.CREATED)
-    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     async createCycle(@Body() dto: CreateAppraisalCycleDto) {
         return this.performanceService.createCycle(dto);
     }
 
     @Get('cycles')
-    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.DEPARTMENT_HEAD)
     async getAllCycles(@Query('status') status?: AppraisalCycleStatus) {
         return this.performanceService.getAllCycles(status);
     }
 
     @Get('cycles/search')
-    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.DEPARTMENT_HEAD)
     async searchCycles(
         @Query('page') page?: string,
         @Query('limit') limit?: string,
@@ -122,62 +105,55 @@ export class PerformanceController {
     }
 
     @Get('cycles/stats')
-    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     async getCycleStats() {
         return this.performanceService.getCycleStats();
     }
 
     @Get('cycles/:id')
-    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.DEPARTMENT_HEAD)
     async getCycleById(@Param('id') id: string) {
         return this.performanceService.getCycleById(id);
     }
 
     @Patch('cycles/:id')
-    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     async updateCycle(@Param('id') id: string, @Body() dto: UpdateAppraisalCycleDto) {
         return this.performanceService.updateCycle(id, dto);
     }
 
     @Post('cycles/:id/activate')
     @HttpCode(HttpStatus.OK)
-    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     async activateCycle(@Param('id') id: string) {
         return this.performanceService.activateCycle(id);
     }
 
     @Post('cycles/:id/close')
     @HttpCode(HttpStatus.OK)
-    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     async closeCycle(@Param('id') id: string) {
         return this.performanceService.closeCycle(id);
     }
 
     @Post('cycles/:id/archive')
     @HttpCode(HttpStatus.OK)
-    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     async archiveCycle(@Param('id') id: string) {
         return this.performanceService.archiveCycle(id);
     }
 
     // ==================== ASSIGNMENTS ====================
+    // REQ-PP-05: Assign appraisal forms to employees and managers
+    // REQ-PP-13: Line manager views assigned appraisal forms
 
     @Post('assignments')
     @HttpCode(HttpStatus.CREATED)
-    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     async createAssignment(@Body() dto: CreateAppraisalAssignmentDto) {
         return this.performanceService.createAssignment(dto);
     }
 
     @Post('assignments/bulk')
     @HttpCode(HttpStatus.CREATED)
-    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     async bulkCreateAssignments(@Body() dto: BulkCreateAppraisalAssignmentDto) {
         return this.performanceService.bulkCreateAssignments(dto);
     }
 
     @Get('assignments')
-    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.DEPARTMENT_HEAD)
     async searchAssignments(
         @Query('page') page?: string,
         @Query('limit') limit?: string,
@@ -200,7 +176,6 @@ export class PerformanceController {
     }
 
     @Get('assignments/manager/:managerProfileId')
-    @Roles(SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     async getAssignmentsForManager(@Param('managerProfileId') managerProfileId: string) {
         return this.performanceService.getAssignmentsForManager(managerProfileId);
     }
@@ -216,23 +191,22 @@ export class PerformanceController {
     }
 
     // ==================== RECORDS ====================
+    // REQ-AE-03: Line Manager completes structured appraisal ratings
+    // REQ-AE-04: Add comments and development recommendations
 
     @Post('records')
     @HttpCode(HttpStatus.CREATED)
-    @Roles(SystemRole.DEPARTMENT_HEAD, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     async submitAppraisalRecord(@Body() dto: SubmitAppraisalRecordDto) {
         return this.performanceService.submitAppraisalRecord(dto);
     }
 
     @Post('records/draft')
     @HttpCode(HttpStatus.CREATED)
-    @Roles(SystemRole.DEPARTMENT_HEAD, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     async saveDraftRecord(@Body() dto: SubmitAppraisalRecordDto) {
         return this.performanceService.saveDraftRecord(dto);
     }
 
     @Get('records')
-    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.DEPARTMENT_HEAD)
     async searchRecords(
         @Query('page') page?: string,
         @Query('limit') limit?: string,
@@ -262,20 +236,20 @@ export class PerformanceController {
         return this.performanceService.getRecordById(id);
     }
 
+    // REQ-AE-10, REQ-AE-06: HR monitors and publishes
     @Post('records/:id/publish')
     @HttpCode(HttpStatus.OK)
-    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
-    async publishRecord(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
-        return this.performanceService.publishRecord(id, user.sub);
+    async publishRecord(@Param('id') id: string, @Query('publisherId') publisherId?: string) {
+        return this.performanceService.publishRecord(id, publisherId ?? '');
     }
 
     @Post('records/bulk-publish')
     @HttpCode(HttpStatus.OK)
-    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
-    async bulkPublishRecords(@Body() body: { recordIds: string[] }, @CurrentUser() user: JwtPayload) {
-        return this.performanceService.bulkPublishRecords(body.recordIds, user.sub);
+    async bulkPublishRecords(@Body() body: { recordIds: string[] }, @Query('publisherId') publisherId?: string) {
+        return this.performanceService.bulkPublishRecords(body.recordIds, publisherId ?? '');
     }
 
+    // REQ-OD-01: Employee views and acknowledges
     @Post('records/:id/acknowledge')
     @HttpCode(HttpStatus.OK)
     async acknowledgeRecord(@Param('id') id: string, @Body() body?: { comment?: string }) {
@@ -288,12 +262,15 @@ export class PerformanceController {
         return this.performanceService.markRecordViewed(id);
     }
 
+    // REQ-OD-08: Access past appraisal history
     @Get('employee/:employeeProfileId/history')
     async getEmployeeAppraisalHistory(@Param('employeeProfileId') employeeProfileId: string) {
         return this.performanceService.getEmployeeAppraisalHistory(employeeProfileId);
     }
 
     // ==================== DISPUTES ====================
+    // REQ-AE-07: Employee flags concern about rating
+    // REQ-OD-07: HR Manager resolves disputes
 
     @Post('disputes')
     @HttpCode(HttpStatus.CREATED)
@@ -302,7 +279,6 @@ export class PerformanceController {
     }
 
     @Get('disputes')
-    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     async searchDisputes(
         @Query('page') page?: string,
         @Query('limit') limit?: string,
@@ -321,7 +297,6 @@ export class PerformanceController {
     }
 
     @Get('disputes/stats')
-    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     async getDisputeStats(@Query('cycleId') cycleId?: string) {
         return this.performanceService.getDisputeStats(cycleId);
     }
@@ -332,26 +307,20 @@ export class PerformanceController {
     }
 
     @Patch('disputes/:id/assign-reviewer')
-    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     async assignDisputeReviewer(@Param('id') id: string, @Body() body: { reviewerEmployeeId: string }) {
         return this.performanceService.assignDisputeReviewer(id, body.reviewerEmployeeId);
     }
 
     @Patch('disputes/:id/resolve')
-    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
-    async resolveDispute(@Param('id') id: string, @Body() dto: ResolveAppraisalDisputeDto, @CurrentUser() user: JwtPayload) {
-        return this.performanceService.resolveDispute({ ...dto, disputeId: id, resolvedByEmployeeId: user.sub });
+    async resolveDispute(@Param('id') id: string, @Body() dto: ResolveAppraisalDisputeDto, @Query('resolverId') resolverId?: string) {
+        return this.performanceService.resolveDispute({ ...dto, disputeId: id, resolvedByEmployeeId: resolverId ?? '' });
     }
 
     // ==================== DASHBOARD ====================
+    // REQ-AE-10: Consolidated dashboard tracks appraisal completion
 
     @Get('dashboard/:cycleId')
-    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.DEPARTMENT_HEAD)
     async getCompletionDashboard(@Param('cycleId') cycleId: string) {
         return this.performanceService.getCompletionDashboard(cycleId);
     }
 }
-*/
-
-// Export empty to prevent module errors - the no-auth controller is used instead
-export class PerformanceController {}
