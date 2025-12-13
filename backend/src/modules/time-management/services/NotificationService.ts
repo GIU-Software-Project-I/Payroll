@@ -4,6 +4,7 @@ import { Model, Types, Connection } from 'mongoose';
 import { InjectConnection } from '@nestjs/mongoose';
 import { NotificationLog, NotificationLogDocument } from '../models/notification-log.schema';
 import { ShiftAssignment, ShiftAssignmentDocument } from '../models/shift-assignment.schema';
+
 @Injectable()
 export class NotificationService {
     private readonly logger = new Logger(NotificationService.name);
@@ -98,6 +99,17 @@ export class NotificationService {
             const notificationsCreated: any[] = [];
 
             for (const a of assignments) {
+                // IMPORTANT FIX: Check if notification already exists for this assignment (prevent duplicates)
+                const existingNotification = await this.notificationModel.findOne({
+                    'metadata.assignmentId': a._id.toString(),
+                    type: { $in: ['SHIFT_EXPIRY', 'SHIFT_EXPIRY_EMPLOYEE'] }
+                }).lean();
+
+                if (existingNotification) {
+                    this.logger.debug(`Skipping shift expiry notification for assignment ${a._id} - already exists`);
+                    continue;
+                }
+
                 const msg = `Shift assignment ${a._id} for employee ${a.employeeId} expires on ${a.endDate?.toISOString().slice(0,10)}. Please review for renewal or reassignment.`;
 
                 // Notify all HR users
@@ -106,6 +118,7 @@ export class NotificationService {
                         to: hrUser.employeeProfileId,
                         type: 'SHIFT_EXPIRY',
                         message: msg,
+                        metadata: { assignmentId: a._id.toString() } // Track which assignment
                     } as any);
                     notificationsCreated.push(hrNotification);
                 }
@@ -117,6 +130,7 @@ export class NotificationService {
                             to: a.employeeId,
                             type: 'SHIFT_EXPIRY_EMPLOYEE',
                             message: `Your shift assignment expires on ${a.endDate?.toISOString().slice(0,10)}. Please contact HR if renewal is needed.`,
+                            metadata: { assignmentId: a._id.toString() } // Track which assignment
                         } as any);
                         notificationsCreated.push(empNotification);
                     } catch (e) {
@@ -146,6 +160,218 @@ export class NotificationService {
         }
     }
 
+    /**
+     * Create LATE notification (ONLY ONCE per day)
+     */
+    async createLateNotification(employeeId: string, details: {
+        scheduledTime: Date;
+        actualTime: Date;
+        lateByMinutes: number;
+    }): Promise<boolean> {
+        try {
+            const today = new Date();
+            const startOfDay = new Date(today);
+            startOfDay.setHours(0, 0, 0, 0);
+
+            const endOfDay = new Date(today);
+            endOfDay.setHours(23, 59, 59, 999);
+
+            // Check if late notification already sent today
+            const existingLate = await this.notificationModel.findOne({
+                to: new Types.ObjectId(employeeId),
+                type: 'LATE',
+                createdAt: {
+                    $gte: startOfDay,
+                    $lte: endOfDay
+                }
+            });
+
+            if (existingLate) {
+                this.logger.debug(`Late notification already exists for employee ${employeeId} today`);
+                return false; // Already notified
+            }
+
+            // Create new late notification
+            await this.notificationModel.create({
+                to: new Types.ObjectId(employeeId),
+                type: 'LATE',
+                message: `You punched in late today at ${details.actualTime.toLocaleTimeString()}. Scheduled: ${details.scheduledTime.toLocaleTimeString()}, Late by: ${details.lateByMinutes} minutes`,
+                metadata: {
+                    scheduledTime: details.scheduledTime,
+                    actualTime: details.actualTime,
+                    lateByMinutes: details.lateByMinutes,
+                    date: today.toISOString().split('T')[0]
+                }
+            });
+
+            return true;
+        } catch (error) {
+            this.logger.error('Failed to create late notification', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Create MISSED_PUNCH notification
+     */
+    async createMissedPunchNotification(employeeId: string, type: 'IN' | 'OUT'): Promise<void> {
+        try {
+            await this.notificationModel.create({
+                to: new Types.ObjectId(employeeId),
+                type: 'MISSED_PUNCH',
+                message: `You missed your ${type === 'IN' ? 'punch in' : 'punch out'} today.`,
+                metadata: {
+                    punchType: type,
+                    date: new Date().toISOString().split('T')[0]
+                }
+            });
+        } catch (error) {
+            this.logger.error('Failed to create missed punch notification', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Create SHORT_TIME notification
+     */
+    async createShortTimeNotification(employeeId: string, details: {
+        expectedHours: number;
+        actualHours: number;
+        shortByHours: number;
+    }): Promise<void> {
+        try {
+            await this.notificationModel.create({
+                to: new Types.ObjectId(employeeId),
+                type: 'SHORT_TIME',
+                message: `Your shift today was shorter than required. Expected: ${details.expectedHours} hours, Actual: ${details.actualHours} hours`,
+                metadata: {
+                    expectedHours: details.expectedHours,
+                    actualHours: details.actualHours,
+                    shortByHours: details.shortByHours,
+                    date: new Date().toISOString().split('T')[0]
+                }
+            });
+        } catch (error) {
+            this.logger.error('Failed to create short time notification', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Clean up attendance notifications after punch out
+     * Removes: MISSED_PUNCH, SHORT_TIME (if no longer applicable)
+     */
+    async cleanupAttendanceAfterPunchOut(employeeId: string, punchTime: Date): Promise<void> {
+        try {
+            const today = new Date(punchTime);
+            const startOfDay = new Date(today);
+            startOfDay.setHours(0, 0, 0, 0);
+
+            const endOfDay = new Date(today);
+            endOfDay.setHours(23, 59, 59, 999);
+
+            // Remove MISSED_PUNCH notifications (both IN and OUT)
+            await this.notificationModel.deleteMany({
+                to: new Types.ObjectId(employeeId),
+                type: 'MISSED_PUNCH',
+                createdAt: {
+                    $gte: startOfDay,
+                    $lte: endOfDay
+                }
+            });
+
+            this.logger.log(`Cleaned up missed punch notifications for employee ${employeeId} after punch out`);
+        } catch (error) {
+            this.logger.error('Failed to cleanup attendance after punch out', error);
+            // Don't throw - this is cleanup, shouldn't break main flow
+        }
+    }
+
+    /**
+     * Clean up SHORT_TIME notification if shift is now complete
+     * Call this after recalculating hours
+     */
+    async cleanupShortTimeIfComplete(employeeId: string, date: Date, actualHours: number, requiredHours: number): Promise<void> {
+        try {
+            const startOfDay = new Date(date);
+            startOfDay.setHours(0, 0, 0, 0);
+
+            const endOfDay = new Date(date);
+            endOfDay.setHours(23, 59, 59, 999);
+
+            // If actual hours >= required hours, remove SHORT_TIME notification
+            if (actualHours >= requiredHours) {
+                await this.notificationModel.deleteMany({
+                    to: new Types.ObjectId(employeeId),
+                    type: 'SHORT_TIME',
+                    createdAt: {
+                        $gte: startOfDay,
+                        $lte: endOfDay
+                    }
+                });
+
+                this.logger.log(`Cleaned up short time notification for employee ${employeeId} - shift is now complete`);
+            }
+        } catch (error) {
+            this.logger.error('Failed to cleanup short time notification', error);
+        }
+    }
+
+    /**
+     * Clean up MISSED_PUNCH_IN after successful punch in
+     */
+    async cleanupMissedPunchIn(employeeId: string, punchTime: Date): Promise<void> {
+        try {
+            const today = new Date(punchTime);
+            const startOfDay = new Date(today);
+            startOfDay.setHours(0, 0, 0, 0);
+
+            const endOfDay = new Date(today);
+            endOfDay.setHours(23, 59, 59, 999);
+
+            // Remove only MISSED_PUNCH for IN type
+            await this.notificationModel.deleteMany({
+                to: new Types.ObjectId(employeeId),
+                type: 'MISSED_PUNCH',
+                'metadata.punchType': 'IN',
+                createdAt: {
+                    $gte: startOfDay,
+                    $lte: endOfDay
+                }
+            });
+
+            this.logger.log(`Cleaned up missed punch IN notification for employee ${employeeId}`);
+        } catch (error) {
+            this.logger.error('Failed to cleanup missed punch IN', error);
+        }
+    }
+
+    /**
+     * Check if LATE notification was already sent today
+     */
+    async hasLateNotificationToday(employeeId: string, date: Date): Promise<boolean> {
+        try {
+            const startOfDay = new Date(date);
+            startOfDay.setHours(0, 0, 0, 0);
+
+            const endOfDay = new Date(date);
+            endOfDay.setHours(23, 59, 59, 999);
+
+            const existing = await this.notificationModel.findOne({
+                to: new Types.ObjectId(employeeId),
+                type: 'LATE',
+                createdAt: {
+                    $gte: startOfDay,
+                    $lte: endOfDay
+                }
+            });
+
+            return !!existing;
+        } catch (error) {
+            this.logger.error('Failed to check late notification', error);
+            return false;
+        }
+    }
 
     private async findHRUsers(): Promise<any[]> {
         try {
@@ -154,69 +380,80 @@ export class NotificationService {
                 return [];
             }
 
-            const HR_ROLE = 'HR Admin';
+            // IMPORTANT: Use Main2's better HR detection
+            const HR_ROLE_CANDIDATES = ['HR Admin', 'HR Manager', 'HR', 'HR_ADMIN', 'HR_MANAGER', 'HR_ADMINISTRATOR', 'HR Administrator', 'System Admin'];
 
-            // --- 1) Try: employees have roles embedded in employee_profiles (fast path) ---
-            // If your employee_profiles documents have a `roles` array, search there first.
-            const directQuery = await this.connection.db
-                .collection('employee_profiles')
-                .findOne({}); // probe one document to see if `roles` exists
+            // Try embedded roles first
+            const profileCollections = ['employee_profiles', 'employeeprofiles', 'employee_profiles_v1'];
+            for (const colName of profileCollections) {
+                try {
+                    const probe = await this.connection.db.collection(colName).findOne({});
+                    if (probe && Object.prototype.hasOwnProperty.call(probe, 'roles')) {
+                        const directHr = await this.connection.db
+                            .collection(colName)
+                            .find({ roles: { $in: HR_ROLE_CANDIDATES } })
+                            .project({ _id: 1, workEmail: 1, roles: 1, status: 1 })
+                            .toArray();
 
-            if (directQuery && Object.prototype.hasOwnProperty.call(directQuery, 'roles')) {
-                const directHr = await this.connection.db
-                    .collection('employee_profiles')
-                    .find({
-                        roles: { $in: [HR_ROLE] },         // match role inside employee_profiles.roles
-                        // status: 'ACTIVE',                  // ensure active employees only
-                    })
-                    .project({ _id: 1, workEmail: 1, roles: 1, status: 1 })
-                    .toArray();
-
-                return directHr.map(e => ({
-                    employeeProfileId: e._id,
-                    roles: e.roles,
-                    workEmail: e.workEmail,
-                    isActive: e.status === 'ACTIVE',
-                }));
+                        return directHr.map(e => ({
+                            employeeProfileId: e._id,
+                            roles: e.roles,
+                            workEmail: e.workEmail,
+                            isActive: e.status === 'ACTIVE',
+                        }));
+                    }
+                } catch (e) {
+                    // ignore and try next
+                }
             }
 
-            // --- 2) Fallback: roles stored in employee_system_roles collection (existing setup) ---
-            const hrRoles = await this.connection.db
-                .collection('employee_system_roles')
-                .find({
-                    roles: { $in: [HR_ROLE] },
-                    isActive: true,
-                })
-                .toArray();
+            // Fallback to role collections
+            const roleCollections = ['employee_system_roles', 'employeesystemroles', 'employee_systemroles', 'employeeSystemRoles'];
+            for (const rc of roleCollections) {
+                try {
+                    const hrRoles = await this.connection.db.collection(rc).find({
+                        roles: { $in: HR_ROLE_CANDIDATES },
+                        isActive: true
+                    }).toArray();
 
-            if (!hrRoles?.length) return [];
+                    if (!hrRoles || hrRoles.length === 0) continue;
 
-            // Build list of employeeProfileIds (unique)
-            const employeeIds = Array.from(new Set(hrRoles.map((r: any) => String(r.employeeProfileId))))
-                .map(id => new Types.ObjectId(id));
+                    const employeeIds = Array.from(new Set(hrRoles.map((r: any) => String(r.employeeProfileId)))).map(id => new Types.ObjectId(id));
 
-            // Fetch matching employee profiles
-            const employees = await this.connection.db
-                .collection('employee_profiles')
-                .find({ _id: { $in: employeeIds }, status: 'ACTIVE' })
-                .project({ _id: 1, workEmail: 1, status: 1 })
-                .toArray();
+                    // Find employee profiles
+                    let employees: any[] = [];
+                    for (const colName of profileCollections) {
+                        try {
+                            employees = await this.connection.db.collection(colName).find({
+                                _id: { $in: employeeIds },
+                                status: 'ACTIVE'
+                            }).project({ _id: 1, workEmail: 1, status: 1 }).toArray();
+                            if (employees.length) break;
+                        } catch (e) {
+                            continue;
+                        }
+                    }
 
-            // Join and return only active employees
-            const results = hrRoles
-                .map((role: any) => {
-                    const emp = employees.find(e => String(e._id) === String(role.employeeProfileId));
-                    if (!emp) return null;
-                    return {
-                        employeeProfileId: role.employeeProfileId,
-                        roles: role.roles,
-                        workEmail: emp.workEmail,
-                        isActive: emp.status === 'ACTIVE',
-                    };
-                })
-                .filter(Boolean);
+                    const results = hrRoles
+                        .map((role: any) => {
+                            const emp = employees.find(e => String(e._id) === String(role.employeeProfileId));
+                            if (!emp) return null;
+                            return {
+                                employeeProfileId: role.employeeProfileId,
+                                roles: role.roles,
+                                workEmail: emp.workEmail,
+                                isActive: emp.status === 'ACTIVE',
+                            };
+                        })
+                        .filter(Boolean);
 
-            return results;
+                    if (results.length) return results;
+                } catch (e) {
+                    continue;
+                }
+            }
+
+            return [];
         } catch (error) {
             this.logger.error('Failed to find HR users', error);
             return [];
@@ -253,7 +490,6 @@ export class NotificationService {
 
     /**
      * Get all HR/Admin users in the system
-     * This is informational only - the system automatically finds and notifies HR users
      */
     async getHRUsers() {
         try {
@@ -265,43 +501,12 @@ export class NotificationService {
                 };
             }
 
-            // Query for users with HR/Admin roles
-            const hrRoles = await this.connection.db.collection('employeesystemroles').find({
-                roles: { $in: ['HR Manager', 'System Admin', 'HR Admin'] },
-                isActive: true
-            }).toArray();
-
-            if (!hrRoles || hrRoles.length === 0) {
-                return {
-                    message: 'No HR/Admin users found in the system',
-                    users: [],
-                    note: 'Notifications will only be sent to employees. Create HR users with HR Manager, HR Admin, or System Admin roles to receive notifications automatically.'
-                };
-            }
-
-            // Get employee details
-            const employeeIds = hrRoles.map((r: any) => r.employeeProfileId);
-            const employees = await this.connection.db.collection('employeeprofiles').find({
-                _id: { $in: employeeIds }
-            }).toArray();
-
-            // Combine the data
-            const hrUsers = hrRoles.map((role: any) => {
-                const emp: any = employees.find((e: any) => e._id.equals(role.employeeProfileId));
-                return {
-                    employeeId: role.employeeProfileId.toString(),
-                    roles: role.roles,
-                    firstName: emp?.firstName,
-                    lastName: emp?.lastName,
-                    workEmail: emp?.workEmail,
-                    isActive: emp?.isActive
-                };
-            });
+            const hrUsers = await this.findHRUsers();
 
             return {
                 message: `Found ${hrUsers.length} HR/Admin user(s)`,
                 users: hrUsers,
-                note: 'These users will automatically receive shift expiry notifications. No configuration required!'
+                note: 'These users will automatically receive shift expiry notifications.'
             };
         } catch (error) {
             this.logger.error('Failed to fetch HR users', error);
@@ -318,7 +523,7 @@ export class NotificationService {
 
             const ROLE = roleName;
 
-            // Probe employee_profiles to see if roles are present
+            // Probe employee_profiles
             const probe = await this.connection.db.collection('employee_profiles').findOne({});
             if (probe && Object.prototype.hasOwnProperty.call(probe, 'roles')) {
                 const users = await this.connection.db
@@ -330,7 +535,7 @@ export class NotificationService {
                 return users.map(u => ({ employeeProfileId: u._id, workEmail: u.workEmail, roles: u.roles }));
             }
 
-            // Fallback to employee_system_roles collection
+            // Fallback
             const roles = await this.connection.db
                 .collection('employee_system_roles')
                 .find({ roles: { $in: [ROLE] }, isActive: true })

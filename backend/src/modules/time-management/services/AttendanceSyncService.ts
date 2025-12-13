@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectModel, InjectConnection } from '@nestjs/mongoose';
 import { Model, Connection, Types } from 'mongoose';
 import { Cron } from '@nestjs/schedule';
@@ -98,6 +98,9 @@ export class AttendanceSyncService {
         @InjectModel(ScheduleRule.name) private scheduleRuleModel: Model<ScheduleRuleDocument>,
         @InjectModel(TimeException.name) private exceptionModel: Model<TimeExceptionDocument>,
         @InjectConnection() private connection: Connection,
+        // Optional injection of external services - will be available if modules are imported
+        @Optional() private readonly payrollService?: any,
+        @Optional() private readonly leaveService?: any,
     ) {}
 
     // ==================== CRON JOB ====================
@@ -221,6 +224,7 @@ export class AttendanceSyncService {
     // ==================== PAYROLL NOTIFICATION ====================
     /**
      * Create payroll sync notification with attendance data
+     * AND sync with PayrollService if available
      */
     private async createPayrollNotification(
         record: any,
@@ -248,10 +252,32 @@ export class AttendanceSyncService {
             syncedAt: new Date().toISOString(),
         };
 
+        // REAL SYNC: Call PayrollService if available
+        let payrollServiceCalled = false;
+        if (this.payrollService && typeof this.payrollService.registerAttendanceData === 'function') {
+            try {
+                await this.payrollService.registerAttendanceData(payrollData);
+                payrollServiceCalled = true;
+                this.logger.log(`✅ Synced attendance to PayrollService for employee ${employeeId} on ${dateStr}`);
+            } catch (error: any) {
+                this.logger.error(`❌ PayrollService sync failed for employee ${employeeId}:`, error.message);
+                // Continue to create notification as fallback
+            }
+        } else if (!this.payrollService) {
+            this.logger.debug(`PayrollService not injected - using notification log only`);
+        }
+
+        // ALWAYS create notification log (for audit trail and fallback)
         await this.notificationModel.create({
             to: hrUserId,
             type: 'PAYROLL_SYNC_DATA',
             message: JSON.stringify(payrollData),
+            metadata: {
+                employeeId: employeeId,
+                date: dateStr,
+                status: status,
+                payrollServiceSynced: payrollServiceCalled,
+            },
             createdAt: new Date(),
         });
 
@@ -262,6 +288,7 @@ export class AttendanceSyncService {
     /**
      * Create absence notification for employees marked as ABSENT
      * Only called when employee was scheduled to work but didn't attend
+     * AND sync with LeaveService if available
      */
     private async createAbsenceNotification(record: any, date: Date, hrUserId: Types.ObjectId): Promise<void> {
         const dateStr = date.toISOString().split('T')[0];
@@ -283,10 +310,32 @@ export class AttendanceSyncService {
             reason: 'Scheduled work day with no attendance punches',
         };
 
+        // REAL SYNC: Call LeaveService if available
+        let leaveServiceCalled = false;
+        if (this.leaveService && typeof this.leaveService.registerAbsence === 'function') {
+            try {
+                await this.leaveService.registerAbsence(absenceData);
+                leaveServiceCalled = true;
+                this.logger.log(`✅ Synced absence to LeaveService for employee ${employeeId} on ${dateStr}`);
+            } catch (error: any) {
+                this.logger.error(`❌ LeaveService sync failed for employee ${employeeId}:`, error.message);
+                // Continue to create notification as fallback
+            }
+        } else if (!this.leaveService) {
+            this.logger.debug(`LeaveService not injected - using notification log only`);
+        }
+
+        // ALWAYS create notification log (for audit trail and fallback)
         await this.notificationModel.create({
             to: hrUserId,
             type: 'LEAVE_SYNC_ABSENCE',
             message: JSON.stringify(absenceData),
+            metadata: {
+                employeeId: employeeId,
+                date: dateStr,
+                status: 'ABSENT',
+                leaveServiceSynced: leaveServiceCalled,
+            },
             createdAt: new Date(),
         });
 
@@ -657,7 +706,6 @@ export class AttendanceSyncService {
             const remaining = entitlement.remaining || 0;
             const taken = entitlement.taken || 0;
             const pending = entitlement.pending || 0;
-            const yearly = entitlement.yearlyEntitlement || 0;
             const accrued = entitlement.accruedRounded || entitlement.accruedActual || 0;
             const carryForward = entitlement.carryForward || 0;
 
@@ -675,6 +723,14 @@ export class AttendanceSyncService {
     /**
      * Deduct 1 day (or proportional minutes) from entitlement balance
      * This prevents double deduction and tracks which days were deducted
+     *
+     * @param employeeId - Employee ID
+     * @param leaveTypeId - Leave type ID
+     * @param date - Date of leave
+     */
+    /**
+     * Deduct 1 day from entitlement balance when employee takes leave
+     * Creates notification log for audit trail and integration
      *
      * @param employeeId - Employee ID
      * @param leaveTypeId - Leave type ID
@@ -726,7 +782,54 @@ export class AttendanceSyncService {
                 _id: new Types.ObjectId(),
             });
 
+            // Create notification log for leave entitlement deduction
+            const hrUserId = this.getHrUserId();
+            const leaveData = {
+                employeeId: employeeId.toString(),
+                leaveTypeId: leaveTypeId.toString(),
+                date: dateStr,
+                daysDeducted: 1,
+                action: 'ENTITLEMENT_DEDUCTED',
+                syncedAt: new Date().toISOString(),
+            };
+
+            // REAL SYNC: Call LeaveService if available
+            let leaveServiceCalled = false;
+            if (this.leaveService && typeof this.leaveService.deductLeaveBalance === 'function') {
+                try {
+                    await this.leaveService.deductLeaveBalance({
+                        employeeId: employeeId.toString(),
+                        leaveTypeId: leaveTypeId.toString(),
+                        date: dateStr,
+                        daysDeducted: 1,
+                    });
+                    leaveServiceCalled = true;
+                    this.logger.log(`✅ Synced leave balance deduction to LeaveService for employee ${employeeId}`);
+                } catch (error: any) {
+                    this.logger.error(`❌ LeaveService leave balance deduction failed for employee ${employeeId}:`, error.message);
+                    // Continue to create notification as fallback
+                }
+            } else if (!this.leaveService) {
+                this.logger.debug(`LeaveService not injected - using notification log only for leave deduction`);
+            }
+
+            // ALWAYS create notification log (for audit trail and fallback)
+            await this.notificationModel.create({
+                to: hrUserId,
+                type: 'LEAVE_ENTITLEMENT_DEDUCTED',
+                message: JSON.stringify(leaveData),
+                metadata: {
+                    employeeId: employeeId.toString(),
+                    leaveTypeId: leaveTypeId.toString(),
+                    date: dateStr,
+                    action: 'ENTITLEMENT_DEDUCTED',
+                    leaveServiceSynced: leaveServiceCalled,
+                },
+                createdAt: new Date(),
+            });
+
             this.logger.debug(`Deducted 1 day from entitlement for employee ${employeeId} on ${dateStr}`);
+            this.logger.log(`✅ Leave entitlement notification logged for employee ${employeeId}`);
         } catch (error: any) {
             this.logger.error(`Error deducting entitlement:`, error);
             // Don't throw - log error and continue
@@ -848,6 +951,7 @@ export class AttendanceSyncService {
     // ==================== PAYROLL ABSENCE SYNC ====================
     /**
      * Calculate absence data for payroll for a specific month
+     * Also creates notification log for audit trail and integration
      */
     async syncAbsencesToPayroll(
         employeeId: string | Types.ObjectId,
@@ -884,7 +988,7 @@ export class AttendanceSyncService {
 
         const unapprovedMinutes = Math.max(0, totalAbsenceMinutes - approvedMinutes);
 
-        return {
+        const payrollData: PayrollAbsenceData = {
             employeeId: empOid.toString(),
             month,
             year,
@@ -899,6 +1003,48 @@ export class AttendanceSyncService {
                 approved: false, // Would need to check exceptions
             })),
         };
+
+        // REAL SYNC: Call PayrollService if available
+        let payrollServiceCalled = false;
+        if (this.payrollService && typeof this.payrollService.registerMonthlyAbsences === 'function') {
+            try {
+                await this.payrollService.registerMonthlyAbsences(payrollData);
+                payrollServiceCalled = true;
+                this.logger.log(`✅ Synced monthly absences to PayrollService for employee ${empOid} for ${month}/${year}`);
+            } catch (error: any) {
+                this.logger.error(`❌ PayrollService monthly absences sync failed for employee ${empOid}:`, error.message);
+                // Continue to create notification as fallback
+            }
+        } else if (!this.payrollService) {
+            this.logger.debug(`PayrollService not injected - using notification log only for payroll sync`);
+        }
+
+        // Create notification log for payroll sync
+        try {
+            const hrUserId = this.getHrUserId();
+            await this.notificationModel.create({
+                to: hrUserId,
+                type: 'PAYROLL_ABSENCE_SYNC',
+                message: JSON.stringify(payrollData),
+                metadata: {
+                    employeeId: empOid.toString(),
+                    month,
+                    year,
+                    totalAbsentDays: absenceRecords.length,
+                    totalAbsenceMinutes,
+                    action: 'PAYROLL_ABSENCE_SYNC',
+                    payrollServiceSynced: payrollServiceCalled,
+                },
+                createdAt: new Date(),
+            });
+
+            this.logger.log(`✅ Payroll absence sync notification logged for employee ${empOid} for ${month}/${year}`);
+        } catch (error: any) {
+            this.logger.error(`Error creating payroll sync notification:`, error);
+            // Don't throw - continue with return
+        }
+
+        return payrollData;
     }
 
     // ==================== REPEATED ABSENCE DETECTION ====================
@@ -1274,5 +1420,263 @@ export class AttendanceSyncService {
         this.logger.log(`Absence count result: ${absenceCount} absences out of ${totalDays} days (${absenceRate}%)`);
 
         return result;
+    }
+
+    // ==================== TIME REQUEST ESCALATION ====================
+    /**
+     * Automatic escalation of pending time requests before payroll cut-off
+     * Prevents payroll delays by ensuring all time requests are reviewed
+     * Runs 5 days before end of month (on the 25th or 26th)
+     */
+    @Cron('0 8 25-28 * *', {
+        name: 'time-request-escalation',
+        timeZone: 'UTC',
+    })
+    async escalatePendingTimeRequests() {
+        this.logger.log('Starting automatic escalation of pending time requests...');
+
+        try {
+            // Get current date
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = today.getMonth() + 1;
+
+            // Get payroll cut-off date (configurable, default is last day of month or 25th - adjust as needed)
+            const payrollCutoffDate = this.getPayrollCutoffDate(year, month);
+
+            this.logger.log(`Payroll cut-off date: ${payrollCutoffDate.toDateString()}`);
+
+            // Escalate leave requests
+            const leaveEscalations = await this.escalateLeaveRequests(payrollCutoffDate);
+
+            // Escalate time exceptions
+            const exceptionEscalations = await this.escalateTimeExceptions(payrollCutoffDate);
+
+            this.logger.log(`Escalation completed: ${leaveEscalations} leave requests, ${exceptionEscalations} time exceptions`);
+        } catch (error: any) {
+            this.logger.error('Time request escalation failed:', error);
+        }
+    }
+
+    /**
+     * Get payroll cut-off date for the current month
+     * Default: Last day of month, or 25th if configured earlier
+     *
+     * @param year Current year
+     * @param month Current month (1-12)
+     * @returns Payroll cut-off date
+     */
+    private getPayrollCutoffDate(year: number, month: number): Date {
+        // Configuration: Get from environment or default to last day of month
+        const cutoffDay = parseInt(process.env.PAYROLL_CUTOFF_DAY || '28', 10);
+
+        const cutoffDate = new Date(year, month - 1, cutoffDay);
+        cutoffDate.setHours(23, 59, 59, 999);
+
+        this.logger.debug(`Payroll cut-off date calculated: ${cutoffDate.toDateString()}`);
+
+        return cutoffDate;
+    }
+
+    /**
+     * Escalate pending leave requests before payroll cut-off
+     * Marks pending leave requests as escalated and notifies managers
+     *
+     * @param cutoffDate Payroll cut-off date
+     * @returns Count of escalated leave requests
+     */
+    private async escalateLeaveRequests(cutoffDate: Date): Promise<number> {
+        try {
+            const leaveCollection = this.connection.db!.collection('leaverequests');
+
+            // Find pending leave requests that are due for escalation
+            // Escalate if:
+            // 1. Status is PENDING
+            // 2. Request date is before cut-off (to give time for review)
+            // 3. Not already escalated
+            const escalationThresholdDate = new Date(cutoffDate);
+            escalationThresholdDate.setDate(escalationThresholdDate.getDate() - 5); // Escalate 5 days before cut-off
+
+            const pendingLeaveRequests = await leaveCollection.find({
+                status: 'PENDING',
+                createdAt: { $lt: escalationThresholdDate },
+                escalated: { $ne: true },
+            }).toArray();
+
+            this.logger.log(`Found ${pendingLeaveRequests.length} pending leave requests for escalation`);
+
+            let escalatedCount = 0;
+            const hrUserId = this.getHrUserId();
+
+            for (const request of pendingLeaveRequests) {
+                try {
+                    // Update request as escalated
+                    const updateResult = await leaveCollection.updateOne(
+                        { _id: request._id },
+                        {
+                            $set: {
+                                escalated: true,
+                                escalationDate: new Date(),
+                                escalationLevel: 'MANAGER_APPROVAL_REQUIRED',
+                                urgencyFlag: true,
+                            },
+                        }
+                    );
+
+                    if (updateResult.modifiedCount > 0) {
+                        escalatedCount++;
+
+                        // Create escalation notification
+                        await this.notificationModel.create({
+                            to: hrUserId,
+                            type: 'TIME_REQUEST_ESCALATION',
+                            message: JSON.stringify({
+                                requestType: 'LEAVE',
+                                requestId: request._id.toString(),
+                                employeeId: request.employeeId?.toString(),
+                                leaveType: request.leaveType,
+                                startDate: request.startDate,
+                                endDate: request.endDate,
+                                escalationReason: 'Pending review before payroll cut-off',
+                                escalationDate: new Date().toISOString(),
+                                payrollCutoffDate: new Date(cutoffDate).toISOString(),
+                            }),
+                            metadata: {
+                                requestType: 'LEAVE',
+                                employeeId: request.employeeId?.toString(),
+                                escalationLevel: 'MANAGER_APPROVAL_REQUIRED',
+                                urgency: 'HIGH',
+                            },
+                            createdAt: new Date(),
+                        });
+
+                        this.logger.log(`✅ Escalated leave request ${request._id} for employee ${request.employeeId}`);
+                    }
+                } catch (error: any) {
+                    this.logger.error(`Failed to escalate leave request ${request._id}:`, error.message);
+                }
+            }
+
+            this.logger.log(`Escalated ${escalatedCount} leave requests`);
+            return escalatedCount;
+        } catch (error: any) {
+            this.logger.error('Error escalating leave requests:', error);
+            return 0;
+        }
+    }
+
+    /**
+     * Escalate pending time exceptions before payroll cut-off
+     * Marks pending exceptions as escalated and notifies managers
+     *
+     * @param cutoffDate Payroll cut-off date
+     * @returns Count of escalated time exceptions
+     */
+    private async escalateTimeExceptions(cutoffDate: Date): Promise<number> {
+        try {
+            const exceptionCollection = this.connection.db!.collection('timeexceptions');
+
+            // Find pending time exceptions that are due for escalation
+            const escalationThresholdDate = new Date(cutoffDate);
+            escalationThresholdDate.setDate(escalationThresholdDate.getDate() - 5);
+
+            const pendingExceptions = await exceptionCollection.find({
+                status: 'PENDING',
+                createdAt: { $lt: escalationThresholdDate },
+                escalated: { $ne: true },
+            }).toArray();
+
+            this.logger.log(`Found ${pendingExceptions.length} pending time exceptions for escalation`);
+
+            let escalatedCount = 0;
+            const hrUserId = this.getHrUserId();
+
+            for (const exception of pendingExceptions) {
+                try {
+                    // Update exception as escalated
+                    const updateResult = await exceptionCollection.updateOne(
+                        { _id: exception._id },
+                        {
+                            $set: {
+                                escalated: true,
+                                escalationDate: new Date(),
+                                escalationLevel: 'MANAGER_APPROVAL_REQUIRED',
+                                urgencyFlag: true,
+                            },
+                        }
+                    );
+
+                    if (updateResult.modifiedCount > 0) {
+                        escalatedCount++;
+
+                        // Create escalation notification
+                        await this.notificationModel.create({
+                            to: hrUserId,
+                            type: 'TIME_REQUEST_ESCALATION',
+                            message: JSON.stringify({
+                                requestType: 'TIME_EXCEPTION',
+                                requestId: exception._id.toString(),
+                                employeeId: exception.employeeId?.toString(),
+                                exceptionType: exception.type,
+                                exceptionDate: exception.date,
+                                escalationReason: 'Pending review before payroll cut-off',
+                                escalationDate: new Date().toISOString(),
+                                payrollCutoffDate: new Date(cutoffDate).toISOString(),
+                            }),
+                            metadata: {
+                                requestType: 'TIME_EXCEPTION',
+                                employeeId: exception.employeeId?.toString(),
+                                exceptionType: exception.type,
+                                escalationLevel: 'MANAGER_APPROVAL_REQUIRED',
+                                urgency: 'HIGH',
+                            },
+                            createdAt: new Date(),
+                        });
+
+                        this.logger.log(`✅ Escalated time exception ${exception._id} for employee ${exception.employeeId}`);
+                    }
+                } catch (error: any) {
+                    this.logger.error(`Failed to escalate time exception ${exception._id}:`, error.message);
+                }
+            }
+
+            this.logger.log(`Escalated ${escalatedCount} time exceptions`);
+            return escalatedCount;
+        } catch (error: any) {
+            this.logger.error('Error escalating time exceptions:', error);
+            return 0;
+        }
+    }
+
+    /**
+     * Public method to manually trigger time request escalation
+     * Useful for testing and manual intervention
+     */
+    async manuallyEscalateTimeRequests(): Promise<{
+        leaveEscalations: number;
+        exceptionEscalations: number;
+    }> {
+        this.logger.log('Manual escalation triggered for time requests');
+
+        try {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = today.getMonth() + 1;
+
+            const payrollCutoffDate = this.getPayrollCutoffDate(year, month);
+
+            const leaveEscalations = await this.escalateLeaveRequests(payrollCutoffDate);
+            const exceptionEscalations = await this.escalateTimeExceptions(payrollCutoffDate);
+
+            this.logger.log(`Manual escalation completed: ${leaveEscalations} leaves, ${exceptionEscalations} exceptions`);
+
+            return {
+                leaveEscalations,
+                exceptionEscalations,
+            };
+        } catch (error: any) {
+            this.logger.error('Manual escalation failed:', error);
+            throw error;
+        }
     }
 }

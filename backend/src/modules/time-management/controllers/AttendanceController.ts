@@ -158,7 +158,7 @@ export class AttendanceController {
                 value: {
                     attendanceRecordId: '674c1a1b2c3d4e5f6a7b8c9d',
                     addPunchOut: '01/12/2025 17:00',
-                    correctionReason: 'employee forgot to punch out',
+                    correctionReason: 'Employee forgot to punch out',
                     correctedBy: '674c1a1b2c3d4e5f6a7b8c8a'
                 }
             },
@@ -185,7 +185,7 @@ export class AttendanceController {
             },
             'Remove Duplicate Punch': {
                 summary: 'Remove duplicate punch',
-                description: 'employee accidentally punched twice',
+                description: 'Employee accidentally punched twice',
                 value: {
                     attendanceRecordId: '674c1a1b2c3d4e5f6a7b8c9d',
                     removePunchIndex: 2,
@@ -208,7 +208,7 @@ export class AttendanceController {
             },
             'Lunch Break Correction': {
                 summary: 'Add lunch break punches',
-                description: 'employee forgot to punch during lunch',
+                description: 'Employee forgot to punch during lunch',
                 value: {
                     attendanceRecordId: '674c1a1b2c3d4e5f6a7b8c9d',
                     correctedPunches: [
