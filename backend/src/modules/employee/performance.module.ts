@@ -8,7 +8,9 @@ import {AppraisalRecord, AppraisalRecordSchema} from "./models/performance/appra
 import {AppraisalDispute, AppraisalDisputeSchema} from "./models/performance/appraisal-dispute.schema";
 
 
-import {PerformanceController} from "./controllers/performance.controller";
+// COMMENTED OUT FOR TESTING - Using no-auth controller
+// import {PerformanceController} from "./controllers/performance.controller";
+import {PerformanceNoAuthController} from "./controllers/performance-no-auth.controller";
 import {PerformanceService} from "./services/performance.service";
 import { SharedModule } from '../shared/shared.module';
 import {AuthModule} from "../auth/auth-module";
@@ -29,7 +31,9 @@ import {AuthModule} from "../auth/auth-module";
     ]),
     SharedModule,
   ],
-  controllers: [PerformanceController],
+  // COMMENTED OUT FOR TESTING - Using no-auth controller
+  // controllers: [PerformanceController],
+  controllers: [PerformanceNoAuthController],
   providers: [PerformanceService],
   exports: [PerformanceService],
 })

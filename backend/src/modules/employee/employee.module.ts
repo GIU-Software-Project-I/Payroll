@@ -15,7 +15,9 @@ import {EmployeeProfileChangeRequest,
   EmployeeProfileChangeRequestSchema
 } from "./models/employee/ep-change-request.schema";
 import { OrganizationStructureModule } from './organization-structure.module';
-import {EmployeeProfileController} from "./controllers/employee-profile.controller";
+// COMMENTED OUT FOR TESTING - Using no-auth controller
+// import {EmployeeProfileController} from "./controllers/employee-profile.controller";
+import {EmployeeProfileNoAuthController} from "./controllers/employee-profile-no-auth.controller";
 import {EmployeeProfileService} from "./services/employee-profile.service";
 import { SharedModule } from '../shared/shared.module';
 import {AuthModule} from "../auth/auth-module";
@@ -35,7 +37,9 @@ import {AuthModule} from "../auth/auth-module";
     OrganizationStructureModule,
     SharedModule,
   ],
-  controllers: [EmployeeProfileController ],
+  // COMMENTED OUT FOR TESTING - Using no-auth controller
+  // controllers: [EmployeeProfileController],
+  controllers: [EmployeeProfileNoAuthController],
   providers: [EmployeeProfileService],
   exports: [EmployeeProfileService],
 })

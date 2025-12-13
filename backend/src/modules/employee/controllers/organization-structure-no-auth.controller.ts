@@ -1,35 +1,33 @@
-// COMMENTED OUT FOR TESTING - Using organization-structure-no-auth.controller.ts instead
-// Uncomment this controller and remove the no-auth version for production
+// TEMPORARY CONTROLLER WITHOUT AUTHORIZATION - FOR TESTING PURPOSES ONLY
+// Remove this file and uncomment the original controller in production
 
-/*
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { OrganizationStructureService, DepartmentSearchQuery, PositionSearchQuery, AssignmentSearchQuery, ChangeRequestSearchQuery } from '../services/organization-structure.service';
 import { CreateDepartmentDto, UpdateDepartmentDto, CreatePositionDto, UpdatePositionDto, AssignPositionDto, EndAssignmentDto, SubmitStructureRequestDto, UpdateStructureRequestDto, SubmitApprovalDecisionDto } from '../dto/organization-structure';
 import { StructureRequestStatus, StructureRequestType } from '../enums/organization-structure.enums';
-import { SystemRole } from '../enums/employee-profile.enums';
-import { AuthenticationGuard } from '../../auth/guards/authentication-guard';
-import { AuthorizationGuard } from '../../auth/guards/authorization-guard';
-import { Roles } from '../../auth/decorators/roles-decorator';
-import { CurrentUser } from '../../auth/decorators/current-user';
-import type { JwtPayload } from '../../auth/token/jwt-payload';
 
 @Controller('organization-structure')
-@UseGuards(AuthenticationGuard, AuthorizationGuard)
-export class OrganizationStructureController {
+export class OrganizationStructureNoAuthController {
     constructor(private readonly orgService: OrganizationStructureService) {}
 
+    // ==========================================
+    // DEPARTMENT ROUTES
+    // ==========================================
+
+    // REQ-OSM-01: Create department
     @Post('departments')
-    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     createDepartment(@Body() dto: CreateDepartmentDto) {
         return this.orgService.createDepartment(dto);
     }
 
+    // Get all departments
     @Get('departments')
     getAllDepartments(@Query('isActive') isActive?: string) {
         const active = isActive === undefined ? undefined : isActive === 'true';
         return this.orgService.getAllDepartments(active);
     }
 
+    // Search departments
     @Get('departments/search')
     searchDepartments(
         @Query('query') query?: string,
@@ -46,52 +44,60 @@ export class OrganizationStructureController {
         return this.orgService.searchDepartments(queryDto);
     }
 
+    // Get department statistics
     @Get('departments/stats')
-    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.DEPARTMENT_HEAD)
     getDepartmentStats() {
         return this.orgService.getDepartmentStats();
     }
 
+    // Get department by ID
     @Get('departments/:id')
     getDepartmentById(@Param('id') id: string) {
         return this.orgService.getDepartmentById(id);
     }
 
+    // Get department hierarchy
     @Get('departments/:id/hierarchy')
     getDepartmentHierarchy(@Param('id') id: string) {
         return this.orgService.getDepartmentHierarchy(id);
     }
 
+    // REQ-OSM-02: Update department
     @Patch('departments/:id')
-    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     updateDepartment(@Param('id') id: string, @Body() dto: UpdateDepartmentDto) {
         return this.orgService.updateDepartment(id, dto);
     }
 
+    // REQ-OSM-05: Deactivate department
     @Patch('departments/:id/deactivate')
-    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     deactivateDepartment(@Param('id') id: string) {
         return this.orgService.deactivateDepartment(id);
     }
 
+    // Reactivate department
     @Patch('departments/:id/reactivate')
-    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     reactivateDepartment(@Param('id') id: string) {
         return this.orgService.reactivateDepartment(id);
     }
 
+    // ==========================================
+    // POSITION ROUTES
+    // ==========================================
+
+    // REQ-OSM-01: Create position
     @Post('positions')
-    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     createPosition(@Body() dto: CreatePositionDto) {
         return this.orgService.createPosition(dto);
     }
 
+    // Get all positions
     @Get('positions')
     getAllPositions(@Query('departmentId') departmentId?: string, @Query('isActive') isActive?: string) {
         const active = isActive === undefined ? undefined : isActive === 'true';
         return this.orgService.getAllPositions(departmentId, active);
     }
 
+    // Search positions
     @Get('positions/search')
     searchPositions(
         @Query('query') query?: string,
@@ -110,48 +116,54 @@ export class OrganizationStructureController {
         return this.orgService.searchPositions(queryDto);
     }
 
+    // Get position statistics
     @Get('positions/stats')
-    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.DEPARTMENT_HEAD)
     getPositionStats() {
         return this.orgService.getPositionStats();
     }
 
+    // Get position by ID
     @Get('positions/:id')
     getPositionById(@Param('id') id: string) {
         return this.orgService.getPositionById(id);
     }
 
+    // Get position subordinates
     @Get('positions/:id/subordinates')
     getPositionSubordinates(@Param('id') id: string) {
         return this.orgService.getPositionSubordinates(id);
     }
 
+    // REQ-OSM-02: Update position
     @Patch('positions/:id')
-    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     updatePosition(@Param('id') id: string, @Body() dto: UpdatePositionDto) {
         return this.orgService.updatePosition(id, dto);
     }
 
+    // REQ-OSM-05: Deactivate position (with delimit logic)
     @Patch('positions/:id/deactivate')
-    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     deactivatePosition(@Param('id') id: string, @Body('reason') reason?: string) {
         return this.orgService.deactivatePosition(id, reason);
     }
 
+    // Reactivate position
     @Patch('positions/:id/reactivate')
-    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     reactivatePosition(@Param('id') id: string) {
         return this.orgService.reactivatePosition(id);
     }
 
+    // ==========================================
+    // POSITION ASSIGNMENT ROUTES
+    // ==========================================
+
+    // Assign employee to position
     @Post('assignments')
-    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     assignEmployeeToPosition(@Body() dto: AssignPositionDto) {
         return this.orgService.assignEmployeeToPosition(dto);
     }
 
+    // Search assignments
     @Get('assignments')
-    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.DEPARTMENT_HEAD)
     searchAssignments(
         @Query('employeeProfileId') employeeProfileId?: string,
         @Query('positionId') positionId?: string,
@@ -171,32 +183,36 @@ export class OrganizationStructureController {
         return this.orgService.searchAssignments(queryDto);
     }
 
+    // Get employee assignment history
     @Get('assignments/employee/:employeeProfileId/history')
-    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     getEmployeeAssignmentHistory(@Param('employeeProfileId') employeeProfileId: string) {
         return this.orgService.getEmployeeAssignmentHistory(employeeProfileId);
     }
 
+    // Get assignment by ID
     @Get('assignments/:id')
-    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.DEPARTMENT_HEAD)
     getAssignmentById(@Param('id') id: string) {
         return this.orgService.getAssignmentById(id);
     }
 
+    // End assignment (delimit)
     @Patch('assignments/:id/end')
-    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     endAssignment(@Param('id') id: string, @Body() dto: EndAssignmentDto) {
         return this.orgService.endAssignment(id, dto);
     }
 
+    // ==========================================
+    // CHANGE REQUEST ROUTES (REQ-OSM-03, REQ-OSM-04)
+    // ==========================================
+
+    // REQ-OSM-03: Manager submits change request
     @Post('change-requests')
-    @Roles(SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
-    createChangeRequest(@Body() dto: SubmitStructureRequestDto, @CurrentUser() user: JwtPayload) {
-        return this.orgService.createChangeRequest({ ...dto, requestedByEmployeeId: user.sub });
+    createChangeRequest(@Body() dto: SubmitStructureRequestDto, @Query('userId') userId?: string) {
+        return this.orgService.createChangeRequest({ ...dto, requestedByEmployeeId: userId || dto.requestedByEmployeeId });
     }
 
+    // REQ-OSM-04: Get all change requests
     @Get('change-requests')
-    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     searchChangeRequests(
         @Query('status') status?: StructureRequestStatus,
         @Query('requestType') requestType?: StructureRequestType,
@@ -214,55 +230,64 @@ export class OrganizationStructureController {
         return this.orgService.searchChangeRequests(queryDto);
     }
 
+    // Get pending requests count
     @Get('change-requests/count/pending')
-    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     getPendingRequestsCount() {
         return this.orgService.getPendingRequestsCount().then(count => ({ count }));
     }
 
+    // Get change request by number
     @Get('change-requests/by-number/:requestNumber')
-    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     getChangeRequestByNumber(@Param('requestNumber') requestNumber: string) {
         return this.orgService.getChangeRequestByNumber(requestNumber);
     }
 
+    // Get change request by ID
     @Get('change-requests/:id')
-    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     getChangeRequestById(@Param('id') id: string) {
         return this.orgService.getChangeRequestById(id);
     }
 
+    // Get approvals for change request
     @Get('change-requests/:id/approvals')
-    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     getApprovalsByChangeRequest(@Param('id') id: string) {
         return this.orgService.getApprovalsByChangeRequest(id);
     }
 
+    // REQ-OSM-04: Update change request
     @Patch('change-requests/:id')
-    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     updateChangeRequest(@Param('id') id: string, @Body() dto: UpdateStructureRequestDto) {
         return this.orgService.updateChangeRequest(id, dto);
     }
 
+    // Cancel change request
     @Patch('change-requests/:id/cancel')
-    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     cancelChangeRequest(@Param('id') id: string) {
         return this.orgService.cancelChangeRequest(id);
     }
 
+    // REQ-OSM-04: Submit approval decision
     @Post('change-requests/:id/approvals')
-    @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
-    submitApprovalDecision(@Param('id') id: string, @Body() dto: SubmitApprovalDecisionDto, @CurrentUser() user: JwtPayload) {
-        return this.orgService.submitApprovalDecision(id, { ...dto, approverEmployeeId: user.sub });
+    submitApprovalDecision(@Param('id') id: string, @Body() dto: SubmitApprovalDecisionDto, @Query('userId') userId?: string) {
+        return this.orgService.submitApprovalDecision(id, { ...dto, approverEmployeeId: userId || dto.approverEmployeeId });
     }
 
+    // ==========================================
+    // ORGANIZATION CHART & VIEWS (REQ-SANV-01, REQ-SANV-02)
+    // ==========================================
+
+    // REQ-SANV-01: Get organization chart
     @Get('org-chart')
     getOrganizationChart() {
         return this.orgService.getOrganizationChart();
     }
 
+    // ==========================================
+    // CHANGE LOG ROUTES
+    // ==========================================
+
+    // Get change logs by entity
     @Get('change-logs/:entityType/:entityId')
-    @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     getChangeLogsByEntity(
         @Param('entityType') entityType: string,
         @Param('entityId') entityId: string,
@@ -277,7 +302,4 @@ export class OrganizationStructureController {
         );
     }
 }
-*/
 
-// Export empty to prevent module errors - the no-auth controller is used instead
-export class OrganizationStructureController {}

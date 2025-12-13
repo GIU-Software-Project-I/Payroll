@@ -7,7 +7,9 @@ import { PositionAssignmentSchema,PositionAssignment } from './models/organizati
 import { StructureApproval,StructureApprovalSchema } from './models/organization-structure/structure-approval.schema';
 import { StructureChangeLog,StructureChangeLogSchema } from './models/organization-structure/structure-change-log.schema';
 import { StructureChangeRequest,StructureChangeRequestSchema } from './models/organization-structure/structure-change-request.schema';
-import {OrganizationStructureController} from "./controllers/organization-structure.controller";
+// COMMENTED OUT FOR TESTING - Using no-auth controller
+// import {OrganizationStructureController} from "./controllers/organization-structure.controller";
+import {OrganizationStructureNoAuthController} from "./controllers/organization-structure-no-auth.controller";
 import {OrganizationStructureService} from "./services/organization-structure.service";
 import { SharedModule } from '../shared/shared.module';
 import {AuthModule} from "../auth/auth-module";
@@ -26,7 +28,9 @@ import {AuthModule} from "../auth/auth-module";
     ]),
     SharedModule,
   ],
-  controllers: [OrganizationStructureController],
+  // COMMENTED OUT FOR TESTING - Using no-auth controller
+  // controllers: [OrganizationStructureController],
+  controllers: [OrganizationStructureNoAuthController],
   providers: [OrganizationStructureService],
   exports: [OrganizationStructureService],
 })
