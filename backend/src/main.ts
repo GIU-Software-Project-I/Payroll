@@ -27,7 +27,7 @@ async function bootstrap() {
             // Allow requests with no origin (like mobile apps or curl requests)
             if (!origin) return callback(null, true);
             // Allow any localhost origin during development
-            if (origin.startsWith('http://localhost:4000')) {
+            if (origin.startsWith('http://localhost:3000')) {
                 return callback(null, true);
             }
             callback(new Error('Not allowed by CORS'));

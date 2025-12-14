@@ -363,6 +363,16 @@ const PAYROLL_SPECIALIST_NAV: NavItem[] = [
     icon: 'file-text',
   },
   {
+    label: 'Disputes',
+    href: '/dashboard/payroll-specialist/disputes',
+    icon: 'alert-circle',
+  },
+  {
+    label: 'Expense Claims',
+    href: '/dashboard/payroll-specialist/claims',
+    icon: 'credit-card',
+  },
+  {
     label: 'My Profile',
     href: '/dashboard/department-employee/employee-profile',
     icon: 'user',
@@ -382,6 +392,16 @@ const PAYROLL_MANAGER_NAV: NavItem[] = [
     label: 'Configuration Approval',
     href: '/dashboard/payroll-manager/configuration-approval',
     icon: 'check-circle',
+  },
+  {
+    label: 'Dispute Confirmation',
+    href: '/dashboard/payroll-manager/disputes',
+    icon: 'alert-circle',
+  },
+  {
+    label: 'Claim Confirmation',
+    href: '/dashboard/payroll-manager/claims',
+    icon: 'credit-card',
   },
   {
     label: 'Payroll Overview',
@@ -456,8 +476,23 @@ const FINANCE_STAFF_NAV: NavItem[] = [
     icon: 'home',
   },
   {
-    label: 'Payroll Reports',
-    href: '/dashboard/finance-staff/payroll-reports',
+    label: 'Payroll Summaries',
+    href: '/dashboard/finance-staff/payroll-summaries',
+    icon: 'file-text',
+  },
+  {
+    label: 'Tax, Insurance & Benefits',
+    href: '/dashboard/finance-staff/tax-insurance-benefits',
+    icon: 'shield',
+  },
+  {
+    label: 'Notifications',
+    href: '/dashboard/finance-staff/notifications',
+    icon: 'bell',
+  },
+  {
+    label: 'Refund Generation',
+    href: '/dashboard/finance-staff/refunds',
     icon: 'dollar-sign',
   },
   {
@@ -469,11 +504,6 @@ const FINANCE_STAFF_NAV: NavItem[] = [
     label: 'Expenses',
     href: '/dashboard/finance-staff/expenses',
     icon: 'credit-card',
-  },
-  {
-    label: 'Reports',
-    href: '/dashboard/finance-staff/reports',
-    icon: 'file-text',
   },
   {
     label: 'My Profile',

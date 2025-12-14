@@ -1,10 +1,10 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 if (typeof window !== 'undefined') {
   console.log('[API] Base URL:', API_BASE_URL);
 }
 
-interface ApiResponse<T = unknown> {
+export interface ApiResponse<T = unknown> {
   data?: T;
   error?: string;
   status: number;
