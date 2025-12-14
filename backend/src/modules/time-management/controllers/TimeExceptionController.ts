@@ -1,6 +1,6 @@
 // src/time-management/time-exception/time-exception.controller.ts
 
-import { Controller, Post, Body, Get, Param, Query, Put } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Query, Put, Response } from '@nestjs/common';
 
 import { CreateExceptionDto, AssignExceptionDto, UpdateExceptionStatusDto, ExceptionQueryDto } from '../dto/TimeExceptionDtos';
 import {TimeExceptionService} from "../services/TimeExceptionService";
@@ -14,14 +14,19 @@ export class TimeExceptionController {
         return this.svc.createException(dto);
     }
 
+    @Get()
+    async list(@Query() query: ExceptionQueryDto) {
+        // If no query parameters provided, return all exceptions
+        if (!query.status && !query.type && !query.employeeId && !query.assignedTo) {
+            return this.svc.getAllExceptions();
+        }
+        // Otherwise, use filtered search
+        return this.svc.listExceptions(query);
+    }
+
     @Get(':id')
     async getOne(@Param('id') id: string) {
         return this.svc.getException(id);
-    }
-
-    @Get()
-    async list(@Query() query: ExceptionQueryDto) {
-        return this.svc.listExceptions(query);
     }
 
     @Put('assign')
@@ -32,5 +37,15 @@ export class TimeExceptionController {
     @Put('status')
     async updateStatus(@Body() dto: UpdateExceptionStatusDto) {
         return this.svc.updateStatus(dto);
+    }
+
+    @Get('export/csv')
+    async exportCSV(@Response() res: any) {
+        return this.svc.exportToCSV(res);
+    }
+
+    @Get('export/json')
+    async exportJSON(@Response() res: any) {
+        return this.svc.exportToJSON(res);
     }
 }

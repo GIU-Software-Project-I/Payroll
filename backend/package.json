@@ -29,6 +29,7 @@
     "class-validator": "^0.14.2",
     "cookie-parser": "^1.4.7",
     "date-fns": "^4.1.0",
+    "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.1",

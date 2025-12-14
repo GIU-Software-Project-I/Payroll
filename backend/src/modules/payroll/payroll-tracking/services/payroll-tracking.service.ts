@@ -14,6 +14,12 @@ import {ContractType, WorkType} from "../../../employee/enums/employee-profile.e
 import { PayrollConfigurationService } from "../../payroll-configuration/services/payroll-configuration.service";
 import { UnifiedLeaveService } from "../../../leaves/services/leaves.service";
 import { NotificationService } from "../../../time-management/services/NotificationService";
+// Time Management imports for attendance-based deductions
+import { AttendanceRecord, AttendanceRecordDocument } from "../../../time-management/models/attendance-record.schema";
+import { TimeException, TimeExceptionDocument } from "../../../time-management/models/time-exception.schema";
+import { ShiftAssignment, ShiftAssignmentDocument } from "../../../time-management/models/shift-assignment.schema";
+import { Shift, ShiftDocument } from "../../../time-management/models/shift.schema";
+import { TimeExceptionType, TimeExceptionStatus } from "../../../time-management/models/enums";
 
 @Injectable()
 export class PayrollTrackingService {
@@ -25,6 +31,11 @@ export class PayrollTrackingService {
     @InjectModel(employeePayrollDetails.name) private employeePayrollDetailsModel: Model<employeePayrollDetailsDocument>,
     @InjectModel(EmployeeProfile.name) private employeeModel: Model<EmployeeProfile>,
     @InjectModel(Department.name) private departmentModel: Model<DepartmentDocument>,
+    // Time Management models for attendance-based deductions
+    @InjectModel(AttendanceRecord.name) private attendanceRecordModel: Model<AttendanceRecordDocument>,
+    @InjectModel(TimeException.name) private timeExceptionModel: Model<TimeExceptionDocument>,
+    @InjectModel(ShiftAssignment.name) private shiftAssignmentModel: Model<ShiftAssignmentDocument>,
+    @InjectModel(Shift.name) private shiftModel: Model<ShiftDocument>,
     private readonly payrollConfigService: PayrollConfigurationService,
     private readonly leavesService: UnifiedLeaveService,
     private readonly notificationService: NotificationService,
@@ -518,6 +529,226 @@ async getLeaveCompensation(employeeId: string) {
       totalPenalties: (payslip.deductionsDetails?.penalties as any)?.amount || 0,
       // These would integrate with Time Management module
     }));
+  }
+
+  // View salary deductions due to misconduct or unapproved absenteeism (missing days)
+  // Integrates with Time Management module for attendance-based deductions
+  async getAttendanceBasedDeductions(
+    employeeId: string,
+    options?: {
+      from?: Date;
+      to?: Date;
+      payslipId?: string;
+    }
+  ) {
+    // Validate employee exists
+    if (!employeeId) {
+      throw new BadRequestException('Employee ID is required');
+    }
+
+    const employee = await this.employeeModel.findById(employeeId).exec();
+    if (!employee) {
+      throw new NotFoundException('Employee not found');
+    }
+
+    const employeeOid = new Types.ObjectId(employeeId);
+
+    // Set date range (default to current month if not provided)
+    const now = new Date();
+    const fromDate = options?.from || new Date(now.getFullYear(), now.getMonth(), 1);
+    const toDate = options?.to || new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    // STEP 1: Get base salary for deduction calculation
+    let baseSalary = 0;
+    const latestPayrollDetails = await this.employeePayrollDetailsModel
+      .findOne({ employeeId: employeeOid })
+      .sort({ createdAt: -1 })
+      .exec();
+
+    if (latestPayrollDetails?.baseSalary) {
+      baseSalary = latestPayrollDetails.baseSalary;
+    }
+
+    // Fallback to paygrade
+    if (baseSalary === 0 && (employee as any)?.payGradeId) {
+      try {
+        const payGradeData = await this.payrollConfigService.findOnePayGrade(
+          (employee as any).payGradeId.toString()
+        );
+        if (payGradeData?.baseSalary) {
+          baseSalary = payGradeData.baseSalary;
+        }
+      } catch (error) {
+        // Continue
+      }
+    }
+
+    // Calculate daily rate
+    const dailyRate = baseSalary > 0 ? Math.round((baseSalary / 30) * 100) / 100 : 0;
+
+    // STEP 2: Get time exceptions for the employee (misconduct, lateness, etc.)
+    const timeExceptions = await this.timeExceptionModel.find({
+      employeeId: employeeOid,
+    }).lean();
+
+    // Categorize exceptions
+    const misconductExceptions = timeExceptions.filter(
+      ex => ex.type === TimeExceptionType.LATE || 
+            ex.type === TimeExceptionType.EARLY_LEAVE ||
+            ex.type === TimeExceptionType.SHORT_TIME
+    );
+
+    const missedPunchExceptions = timeExceptions.filter(
+      ex => ex.type === TimeExceptionType.MISSED_PUNCH
+    );
+
+    // STEP 3: Get attendance records to find missing days (no punch at all)
+    const attendanceRecords = await this.attendanceRecordModel.find({
+      employeeId: employeeOid,
+    }).lean();
+
+    // Get shift assignments to determine expected work days
+    const shiftAssignments = await this.shiftAssignmentModel.find({
+      employeeId: employeeOid,
+      $or: [
+        { startDate: { $lte: toDate }, endDate: { $gte: fromDate } },
+        { startDate: { $lte: toDate }, endDate: { $exists: false } },
+        { startDate: { $lte: toDate }, endDate: null },
+      ],
+    }).lean();
+
+    // Calculate missing days (days with shift assignment but no attendance record)
+    const attendanceDates = new Set(
+      attendanceRecords
+        .filter(ar => ar.punches && ar.punches.length > 0)
+        .map(ar => {
+          const firstPunch = ar.punches[0]?.time;
+          if (firstPunch) {
+            const d = new Date(firstPunch);
+            return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+          }
+          return null;
+        })
+        .filter(Boolean)
+    );
+
+    // Count missing work days
+    let missingDaysCount = 0;
+    const missingDays: { date: string; reason: string }[] = [];
+
+    for (const assignment of shiftAssignments) {
+      const shift = await this.shiftModel.findById(assignment.shiftId).lean();
+      if (!shift) continue;
+
+      // Get the range for this assignment
+      const assignmentStart = new Date(Math.max(new Date(assignment.startDate).getTime(), fromDate.getTime()));
+      const assignmentEnd = assignment.endDate 
+        ? new Date(Math.min(new Date(assignment.endDate).getTime(), toDate.getTime()))
+        : toDate;
+
+      // Iterate through each day in the range
+      const current = new Date(assignmentStart);
+      while (current <= assignmentEnd) {
+        const dateKey = `${current.getFullYear()}-${current.getMonth()}-${current.getDate()}`;
+        
+        // Check if this day has attendance
+        if (!attendanceDates.has(dateKey)) {
+          missingDaysCount++;
+          missingDays.push({
+            date: current.toISOString().split('T')[0],
+            reason: 'No attendance record - unapproved absence',
+          });
+        }
+        
+        current.setDate(current.getDate() + 1);
+      }
+    }
+
+    // STEP 4: Get payslip deductions if payslipId provided
+    let payslipDeductions: any = null;
+    if (options?.payslipId) {
+      const payslip = await this.payslipModel.findOne({
+        _id: new Types.ObjectId(options.payslipId),
+        employeeId: employeeOid,
+      }).exec();
+
+      if (payslip?.deductionsDetails?.penalties) {
+        payslipDeductions = {
+          payslipId: payslip._id,
+          penalties: payslip.deductionsDetails.penalties,
+        };
+      }
+    }
+
+    // Calculate total deductions
+    const missingDaysDeduction = missingDaysCount * dailyRate;
+    
+    // Count unresolved exceptions that may lead to deductions
+    const unresolvedMisconductCount = misconductExceptions.filter(
+      ex => ex.status !== TimeExceptionStatus.RESOLVED && ex.status !== TimeExceptionStatus.APPROVED
+    ).length;
+
+    const unresolvedMissedPunchCount = missedPunchExceptions.filter(
+      ex => ex.status !== TimeExceptionStatus.RESOLVED && ex.status !== TimeExceptionStatus.APPROVED
+    ).length;
+
+    return {
+      employeeId: employee._id,
+      employeeName: `${employee.firstName} ${employee.lastName}`,
+      dateRange: {
+        from: fromDate.toISOString().split('T')[0],
+        to: toDate.toISOString().split('T')[0],
+      },
+      baseSalary,
+      dailyRate,
+      
+      // Misconduct Deductions (from time exceptions)
+      misconductDeductions: {
+        lateArrivals: misconductExceptions.filter(ex => ex.type === TimeExceptionType.LATE).length,
+        earlyDepartures: misconductExceptions.filter(ex => ex.type === TimeExceptionType.EARLY_LEAVE).length,
+        shortTimeWorked: misconductExceptions.filter(ex => ex.type === TimeExceptionType.SHORT_TIME).length,
+        totalMisconductExceptions: misconductExceptions.length,
+        unresolvedCount: unresolvedMisconductCount,
+        details: misconductExceptions.map(ex => ({
+          id: ex._id,
+          type: ex.type,
+          status: ex.status,
+          reason: ex.reason,
+          attendanceRecordId: ex.attendanceRecordId,
+        })),
+      },
+
+      // Unapproved Absenteeism (Missing Days)
+      absenteeismDeductions: {
+        missingDaysCount,
+        missingDays,
+        missedPunchExceptions: missedPunchExceptions.length,
+        unresolvedMissedPunchCount,
+        estimatedDeduction: missingDaysDeduction,
+        missedPunchDetails: missedPunchExceptions.map(ex => ({
+          id: ex._id,
+          status: ex.status,
+          reason: ex.reason,
+          attendanceRecordId: ex.attendanceRecordId,
+        })),
+      },
+
+      // Summary
+      summary: {
+        totalMisconductIncidents: misconductExceptions.length,
+        totalAbsentDays: missingDaysCount,
+        totalMissedPunches: missedPunchExceptions.length,
+        estimatedTotalDeduction: missingDaysDeduction,
+        unresolvedIssuesCount: unresolvedMisconductCount + unresolvedMissedPunchCount,
+      },
+
+      // Payslip deductions (if payslipId provided)
+      payslipDeductions,
+
+      // Additional info
+      attendanceRecordsCount: attendanceRecords.length,
+      shiftAssignmentsCount: shiftAssignments.length,
+    };
   }
 
   // REQ-PY-11: View unpaid leave deductions (integrated with Leaves module)

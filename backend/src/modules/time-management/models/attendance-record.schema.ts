@@ -27,6 +27,7 @@ export class AttendanceRecord{
     @Prop({ type: Types.ObjectId, ref: 'TimeException', default: [] })
     exceptionIds: Types.ObjectId[];
 
+
     @Prop({ default: true }) // should be set to false when there is an attendance correction request that is not yet resolved
     finalisedForPayroll: boolean;
 }

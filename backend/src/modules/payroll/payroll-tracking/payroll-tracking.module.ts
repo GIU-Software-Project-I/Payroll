@@ -17,6 +17,11 @@ import {Department, DepartmentSchema} from "../../employee/models/organization-s
 import {LeavesModule} from "../../leaves/leaves.module";
 import {TimeManagementModule} from "../../time-management/time-management.module";
 import {AuthModule} from "../../auth/auth-module";
+// Time Management schemas for attendance-based deductions
+import {AttendanceRecord, AttendanceRecordSchema} from "../../time-management/models/attendance-record.schema";
+import {TimeException, TimeExceptionSchema} from "../../time-management/models/time-exception.schema";
+import {ShiftAssignment, ShiftAssignmentSchema} from "../../time-management/models/shift-assignment.schema";
+import {Shift, ShiftSchema} from "../../time-management/models/shift.schema";
 // import payroll-execution module & schemas
 
 
@@ -36,6 +41,11 @@ import {AuthModule} from "../../auth/auth-module";
       { name: employeePayrollDetails.name, schema: employeePayrollDetailsSchema },
       { name: EmployeeProfile.name, schema: EmployeeProfileSchema},
       { name: Department.name, schema: DepartmentSchema},
+      // Time Management schemas for attendance-based deductions
+      { name: AttendanceRecord.name, schema: AttendanceRecordSchema },
+      { name: TimeException.name, schema: TimeExceptionSchema },
+      { name: ShiftAssignment.name, schema: ShiftAssignmentSchema },
+      { name: Shift.name, schema: ShiftSchema },
     ]),
   ],
   controllers: [PayrollTrackingController],

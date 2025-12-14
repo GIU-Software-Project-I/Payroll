@@ -31,6 +31,9 @@ import {NotificationService} from "./services/NotificationService";
 import {AttendanceSyncService} from "./services/AttendanceSyncService";
 import { EmployeeModule } from '../employee/employee.module';
 import {EmployeeProfile, EmployeeProfileSchema} from "../employee/models/employee/employee-profile.schema";
+import {BreakPermissionController} from "./controllers/BreakPermissionController";
+import {BreakPermissionService} from "./services/BreakPermissionService";
+import {AuthModule} from "../auth/auth-module";
 
 @Module({
     imports:
@@ -50,7 +53,7 @@ import {EmployeeProfile, EmployeeProfileSchema} from "../employee/models/employe
 
 
         ]),
-            //AuthModule,
+            AuthModule,
         ],
     controllers: [AttendanceController,
         TimeExceptionController,
@@ -58,6 +61,7 @@ import {EmployeeProfile, EmployeeProfileSchema} from "../employee/models/employe
         HolidayController,
         ShiftManagementController,
         NotificationController,
+        BreakPermissionController,
         AttendanceSyncController],
 
     providers: [AttendanceService,
@@ -68,6 +72,7 @@ import {EmployeeProfile, EmployeeProfileSchema} from "../employee/models/employe
         ShiftExpiryScheduler,
         RepeatedLatenessService,
         NotificationService,
+        BreakPermissionService,
         AttendanceSyncService],
     
     exports: [NotificationService]
