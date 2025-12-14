@@ -213,7 +213,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
     if (hasChildren) {
       return (
-        <div key={item.href}>
+        <div key={`${item.href}-${item.label}`}>
           <button
             onClick={() => toggleExpand(item.label)}
             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
@@ -248,7 +248,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
     return (
       <Link
-        key={item.href}
+        key={`${item.href}-${item.label}`}
         href={item.href}
         onClick={onClose}
         className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
