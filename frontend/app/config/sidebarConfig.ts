@@ -50,9 +50,17 @@ const DEPARTMENT_EMPLOYEE_NAV: NavItem[] = [
     icon: 'clock',
   },
   {
-    label: 'My Payslips',
-    href: '/dashboard/department-employee/payroll',
+    label: 'Payroll Tracking',
+    href: '/dashboard/department-employee/payroll-tracking',
     icon: 'dollar-sign',
+    children: [
+      { label: 'My Payslips', href: '/dashboard/department-employee/payroll-tracking/payslips', icon: 'file-text' },
+      { label: 'Salary History', href: '/dashboard/department-employee/payroll-tracking/salary-history', icon: 'trending-up' },
+      { label: 'Deductions', href: '/dashboard/department-employee/payroll-tracking/deductions', icon: 'credit-card' },
+      { label: 'Employer Contributions', href: '/dashboard/department-employee/payroll-tracking/contributions', icon: 'briefcase' },
+      { label: 'Tax Documents', href: '/dashboard/department-employee/payroll-tracking/tax-documents', icon: 'folder' },
+      { label: 'Claims & Disputes', href: '/dashboard/department-employee/payroll-tracking/claims-disputes', icon: 'alert-circle' },
+    ],
   },
 ];
 

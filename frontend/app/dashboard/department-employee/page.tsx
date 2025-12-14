@@ -6,13 +6,15 @@ import { useState, useEffect } from 'react';
 /**
  * Department Employee Dashboard
  * Main hub for self-service employee features
- * Features: Employee Profile, Organization, Performance
+ * Features: Employee Profile, Organization, Performance, Payroll Self-Service
  */
 export default function DepartmentEmployeePage() {
   const [stats, setStats] = useState({
     pendingRequests: 0,
     lastAppraisal: 'N/A',
-    profileCompleteness: 85
+    profileCompleteness: 85,
+    pendingClaims: 0,
+    lastPayslip: 'Dec 2024'
   });
 
   return (
@@ -20,11 +22,11 @@ export default function DepartmentEmployeePage() {
       {/* Header */}
       <div>
         <h1 className="text-4xl font-bold text-slate-900">Employee Dashboard</h1>
-        <p className="text-slate-600 mt-2">Manage your profile, view organization structure, and track performance</p>
+        <p className="text-slate-600 mt-2">Manage your profile, view organization structure, track performance, and access payroll</p>
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200 p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -56,12 +58,32 @@ export default function DepartmentEmployeePage() {
             <div className="text-4xl">✅</div>
           </div>
         </div>
+
+        <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg border border-amber-200 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-amber-700 text-sm font-medium">Pending Claims</p>
+              <p className="text-3xl font-bold text-amber-900 mt-2">{stats.pendingClaims}</p>
+            </div>
+            <div className="text-4xl">💰</div>
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-teal-50 to-teal-100 rounded-lg border border-teal-200 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-teal-700 text-sm font-medium">Last Payslip</p>
+              <p className="text-xl font-bold text-teal-900 mt-2">{stats.lastPayslip}</p>
+            </div>
+            <div className="text-4xl">📄</div>
+          </div>
+        </div>
       </div>
 
-      {/* Employee Subsystems - 3 Feature Cards */}
+      {/* Employee Subsystems - 4 Feature Cards */}
       <div>
         <h2 className="text-2xl font-bold text-slate-900 mb-6">Employee Subsystems</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Employee Profile */}
           <Link href="/dashboard/department-employee/employee-profile">
             <div className="group bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-lg hover:border-blue-300 transition-all p-8 cursor-pointer h-full">
@@ -124,13 +146,34 @@ export default function DepartmentEmployeePage() {
               <div className="mt-6 text-purple-600 font-semibold text-sm group-hover:translate-x-1 transition-transform">View Ratings →</div>
             </div>
           </Link>
+
+          {/* Payroll Tracking */}
+          <Link href="/dashboard/department-employee/payroll-tracking">
+            <div className="group bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-lg hover:border-amber-300 transition-all p-8 cursor-pointer h-full">
+              <div className="text-5xl mb-4 group-hover:scale-110 transition-transform">💰</div>
+              <h3 className="text-xl font-bold text-slate-900 mb-3">Payroll Tracking</h3>
+              <p className="text-slate-600 text-sm mb-6">View payslips, salary history, deductions, tax documents, and submit expense claims or disputes.</p>
+              <div className="space-y-2">
+                <div className="flex items-center text-sm text-slate-700">
+                  <span className="mr-2">✓</span> View payslips
+                </div>
+                <div className="flex items-center text-sm text-slate-700">
+                  <span className="mr-2">✓</span> Download tax docs
+                </div>
+                <div className="flex items-center text-sm text-slate-700">
+                  <span className="mr-2">✓</span> Submit claims
+                </div>
+              </div>
+              <div className="mt-6 text-amber-600 font-semibold text-sm group-hover:translate-x-1 transition-transform">View Payroll Tracking →</div>
+            </div>
+          </Link>
         </div>
       </div>
 
       {/* Quick Actions */}
       <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-8">
         <h2 className="text-xl font-bold text-slate-900 mb-6">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
           <Link href="/dashboard/department-employee/employee-profile/edit">
             <button className="w-full p-4 border border-slate-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors text-center group">
               <div className="text-3xl mb-2">✏️</div>
@@ -152,6 +195,22 @@ export default function DepartmentEmployeePage() {
               <div className="text-3xl mb-2">🗺️</div>
               <p className="font-medium text-slate-900 group-hover:text-green-700">Org Chart</p>
               <p className="text-xs text-slate-500 mt-1">View hierarchy</p>
+            </button>
+          </Link>
+
+          <Link href="/dashboard/department-employee/payroll-tracking/payslips">
+            <button className="w-full p-4 border border-slate-300 rounded-lg hover:border-amber-400 hover:bg-amber-50 transition-colors text-center group">
+              <div className="text-3xl mb-2">📄</div>
+              <p className="font-medium text-slate-900 group-hover:text-amber-700">My Payslips</p>
+              <p className="text-xs text-slate-500 mt-1">View & download</p>
+            </button>
+          </Link>
+
+          <Link href="/dashboard/department-employee/payroll-tracking/claims-disputes">
+            <button className="w-full p-4 border border-slate-300 rounded-lg hover:border-orange-400 hover:bg-orange-50 transition-colors text-center group">
+              <div className="text-3xl mb-2">⚠️</div>
+              <p className="font-medium text-slate-900 group-hover:text-orange-700">Claims</p>
+              <p className="text-xs text-slate-500 mt-1">Submit requests</p>
             </button>
           </Link>
 
