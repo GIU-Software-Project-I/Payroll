@@ -1,45 +1,726 @@
-[00:00:07.113] Server  LOG      ✓ Ready in 5.4s
-[00:07:46.176] Server  LOG      ○ Compiling / ...
-[00:08:12.688] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:08:12.883] Browser LOG     [API] Base URL: http://localhost:5000
-[00:08:17.750] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
-[00:11:40.271] Browser ERROR   [API] Request failed: http://localhost:5000/auth/login
-[00:11:40.274] Browser ERROR   [API] Error: {}
-[00:11:49.040] Browser ERROR   [API] Request failed: http://localhost:5000/auth/login
-[00:11:49.040] Browser ERROR   [API] Error: {}
-[00:11:50.907] Browser ERROR   [API] Request failed: http://localhost:5000/auth/login
-[00:11:50.910] Browser ERROR   [API] Error: {}
-[00:11:51.662] Browser ERROR   [API] Request failed: http://localhost:5000/auth/login
-[00:11:51.663] Browser ERROR   [API] Error: {}
-[00:12:21.496] Browser ERROR   [API] Request failed: http://localhost:5000/auth/login
-[00:12:21.496] Browser ERROR   [API] Error: {}
-[00:13:06.475] Browser ERROR   [API] Request failed: http://localhost:5000/auth/login
-[00:13:06.475] Browser ERROR   [API] Error: {}
-[00:13:07.097] Browser ERROR   [API] Request failed: http://localhost:5000/auth/login
-[00:13:07.097] Browser ERROR   [API] Error: {}
-[00:18:08.266] Server  LOG        Reload env: .env.local
-[00:18:10.536] Server  LOG      ✓ Compiled in 1546ms
-[00:18:10.572] Server  WARN     ⚠ Fast Refresh had to perform a full reload when ./app/services/api.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
-[00:18:12.700] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:18:14.017] Browser LOG     [API] Base URL: http://localhost:500
-[00:18:28.362] Server  WARN     ⚠ Fast Refresh had to perform a full reload when ./app/services/api.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
-[00:18:28.447] Server  LOG      ✓ Compiled in 292ms
-[00:18:30.740] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:18:31.216] Browser LOG     [API] Base URL: http://localhost:500
-[00:19:04.732] Server  LOG      ○ Compiling /dashboard ...
-[00:19:09.442] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
-[00:41:36.191] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:41:36.448] Browser LOG     [API] Base URL: http://localhost:500
-[00:41:38.562] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:41:38.562] Browser LOG     [API] Base URL: http://localhost:500
-[00:41:39.531] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
-[00:41:42.594] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:41:42.594] Browser LOG     [API] Base URL: http://localhost:500
-[00:41:43.944] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:41:44.277] Browser LOG     [API] Base URL: http://localhost:500
-[00:41:44.594] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
-[00:41:47.205] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:41:47.205] Browser LOG     [API] Base URL: http://localhost:500
-[00:41:48.675] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:41:48.675] Browser LOG     [API] Base URL: http://localhost:500
-[00:41:49.298] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[00:00:10.505] Server  LOG      ✓ Ready in 8.3s
+[00:00:18.905] Server  LOG      ○ Compiling / ...
+[00:00:46.542] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:00:47.200] Browser LOG     [API] Base URL: http://localhost:500
+[00:00:50.893] Server  LOG      ○ Compiling /login ...
+[00:00:54.079] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[00:00:55.916] Browser ERROR   [API] Request failed: http://localhost:500/auth/login
+[00:00:55.916] Browser ERROR   [API] Error: {}
+[00:00:56.871] Server  LOG      ○ Compiling /dashboard/payroll ...
+[00:01:22.272] Server  LOG      ○ Compiling /dashboard/payroll-specialist/pay-types ...
+[00:01:38.052] Browser LOG     Fetching payroll policies...
+[00:01:38.053] Browser LOG     Fetching payroll policies...
+[00:01:38.291] Browser LOG     API Response: {"data":{"data":[{"__v":0,"_id":"693dfb48cdf013f586909a03","applicability":"Full Time Employees","createdAt":"2025-12-13T23:48:24.838Z","description":"Free food","effectiveDate":"2025-12-19T00:00:00.000Z","policyName":"Benifits","policyType":"Benefit","ruleDefinition":{"_id":"693dfb58cdf013f586909a0b","createdAt":"2025-12-13T23:48:40.897Z","fixedAmount":6000,"percentage":100,"thresholdAmount":50,"updatedAt":"2025-12-13T23:48:40.897Z"},"status":"draft","updatedAt":"2025-12-13T23:48:40.897Z"},{"__v":0,"_id":"693df591cdf013f5869099d0","applicability":"Contractors","createdAt":"2025-12-13T23:24:01.470Z","description":"After 8","effectiveDate":"2025-12-26T00:00:00.000Z","policyName":"Leave","policyType":"Leave","ruleDefinition":{"_id":"693df5a0cdf013f5869099d8","createdAt":"2025-12-13T23:24:16.767Z","fixedAmount":500,"percentage":80,"thresholdAmount":5,"updatedAt":"2025-12-13T23:24:16.767Z"},"status":"draft","updatedAt":"2025-12-13T23:24:16.767Z"},{"__v":0,"_id":"693a800b7e07119e5fd6a9db","applicability":"All Employees","approvedAt":"2024-12-15T00:00:00.000Z","approvedBy":"693a80047e07119e5fd6a8da","createdAt":"2025-12-11T08:25:47.836Z","createdBy":"693a80047e07119e5fd6a8da","description":"Standard deduction rules for all employees","effectiveDate":"2025-01-01T00:00:00.000Z","policyName":"Standard Deduction Policy","policyType":"Deduction","ruleDefinition":{"_id":"693a800b7e07119e5fd6a9dc","createdAt":"2025-12-11T08:25:47.836Z","fixedAmount":0,"percentage":10,"thresholdAmount":50000,"updatedAt":"2025-12-11T08:25:47.836Z"},"status":"approved","updatedAt":"2025-12-11T08:25:47.836Z"},{"__v":0,"_id":"693a800b7e07119e5fd6a9dd","applicability":"Full Time Employees","approvedAt":"2024-12-15T00:00:00.000Z","approvedBy":"693a80047e07119e5fd6a8da","createdAt":"2025-12-11T08:25:47.836Z","createdBy":"693a80047e07119e5fd6a8da","description":"Allowance for remote workers","effectiveDate":"2025-01-01T00:00:00.000Z","policyName":"Remote Work Allowance Policy","policyType":"Allowance","ruleDefinition":{"_id":"693a800b7e07119e5fd6a9de","createdAt":"2025-12-11T08:25:47.836Z","fixedAmount":200,"percentage":0,"thresholdAmount":1,"updatedAt":"2025-12-11T08:25:47.836Z"},"status":"approved","updatedAt":"2025-12-11T08:25:47.836Z"},{"__v":0,"_id":"693a800b7e07119e5fd6a9df","applicability":"All Employees","createdAt":"2025-12-11T08:25:47.836Z","createdBy":"693a80047e07119e5fd6a8da","description":"Penalty deductions for misconduct","effectiveDate":"2025-01-01T00:00:00.000Z","policyName":"Misconduct Penalty Policy","policyType":"Misconduct","ruleDefinition":{"_id":"693a800b7e07119e5fd6a9e0","createdAt":"2025-12-11T08:25:47.836Z","fixedAmount":100,"percentage":5,"thresholdAmount":1,"updatedAt":"2025-12-11T08:25:47.836Z"},"status":"draft","updatedAt":"2025-12-11T08:25:47.836Z"}],"limit":10,"message":"Payroll policies retrieved successfully","page":1,"statusCode":200,"total":5,"totalPages":1},"status":200}
+[00:01:38.291] Browser LOG     Found policies in data.data
+[00:01:38.473] Browser LOG     API Response: {"data":{"data":[{"__v":0,"_id":"693dfb48cdf013f586909a03","applicability":"Full Time Employees","createdAt":"2025-12-13T23:48:24.838Z","description":"Free food","effectiveDate":"2025-12-19T00:00:00.000Z","policyName":"Benifits","policyType":"Benefit","ruleDefinition":{"_id":"693dfb58cdf013f586909a0b","createdAt":"2025-12-13T23:48:40.897Z","fixedAmount":6000,"percentage":100,"thresholdAmount":50,"updatedAt":"2025-12-13T23:48:40.897Z"},"status":"draft","updatedAt":"2025-12-13T23:48:40.897Z"},{"__v":0,"_id":"693df591cdf013f5869099d0","applicability":"Contractors","createdAt":"2025-12-13T23:24:01.470Z","description":"After 8","effectiveDate":"2025-12-26T00:00:00.000Z","policyName":"Leave","policyType":"Leave","ruleDefinition":{"_id":"693df5a0cdf013f5869099d8","createdAt":"2025-12-13T23:24:16.767Z","fixedAmount":500,"percentage":80,"thresholdAmount":5,"updatedAt":"2025-12-13T23:24:16.767Z"},"status":"draft","updatedAt":"2025-12-13T23:24:16.767Z"},{"__v":0,"_id":"693a800b7e07119e5fd6a9db","applicability":"All Employees","approvedAt":"2024-12-15T00:00:00.000Z","approvedBy":"693a80047e07119e5fd6a8da","createdAt":"2025-12-11T08:25:47.836Z","createdBy":"693a80047e07119e5fd6a8da","description":"Standard deduction rules for all employees","effectiveDate":"2025-01-01T00:00:00.000Z","policyName":"Standard Deduction Policy","policyType":"Deduction","ruleDefinition":{"_id":"693a800b7e07119e5fd6a9dc","createdAt":"2025-12-11T08:25:47.836Z","fixedAmount":0,"percentage":10,"thresholdAmount":50000,"updatedAt":"2025-12-11T08:25:47.836Z"},"status":"approved","updatedAt":"2025-12-11T08:25:47.836Z"},{"__v":0,"_id":"693a800b7e07119e5fd6a9dd","applicability":"Full Time Employees","approvedAt":"2024-12-15T00:00:00.000Z","approvedBy":"693a80047e07119e5fd6a8da","createdAt":"2025-12-11T08:25:47.836Z","createdBy":"693a80047e07119e5fd6a8da","description":"Allowance for remote workers","effectiveDate":"2025-01-01T00:00:00.000Z","policyName":"Remote Work Allowance Policy","policyType":"Allowance","ruleDefinition":{"_id":"693a800b7e07119e5fd6a9de","createdAt":"2025-12-11T08:25:47.836Z","fixedAmount":200,"percentage":0,"thresholdAmount":1,"updatedAt":"2025-12-11T08:25:47.836Z"},"status":"approved","updatedAt":"2025-12-11T08:25:47.836Z"},{"__v":0,"_id":"693a800b7e07119e5fd6a9df","applicability":"All Employees","createdAt":"2025-12-11T08:25:47.836Z","createdBy":"693a80047e07119e5fd6a8da","description":"Penalty deductions for misconduct","effectiveDate":"2025-01-01T00:00:00.000Z","policyName":"Misconduct Penalty Policy","policyType":"Misconduct","ruleDefinition":{"_id":"693a800b7e07119e5fd6a9e0","createdAt":"2025-12-11T08:25:47.836Z","fixedAmount":100,"percentage":5,"thresholdAmount":1,"updatedAt":"2025-12-11T08:25:47.836Z"},"status":"draft","updatedAt":"2025-12-11T08:25:47.836Z"}],"limit":10,"message":"Payroll policies retrieved successfully","page":1,"statusCode":200,"total":5,"totalPages":1},"status":200}
+[00:01:38.473] Browser LOG     Found policies in data.data
+[00:10:58.165] Browser ERROR   Each child in a list should have a unique "key" prop.%s%s See https://react.dev/link/warning-keys for more information. 
+
+Check the render method of `tbody`.  It was passed a child from PayrollSpecialistPage.
+[00:11:14.736] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:11:14.946] Browser LOG     [API] Base URL: http://localhost:500
+[00:11:16.110] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:11:16.296] Browser LOG     [API] Base URL: http://localhost:500
+[00:11:16.795] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[00:11:24.394] Browser LOG     Fetching payroll policies...
+[00:11:24.394] Browser LOG     Fetching payroll policies...
+[00:11:24.740] Browser LOG     API Response: {"data":{"data":[{"__v":0,"_id":"693dfb48cdf013f586909a03","applicability":"Full Time Employees","createdAt":"2025-12-13T23:48:24.838Z","description":"Free food","effectiveDate":"2025-12-19T00:00:00.000Z","policyName":"Benifits","policyType":"Benefit","ruleDefinition":{"_id":"693dfb58cdf013f586909a0b","createdAt":"2025-12-13T23:48:40.897Z","fixedAmount":6000,"percentage":100,"thresholdAmount":50,"updatedAt":"2025-12-13T23:48:40.897Z"},"status":"draft","updatedAt":"2025-12-13T23:48:40.897Z"},{"__v":0,"_id":"693df591cdf013f5869099d0","applicability":"Contractors","createdAt":"2025-12-13T23:24:01.470Z","description":"After 8","effectiveDate":"2025-12-26T00:00:00.000Z","policyName":"Leave","policyType":"Leave","ruleDefinition":{"_id":"693df5a0cdf013f5869099d8","createdAt":"2025-12-13T23:24:16.767Z","fixedAmount":500,"percentage":80,"thresholdAmount":5,"updatedAt":"2025-12-13T23:24:16.767Z"},"status":"draft","updatedAt":"2025-12-13T23:24:16.767Z"},{"__v":0,"_id":"693a800b7e07119e5fd6a9db","applicability":"All Employees","approvedAt":"2024-12-15T00:00:00.000Z","approvedBy":"693a80047e07119e5fd6a8da","createdAt":"2025-12-11T08:25:47.836Z","createdBy":"693a80047e07119e5fd6a8da","description":"Standard deduction rules for all employees","effectiveDate":"2025-01-01T00:00:00.000Z","policyName":"Standard Deduction Policy","policyType":"Deduction","ruleDefinition":{"_id":"693a800b7e07119e5fd6a9dc","createdAt":"2025-12-11T08:25:47.836Z","fixedAmount":0,"percentage":10,"thresholdAmount":50000,"updatedAt":"2025-12-11T08:25:47.836Z"},"status":"approved","updatedAt":"2025-12-11T08:25:47.836Z"},{"__v":0,"_id":"693a800b7e07119e5fd6a9dd","applicability":"Full Time Employees","approvedAt":"2024-12-15T00:00:00.000Z","approvedBy":"693a80047e07119e5fd6a8da","createdAt":"2025-12-11T08:25:47.836Z","createdBy":"693a80047e07119e5fd6a8da","description":"Allowance for remote workers","effectiveDate":"2025-01-01T00:00:00.000Z","policyName":"Remote Work Allowance Policy","policyType":"Allowance","ruleDefinition":{"_id":"693a800b7e07119e5fd6a9de","createdAt":"2025-12-11T08:25:47.836Z","fixedAmount":200,"percentage":0,"thresholdAmount":1,"updatedAt":"2025-12-11T08:25:47.836Z"},"status":"approved","updatedAt":"2025-12-11T08:25:47.836Z"},{"__v":0,"_id":"693a800b7e07119e5fd6a9df","applicability":"All Employees","createdAt":"2025-12-11T08:25:47.836Z","createdBy":"693a80047e07119e5fd6a8da","description":"Penalty deductions for misconduct","effectiveDate":"2025-01-01T00:00:00.000Z","policyName":"Misconduct Penalty Policy","policyType":"Misconduct","ruleDefinition":{"_id":"693a800b7e07119e5fd6a9e0","createdAt":"2025-12-11T08:25:47.836Z","fixedAmount":100,"percentage":5,"thresholdAmount":1,"updatedAt":"2025-12-11T08:25:47.836Z"},"status":"draft","updatedAt":"2025-12-11T08:25:47.836Z"}],"limit":10,"message":"Payroll policies retrieved successfully","page":1,"statusCode":200,"total":5,"totalPages":1},"status":200}
+[00:11:24.740] Browser LOG     Found policies in data.data
+[00:11:24.933] Browser LOG     API Response: {"data":{"data":[{"__v":0,"_id":"693dfb48cdf013f586909a03","applicability":"Full Time Employees","createdAt":"2025-12-13T23:48:24.838Z","description":"Free food","effectiveDate":"2025-12-19T00:00:00.000Z","policyName":"Benifits","policyType":"Benefit","ruleDefinition":{"_id":"693dfb58cdf013f586909a0b","createdAt":"2025-12-13T23:48:40.897Z","fixedAmount":6000,"percentage":100,"thresholdAmount":50,"updatedAt":"2025-12-13T23:48:40.897Z"},"status":"draft","updatedAt":"2025-12-13T23:48:40.897Z"},{"__v":0,"_id":"693df591cdf013f5869099d0","applicability":"Contractors","createdAt":"2025-12-13T23:24:01.470Z","description":"After 8","effectiveDate":"2025-12-26T00:00:00.000Z","policyName":"Leave","policyType":"Leave","ruleDefinition":{"_id":"693df5a0cdf013f5869099d8","createdAt":"2025-12-13T23:24:16.767Z","fixedAmount":500,"percentage":80,"thresholdAmount":5,"updatedAt":"2025-12-13T23:24:16.767Z"},"status":"draft","updatedAt":"2025-12-13T23:24:16.767Z"},{"__v":0,"_id":"693a800b7e07119e5fd6a9db","applicability":"All Employees","approvedAt":"2024-12-15T00:00:00.000Z","approvedBy":"693a80047e07119e5fd6a8da","createdAt":"2025-12-11T08:25:47.836Z","createdBy":"693a80047e07119e5fd6a8da","description":"Standard deduction rules for all employees","effectiveDate":"2025-01-01T00:00:00.000Z","policyName":"Standard Deduction Policy","policyType":"Deduction","ruleDefinition":{"_id":"693a800b7e07119e5fd6a9dc","createdAt":"2025-12-11T08:25:47.836Z","fixedAmount":0,"percentage":10,"thresholdAmount":50000,"updatedAt":"2025-12-11T08:25:47.836Z"},"status":"approved","updatedAt":"2025-12-11T08:25:47.836Z"},{"__v":0,"_id":"693a800b7e07119e5fd6a9dd","applicability":"Full Time Employees","approvedAt":"2024-12-15T00:00:00.000Z","approvedBy":"693a80047e07119e5fd6a8da","createdAt":"2025-12-11T08:25:47.836Z","createdBy":"693a80047e07119e5fd6a8da","description":"Allowance for remote workers","effectiveDate":"2025-01-01T00:00:00.000Z","policyName":"Remote Work Allowance Policy","policyType":"Allowance","ruleDefinition":{"_id":"693a800b7e07119e5fd6a9de","createdAt":"2025-12-11T08:25:47.836Z","fixedAmount":200,"percentage":0,"thresholdAmount":1,"updatedAt":"2025-12-11T08:25:47.836Z"},"status":"approved","updatedAt":"2025-12-11T08:25:47.836Z"},{"__v":0,"_id":"693a800b7e07119e5fd6a9df","applicability":"All Employees","createdAt":"2025-12-11T08:25:47.836Z","createdBy":"693a80047e07119e5fd6a8da","description":"Penalty deductions for misconduct","effectiveDate":"2025-01-01T00:00:00.000Z","policyName":"Misconduct Penalty Policy","policyType":"Misconduct","ruleDefinition":{"_id":"693a800b7e07119e5fd6a9e0","createdAt":"2025-12-11T08:25:47.836Z","fixedAmount":100,"percentage":5,"thresholdAmount":1,"updatedAt":"2025-12-11T08:25:47.836Z"},"status":"draft","updatedAt":"2025-12-11T08:25:47.836Z"}],"limit":10,"message":"Payroll policies retrieved successfully","page":1,"statusCode":200,"total":5,"totalPages":1},"status":200}
+[00:11:24.933] Browser LOG     Found policies in data.data
+[00:20:14.128] Server  LOG      ✓ Compiled in 1882ms
+[00:20:42.400] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:20:42.555] Browser LOG     [API] Base URL: http://localhost:500
+[00:20:42.918] Browser LOG     Fetching payroll policies...
+[00:20:42.918] Browser LOG     Fetching payroll policies...
+[00:20:43.257] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[00:20:43.541] Browser LOG     API Response: {"data":{"data":[{"__v":0,"_id":"693dfb48cdf013f586909a03","applicability":"Full Time Employees","createdAt":"2025-12-13T23:48:24.838Z","description":"Free food","effectiveDate":"2025-12-19T00:00:00.000Z","policyName":"Benifits","policyType":"Benefit","ruleDefinition":{"_id":"693dfb58cdf013f586909a0b","createdAt":"2025-12-13T23:48:40.897Z","fixedAmount":6000,"percentage":100,"thresholdAmount":50,"updatedAt":"2025-12-13T23:48:40.897Z"},"status":"draft","updatedAt":"2025-12-13T23:48:40.897Z"},{"__v":0,"_id":"693df591cdf013f5869099d0","applicability":"Contractors","createdAt":"2025-12-13T23:24:01.470Z","description":"After 8","effectiveDate":"2025-12-26T00:00:00.000Z","policyName":"Leave","policyType":"Leave","ruleDefinition":{"_id":"693df5a0cdf013f5869099d8","createdAt":"2025-12-13T23:24:16.767Z","fixedAmount":500,"percentage":80,"thresholdAmount":5,"updatedAt":"2025-12-13T23:24:16.767Z"},"status":"draft","updatedAt":"2025-12-13T23:24:16.767Z"},{"__v":0,"_id":"693a800b7e07119e5fd6a9db","applicability":"All Employees","approvedAt":"2024-12-15T00:00:00.000Z","approvedBy":"693a80047e07119e5fd6a8da","createdAt":"2025-12-11T08:25:47.836Z","createdBy":"693a80047e07119e5fd6a8da","description":"Standard deduction rules for all employees","effectiveDate":"2025-01-01T00:00:00.000Z","policyName":"Standard Deduction Policy","policyType":"Deduction","ruleDefinition":{"_id":"693a800b7e07119e5fd6a9dc","createdAt":"2025-12-11T08:25:47.836Z","fixedAmount":0,"percentage":10,"thresholdAmount":50000,"updatedAt":"2025-12-11T08:25:47.836Z"},"status":"approved","updatedAt":"2025-12-11T08:25:47.836Z"},{"__v":0,"_id":"693a800b7e07119e5fd6a9dd","applicability":"Full Time Employees","approvedAt":"2024-12-15T00:00:00.000Z","approvedBy":"693a80047e07119e5fd6a8da","createdAt":"2025-12-11T08:25:47.836Z","createdBy":"693a80047e07119e5fd6a8da","description":"Allowance for remote workers","effectiveDate":"2025-01-01T00:00:00.000Z","policyName":"Remote Work Allowance Policy","policyType":"Allowance","ruleDefinition":{"_id":"693a800b7e07119e5fd6a9de","createdAt":"2025-12-11T08:25:47.836Z","fixedAmount":200,"percentage":0,"thresholdAmount":1,"updatedAt":"2025-12-11T08:25:47.836Z"},"status":"approved","updatedAt":"2025-12-11T08:25:47.836Z"},{"__v":0,"_id":"693a800b7e07119e5fd6a9df","applicability":"All Employees","createdAt":"2025-12-11T08:25:47.836Z","createdBy":"693a80047e07119e5fd6a8da","description":"Penalty deductions for misconduct","effectiveDate":"2025-01-01T00:00:00.000Z","policyName":"Misconduct Penalty Policy","policyType":"Misconduct","ruleDefinition":{"_id":"693a800b7e07119e5fd6a9e0","createdAt":"2025-12-11T08:25:47.836Z","fixedAmount":100,"percentage":5,"thresholdAmount":1,"updatedAt":"2025-12-11T08:25:47.836Z"},"status":"draft","updatedAt":"2025-12-11T08:25:47.836Z"}],"limit":10,"message":"Payroll policies retrieved successfully","page":1,"statusCode":200,"total":5,"totalPages":1},"status":200}
+[00:20:43.541] Browser LOG     Found policies in data.data
+[00:20:43.639] Browser LOG     API Response: {"data":{"data":[{"__v":0,"_id":"693dfb48cdf013f586909a03","applicability":"Full Time Employees","createdAt":"2025-12-13T23:48:24.838Z","description":"Free food","effectiveDate":"2025-12-19T00:00:00.000Z","policyName":"Benifits","policyType":"Benefit","ruleDefinition":{"_id":"693dfb58cdf013f586909a0b","createdAt":"2025-12-13T23:48:40.897Z","fixedAmount":6000,"percentage":100,"thresholdAmount":50,"updatedAt":"2025-12-13T23:48:40.897Z"},"status":"draft","updatedAt":"2025-12-13T23:48:40.897Z"},{"__v":0,"_id":"693df591cdf013f5869099d0","applicability":"Contractors","createdAt":"2025-12-13T23:24:01.470Z","description":"After 8","effectiveDate":"2025-12-26T00:00:00.000Z","policyName":"Leave","policyType":"Leave","ruleDefinition":{"_id":"693df5a0cdf013f5869099d8","createdAt":"2025-12-13T23:24:16.767Z","fixedAmount":500,"percentage":80,"thresholdAmount":5,"updatedAt":"2025-12-13T23:24:16.767Z"},"status":"draft","updatedAt":"2025-12-13T23:24:16.767Z"},{"__v":0,"_id":"693a800b7e07119e5fd6a9db","applicability":"All Employees","approvedAt":"2024-12-15T00:00:00.000Z","approvedBy":"693a80047e07119e5fd6a8da","createdAt":"2025-12-11T08:25:47.836Z","createdBy":"693a80047e07119e5fd6a8da","description":"Standard deduction rules for all employees","effectiveDate":"2025-01-01T00:00:00.000Z","policyName":"Standard Deduction Policy","policyType":"Deduction","ruleDefinition":{"_id":"693a800b7e07119e5fd6a9dc","createdAt":"2025-12-11T08:25:47.836Z","fixedAmount":0,"percentage":10,"thresholdAmount":50000,"updatedAt":"2025-12-11T08:25:47.836Z"},"status":"approved","updatedAt":"2025-12-11T08:25:47.836Z"},{"__v":0,"_id":"693a800b7e07119e5fd6a9dd","applicability":"Full Time Employees","approvedAt":"2024-12-15T00:00:00.000Z","approvedBy":"693a80047e07119e5fd6a8da","createdAt":"2025-12-11T08:25:47.836Z","createdBy":"693a80047e07119e5fd6a8da","description":"Allowance for remote workers","effectiveDate":"2025-01-01T00:00:00.000Z","policyName":"Remote Work Allowance Policy","policyType":"Allowance","ruleDefinition":{"_id":"693a800b7e07119e5fd6a9de","createdAt":"2025-12-11T08:25:47.836Z","fixedAmount":200,"percentage":0,"thresholdAmount":1,"updatedAt":"2025-12-11T08:25:47.836Z"},"status":"approved","updatedAt":"2025-12-11T08:25:47.836Z"},{"__v":0,"_id":"693a800b7e07119e5fd6a9df","applicability":"All Employees","createdAt":"2025-12-11T08:25:47.836Z","createdBy":"693a80047e07119e5fd6a8da","description":"Penalty deductions for misconduct","effectiveDate":"2025-01-01T00:00:00.000Z","policyName":"Misconduct Penalty Policy","policyType":"Misconduct","ruleDefinition":{"_id":"693a800b7e07119e5fd6a9e0","createdAt":"2025-12-11T08:25:47.836Z","fixedAmount":100,"percentage":5,"thresholdAmount":1,"updatedAt":"2025-12-11T08:25:47.836Z"},"status":"draft","updatedAt":"2025-12-11T08:25:47.836Z"}],"limit":10,"message":"Payroll policies retrieved successfully","page":1,"statusCode":200,"total":5,"totalPages":1},"status":200}
+[00:20:43.640] Browser LOG     Found policies in data.data
+[00:22:08.441] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:22:08.692] Browser LOG     [API] Base URL: http://localhost:500
+[00:22:09.284] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[00:22:30.480] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:22:30.650] Browser LOG     [API] Base URL: http://localhost:500
+[00:22:32.214] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:22:32.475] Browser LOG     [API] Base URL: http://localhost:500
+[00:22:32.887] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[00:22:35.762] Browser LOG     Fetching payroll policies...
+[00:22:35.762] Browser LOG     Fetching payroll policies...
+[00:22:36.247] Browser LOG     API Response: {"data":{"data":[{"__v":0,"_id":"693dfb48cdf013f586909a03","applicability":"Full Time Employees","createdAt":"2025-12-13T23:48:24.838Z","description":"Free food","effectiveDate":"2025-12-19T00:00:00.000Z","policyName":"Benifits","policyType":"Benefit","ruleDefinition":{"_id":"693dfb58cdf013f586909a0b","createdAt":"2025-12-13T23:48:40.897Z","fixedAmount":6000,"percentage":100,"thresholdAmount":50,"updatedAt":"2025-12-13T23:48:40.897Z"},"status":"draft","updatedAt":"2025-12-13T23:48:40.897Z"},{"__v":0,"_id":"693df591cdf013f5869099d0","applicability":"Contractors","createdAt":"2025-12-13T23:24:01.470Z","description":"After 8","effectiveDate":"2025-12-26T00:00:00.000Z","policyName":"Leave","policyType":"Leave","ruleDefinition":{"_id":"693df5a0cdf013f5869099d8","createdAt":"2025-12-13T23:24:16.767Z","fixedAmount":500,"percentage":80,"thresholdAmount":5,"updatedAt":"2025-12-13T23:24:16.767Z"},"status":"draft","updatedAt":"2025-12-13T23:24:16.767Z"},{"__v":0,"_id":"693a800b7e07119e5fd6a9db","applicability":"All Employees","approvedAt":"2024-12-15T00:00:00.000Z","approvedBy":"693a80047e07119e5fd6a8da","createdAt":"2025-12-11T08:25:47.836Z","createdBy":"693a80047e07119e5fd6a8da","description":"Standard deduction rules for all employees","effectiveDate":"2025-01-01T00:00:00.000Z","policyName":"Standard Deduction Policy","policyType":"Deduction","ruleDefinition":{"_id":"693a800b7e07119e5fd6a9dc","createdAt":"2025-12-11T08:25:47.836Z","fixedAmount":0,"percentage":10,"thresholdAmount":50000,"updatedAt":"2025-12-11T08:25:47.836Z"},"status":"approved","updatedAt":"2025-12-11T08:25:47.836Z"},{"__v":0,"_id":"693a800b7e07119e5fd6a9dd","applicability":"Full Time Employees","approvedAt":"2024-12-15T00:00:00.000Z","approvedBy":"693a80047e07119e5fd6a8da","createdAt":"2025-12-11T08:25:47.836Z","createdBy":"693a80047e07119e5fd6a8da","description":"Allowance for remote workers","effectiveDate":"2025-01-01T00:00:00.000Z","policyName":"Remote Work Allowance Policy","policyType":"Allowance","ruleDefinition":{"_id":"693a800b7e07119e5fd6a9de","createdAt":"2025-12-11T08:25:47.836Z","fixedAmount":200,"percentage":0,"thresholdAmount":1,"updatedAt":"2025-12-11T08:25:47.836Z"},"status":"approved","updatedAt":"2025-12-11T08:25:47.836Z"},{"__v":0,"_id":"693a800b7e07119e5fd6a9df","applicability":"All Employees","createdAt":"2025-12-11T08:25:47.836Z","createdBy":"693a80047e07119e5fd6a8da","description":"Penalty deductions for misconduct","effectiveDate":"2025-01-01T00:00:00.000Z","policyName":"Misconduct Penalty Policy","policyType":"Misconduct","ruleDefinition":{"_id":"693a800b7e07119e5fd6a9e0","createdAt":"2025-12-11T08:25:47.836Z","fixedAmount":100,"percentage":5,"thresholdAmount":1,"updatedAt":"2025-12-11T08:25:47.836Z"},"status":"draft","updatedAt":"2025-12-11T08:25:47.836Z"}],"limit":10,"message":"Payroll policies retrieved successfully","page":1,"statusCode":200,"total":5,"totalPages":1},"status":200}
+[00:22:36.247] Browser LOG     Found policies in data.data
+[00:22:36.438] Browser LOG     API Response: {"data":{"data":[{"__v":0,"_id":"693dfb48cdf013f586909a03","applicability":"Full Time Employees","createdAt":"2025-12-13T23:48:24.838Z","description":"Free food","effectiveDate":"2025-12-19T00:00:00.000Z","policyName":"Benifits","policyType":"Benefit","ruleDefinition":{"_id":"693dfb58cdf013f586909a0b","createdAt":"2025-12-13T23:48:40.897Z","fixedAmount":6000,"percentage":100,"thresholdAmount":50,"updatedAt":"2025-12-13T23:48:40.897Z"},"status":"draft","updatedAt":"2025-12-13T23:48:40.897Z"},{"__v":0,"_id":"693df591cdf013f5869099d0","applicability":"Contractors","createdAt":"2025-12-13T23:24:01.470Z","description":"After 8","effectiveDate":"2025-12-26T00:00:00.000Z","policyName":"Leave","policyType":"Leave","ruleDefinition":{"_id":"693df5a0cdf013f5869099d8","createdAt":"2025-12-13T23:24:16.767Z","fixedAmount":500,"percentage":80,"thresholdAmount":5,"updatedAt":"2025-12-13T23:24:16.767Z"},"status":"draft","updatedAt":"2025-12-13T23:24:16.767Z"},{"__v":0,"_id":"693a800b7e07119e5fd6a9db","applicability":"All Employees","approvedAt":"2024-12-15T00:00:00.000Z","approvedBy":"693a80047e07119e5fd6a8da","createdAt":"2025-12-11T08:25:47.836Z","createdBy":"693a80047e07119e5fd6a8da","description":"Standard deduction rules for all employees","effectiveDate":"2025-01-01T00:00:00.000Z","policyName":"Standard Deduction Policy","policyType":"Deduction","ruleDefinition":{"_id":"693a800b7e07119e5fd6a9dc","createdAt":"2025-12-11T08:25:47.836Z","fixedAmount":0,"percentage":10,"thresholdAmount":50000,"updatedAt":"2025-12-11T08:25:47.836Z"},"status":"approved","updatedAt":"2025-12-11T08:25:47.836Z"},{"__v":0,"_id":"693a800b7e07119e5fd6a9dd","applicability":"Full Time Employees","approvedAt":"2024-12-15T00:00:00.000Z","approvedBy":"693a80047e07119e5fd6a8da","createdAt":"2025-12-11T08:25:47.836Z","createdBy":"693a80047e07119e5fd6a8da","description":"Allowance for remote workers","effectiveDate":"2025-01-01T00:00:00.000Z","policyName":"Remote Work Allowance Policy","policyType":"Allowance","ruleDefinition":{"_id":"693a800b7e07119e5fd6a9de","createdAt":"2025-12-11T08:25:47.836Z","fixedAmount":200,"percentage":0,"thresholdAmount":1,"updatedAt":"2025-12-11T08:25:47.836Z"},"status":"approved","updatedAt":"2025-12-11T08:25:47.836Z"},{"__v":0,"_id":"693a800b7e07119e5fd6a9df","applicability":"All Employees","createdAt":"2025-12-11T08:25:47.836Z","createdBy":"693a80047e07119e5fd6a8da","description":"Penalty deductions for misconduct","effectiveDate":"2025-01-01T00:00:00.000Z","policyName":"Misconduct Penalty Policy","policyType":"Misconduct","ruleDefinition":{"_id":"693a800b7e07119e5fd6a9e0","createdAt":"2025-12-11T08:25:47.836Z","fixedAmount":100,"percentage":5,"thresholdAmount":1,"updatedAt":"2025-12-11T08:25:47.836Z"},"status":"draft","updatedAt":"2025-12-11T08:25:47.836Z"}],"limit":10,"message":"Payroll policies retrieved successfully","page":1,"statusCode":200,"total":5,"totalPages":1},"status":200}
+[00:22:36.438] Browser LOG     Found policies in data.data
+[00:23:47.066] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:23:47.183] Browser LOG     [API] Base URL: http://localhost:500
+[00:23:48.786] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:23:48.945] Browser LOG     [API] Base URL: http://localhost:500
+[00:23:49.320] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[00:28:01.344] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:28:01.349] Browser LOG     [API] Base URL: http://localhost:500
+[00:28:02.653] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:28:02.653] Browser LOG     [API] Base URL: http://localhost:500
+[00:28:03.557] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[00:28:19.464] Server  LOG      ✓ Compiled in 489ms
+[00:29:07.559] Server  LOG      ✓ Compiled in 319ms
+[00:29:09.215] Browser ERROR   Each child in a list should have a unique "key" prop.%s%s See https://react.dev/link/warning-keys for more information. 
+
+Check the render method of `tbody`.  It was passed a child from PayGradesPage.
+[00:31:35.871] Server  LOG      ✓ Compiled in 688ms
+[00:33:59.618] Server  LOG      ✓ Compiled in 810ms
+[00:36:50.580] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:36:51.068] Browser LOG     [API] Base URL: http://localhost:500
+[00:36:52.314] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[00:37:56.096] Server  LOG      ✓ Compiled in 2s
+[00:37:58.591] Browser ERROR   ./app/dashboard/payroll-specialist/pay-grades/page.tsx:257:7
+Parsing ecmascript source code failed
+  255 |           </div>
+  256 |         )}
+> 257 |       </div>
+      |       ^
+  258 |
+  259 |       {/* Notes for current scope */}
+  260 |       <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-700">
+
+Expression expected
+
+Import traces:
+  Client Component Browser:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component Browser]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component SSR]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+[00:37:58.591] Browser ERROR   ./app/dashboard/payroll-specialist/pay-grades/page.tsx:257:8
+Parsing ecmascript source code failed
+  255 |           </div>
+  256 |         )}
+> 257 |       </div>
+      |        ^^^^^
+  258 |
+  259 |       {/* Notes for current scope */}
+  260 |       <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-700">
+
+Unterminated regexp literal
+
+Import traces:
+  Client Component Browser:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component Browser]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component SSR]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+[00:38:05.992] Browser ERROR   ./app/dashboard/payroll-specialist/pay-grades/page.tsx:257:7
+Parsing ecmascript source code failed
+  255 |           </div>
+  256 |         )}
+> 257 |       </div>
+      |       ^
+  258 |
+  259 |       {/* Notes for current scope */}
+  260 |       <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-700">
+
+Expression expected
+
+Import traces:
+  Client Component Browser:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component Browser]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component SSR]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+[00:38:05.992] Browser ERROR   ./app/dashboard/payroll-specialist/pay-grades/page.tsx:257:8
+Parsing ecmascript source code failed
+  255 |           </div>
+  256 |         )}
+> 257 |       </div>
+      |        ^^^^^
+  258 |
+  259 |       {/* Notes for current scope */}
+  260 |       <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-700">
+
+Unterminated regexp literal
+
+Import traces:
+  Client Component Browser:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component Browser]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component SSR]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+[00:38:05.992] Browser ERROR   ./app/dashboard/payroll-specialist/pay-grades/page.tsx:257:7
+Parsing ecmascript source code failed
+  255 |           </div>
+  256 |         )}
+> 257 |       </div>
+      |       ^
+  258 |
+  259 |       {/* Notes for current scope */}
+  260 |       <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-700">
+
+Expression expected
+
+Import traces:
+  Client Component Browser:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component Browser]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component SSR]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+[00:38:05.992] Browser ERROR   ./app/dashboard/payroll-specialist/pay-grades/page.tsx:257:8
+Parsing ecmascript source code failed
+  255 |           </div>
+  256 |         )}
+> 257 |       </div>
+      |        ^^^^^
+  258 |
+  259 |       {/* Notes for current scope */}
+  260 |       <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-700">
+
+Unterminated regexp literal
+
+Import traces:
+  Client Component Browser:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component Browser]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component SSR]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+[00:39:18.121] Server  ERROR    ⨯ ./app/dashboard/payroll-specialist/pay-grades/page.tsx:257:7
+Parsing ecmascript source code failed
+  255 |           </div>
+  256 |         )}
+> 257 |       </div>
+      |       ^
+  258 |
+  259 |       {/* Notes for current scope */}
+  260 |       <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-700">
+
+Expression expected
+
+Import traces:
+  Client Component Browser:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component Browser]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component SSR]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+
+
+
+./app/dashboard/payroll-specialist/pay-grades/page.tsx:257:8
+Parsing ecmascript source code failed
+  255 |           </div>
+  256 |         )}
+> 257 |       </div>
+      |        ^^^^^
+  258 |
+  259 |       {/* Notes for current scope */}
+  260 |       <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-700">
+
+Unterminated regexp literal
+
+Import traces:
+  Client Component Browser:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component Browser]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component SSR]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+
+
+[00:39:18.316] Browser ERROR   ./app/dashboard/payroll-specialist/pay-grades/page.tsx:257:7
+Parsing ecmascript source code failed
+  255 |           </div>
+  256 |         )}
+> 257 |       </div>
+      |       ^
+  258 |
+  259 |       {/* Notes for current scope */}
+  260 |       <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-700">
+
+Expression expected
+
+Import traces:
+  Client Component Browser:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component Browser]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component SSR]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+[00:39:18.316] Browser ERROR   ./app/dashboard/payroll-specialist/pay-grades/page.tsx:257:8
+Parsing ecmascript source code failed
+  255 |           </div>
+  256 |         )}
+> 257 |       </div>
+      |        ^^^^^
+  258 |
+  259 |       {/* Notes for current scope */}
+  260 |       <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-700">
+
+Unterminated regexp literal
+
+Import traces:
+  Client Component Browser:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component Browser]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component SSR]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+[00:39:21.214] Server  LOG      ○ Compiling /_error ...
+[00:39:23.233] Browser ERROR   ./app/dashboard/payroll-specialist/pay-grades/page.tsx:257:7
+Parsing ecmascript source code failed
+  255 |           </div>
+  256 |         )}
+> 257 |       </div>
+      |       ^
+  258 |
+  259 |       {/* Notes for current scope */}
+  260 |       <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-700">
+
+Expression expected
+
+Import traces:
+  Client Component Browser:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component Browser]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component SSR]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+[00:39:23.233] Browser ERROR   ./app/dashboard/payroll-specialist/pay-grades/page.tsx:257:8
+Parsing ecmascript source code failed
+  255 |           </div>
+  256 |         )}
+> 257 |       </div>
+      |        ^^^^^
+  258 |
+  259 |       {/* Notes for current scope */}
+  260 |       <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-700">
+
+Unterminated regexp literal
+
+Import traces:
+  Client Component Browser:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component Browser]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component SSR]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+[00:39:24.288] Browser ERROR   ./app/dashboard/payroll-specialist/pay-grades/page.tsx:257:7
+Parsing ecmascript source code failed
+  255 |           </div>
+  256 |         )}
+> 257 |       </div>
+      |       ^
+  258 |
+  259 |       {/* Notes for current scope */}
+  260 |       <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-700">
+
+Expression expected
+
+Import traces:
+  Client Component Browser:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component Browser]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component SSR]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+[00:39:24.288] Browser ERROR   ./app/dashboard/payroll-specialist/pay-grades/page.tsx:257:8
+Parsing ecmascript source code failed
+  255 |           </div>
+  256 |         )}
+> 257 |       </div>
+      |        ^^^^^
+  258 |
+  259 |       {/* Notes for current scope */}
+  260 |       <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-700">
+
+Unterminated regexp literal
+
+Import traces:
+  Client Component Browser:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component Browser]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component SSR]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+[00:39:30.646] Browser ERROR   uncaughtError: Error: ./app/dashboard/payroll-specialist/pay-grades/page.tsx:257:7
+Parsing ecmascript source code failed
+  255 |           </div>
+  256 |         )}
+> 257 |       </div>
+      |       ^
+  258 |
+  259 |       {/* Notes for current scope */}
+  260 |       <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-700">
+
+Expression expected
+
+Import traces:
+  Client Component Browser:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component Browser]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component SSR]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+
+
+[00:39:31.187] Browser ERROR   ./app/dashboard/payroll-specialist/pay-grades/page.tsx:257:7
+Parsing ecmascript source code failed
+  255 |           </div>
+  256 |         )}
+> 257 |       </div>
+      |       ^
+  258 |
+  259 |       {/* Notes for current scope */}
+  260 |       <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-700">
+
+Expression expected
+
+Import traces:
+  Client Component Browser:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component Browser]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component SSR]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+[00:39:31.187] Browser ERROR   ./app/dashboard/payroll-specialist/pay-grades/page.tsx:257:8
+Parsing ecmascript source code failed
+  255 |           </div>
+  256 |         )}
+> 257 |       </div>
+      |        ^^^^^
+  258 |
+  259 |       {/* Notes for current scope */}
+  260 |       <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-700">
+
+Unterminated regexp literal
+
+Import traces:
+  Client Component Browser:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component Browser]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component SSR]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+[00:39:31.187] Browser ERROR   ./app/dashboard/payroll-specialist/pay-grades/page.tsx:257:7
+Parsing ecmascript source code failed
+  255 |           </div>
+  256 |         )}
+> 257 |       </div>
+      |       ^
+  258 |
+  259 |       {/* Notes for current scope */}
+  260 |       <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-700">
+
+Expression expected
+
+Import traces:
+  Client Component Browser:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component Browser]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component SSR]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+[00:39:31.187] Browser ERROR   ./app/dashboard/payroll-specialist/pay-grades/page.tsx:257:8
+Parsing ecmascript source code failed
+  255 |           </div>
+  256 |         )}
+> 257 |       </div>
+      |        ^^^^^
+  258 |
+  259 |       {/* Notes for current scope */}
+  260 |       <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-700">
+
+Unterminated regexp literal
+
+Import traces:
+  Client Component Browser:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component Browser]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Client Component SSR]
+    ./app/dashboard/payroll-specialist/pay-grades/page.tsx [Server Component]
+[00:40:13.186] Server  LOG      ✓ Compiled in 386ms
+[00:40:25.498] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:40:26.378] Browser LOG     [API] Base URL: http://localhost:500
+[00:40:29.510] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[00:42:27.216] Server  LOG      ✓ Compiled in 777ms
+[00:42:37.176] Server  LOG      ✓ Compiled in 435ms
+[00:43:45.674] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:43:45.674] Browser LOG     [API] Base URL: http://localhost:500
+[00:43:46.177] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[00:46:35.029] Server  LOG      ✓ Compiled in 1197ms
+[00:48:20.057] Server  LOG      ✓ Compiled in 331ms
+[00:48:30.609] Server  LOG      ✓ Compiled in 469ms
+[00:48:39.064] Server  LOG      ✓ Compiled in 277ms
+[00:50:43.299] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:50:43.456] Browser LOG     [API] Base URL: http://localhost:500
+[00:50:51.783] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[00:51:06.294] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:51:06.294] Browser LOG     [API] Base URL: http://localhost:500
+[00:51:48.489] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[00:51:51.097] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:51:51.376] Browser LOG     [API] Base URL: http://localhost:500
+[00:51:53.060] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[00:52:44.557] Server  LOG      ✓ Compiled in 649ms
+[00:53:13.990] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:53:13.990] Browser LOG     [API] Base URL: http://localhost:500
+[00:53:14.865] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[00:53:43.377] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:53:43.497] Browser LOG     [API] Base URL: http://localhost:500
+[00:53:44.440] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[00:55:18.858] Server  LOG      ✓ Compiled in 682ms
+[00:55:19.499] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-manager
+[00:55:19.499] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-manager
+[00:55:41.427] Server  LOG      ○ Compiling /dashboard/payroll-manager ...
+[00:55:46.307] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-manager
+[00:55:56.205] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-manager
+[00:55:57.028] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-manager
+[00:55:57.382] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-manager
+[00:55:58.145] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-manager
+[00:55:59.358] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-manager
+[00:56:00.238] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-manager
+[00:56:01.633] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-manager
+[01:01:26.662] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-manager
+[01:02:53.396] Server  LOG      ✓ Compiled in 1025ms
+[01:08:21.516] Server  ERROR    ⨯ ./app/dashboard/hr-manager/page.tsx:551:20
+Parsing ecmascript source code failed
+  549 | }
+  550 |                     <td className="py-4 px-3 text-slate-600" colSpan={7}>No insurance brackets found</td>
+> 551 |                   </tr>
+      |                    ^^^^
+  552 |                 )}
+  553 |               </tbody>
+  554 |             </table>
+
+Unterminated regexp literal
+
+
+[01:08:22.359] Browser ERROR   ./app/dashboard/hr-manager/page.tsx:551:20
+Parsing ecmascript source code failed
+  549 | }
+  550 |                     <td className="py-4 px-3 text-slate-600" colSpan={7}>No insurance brackets found</td>
+> 551 |                   </tr>
+      |                    ^^^^
+  552 |                 )}
+  553 |               </tbody>
+  554 |             </table>
+
+Unterminated regexp literal
+[01:08:22.359] Browser ERROR   ./app/dashboard/hr-manager/page.tsx:551:20
+Parsing ecmascript source code failed
+  549 | }
+  550 |                     <td className="py-4 px-3 text-slate-600" colSpan={7}>No insurance brackets found</td>
+> 551 |                   </tr>
+      |                    ^^^^
+  552 |                 )}
+  553 |               </tbody>
+  554 |             </table>
+
+Unterminated regexp literal
+[01:08:22.359] Browser ERROR   ./app/dashboard/hr-manager/page.tsx:551:20
+Parsing ecmascript source code failed
+  549 | }
+  550 |                     <td className="py-4 px-3 text-slate-600" colSpan={7}>No insurance brackets found</td>
+> 551 |                   </tr>
+      |                    ^^^^
+  552 |                 )}
+  553 |               </tbody>
+  554 |             </table>
+
+Unterminated regexp literal
+[01:08:22.359] Browser ERROR   ./app/dashboard/hr-manager/page.tsx:551:20
+Parsing ecmascript source code failed
+  549 | }
+  550 |                     <td className="py-4 px-3 text-slate-600" colSpan={7}>No insurance brackets found</td>
+> 551 |                   </tr>
+      |                    ^^^^
+  552 |                 )}
+  553 |               </tbody>
+  554 |             </table>
+
+Unterminated regexp literal
+[01:08:22.483] Server  ERROR    ⨯ ./app/dashboard/hr-manager/page.tsx:551:20
+Parsing ecmascript source code failed
+  549 | }
+  550 |                     <td className="py-4 px-3 text-slate-600" colSpan={7}>No insurance brackets found</td>
+> 551 |                   </tr>
+      |                    ^^^^
+  552 |                 )}
+  553 |               </tbody>
+  554 |             </table>
+
+Unterminated regexp literal
+
+
+[01:08:22.651] Browser ERROR   ./app/dashboard/hr-manager/page.tsx:551:20
+Parsing ecmascript source code failed
+  549 | }
+  550 |                     <td className="py-4 px-3 text-slate-600" colSpan={7}>No insurance brackets found</td>
+> 551 |                   </tr>
+      |                    ^^^^
+  552 |                 )}
+  553 |               </tbody>
+  554 |             </table>
+
+Unterminated regexp literal
+[01:08:23.500] Browser ERROR   uncaughtError: Error: ./app/dashboard/hr-manager/page.tsx:551:20
+Parsing ecmascript source code failed
+  549 | }
+  550 |                     <td className="py-4 px-3 text-slate-600" colSpan={7}>No insurance brackets found</td>
+> 551 |                   </tr>
+      |                    ^^^^
+  552 |                 )}
+  553 |               </tbody>
+  554 |             </table>
+
+Unterminated regexp literal
+
+
+[01:08:23.821] Browser ERROR   ./app/dashboard/hr-manager/page.tsx:551:20
+Parsing ecmascript source code failed
+  549 | }
+  550 |                     <td className="py-4 px-3 text-slate-600" colSpan={7}>No insurance brackets found</td>
+> 551 |                   </tr>
+      |                    ^^^^
+  552 |                 )}
+  553 |               </tbody>
+  554 |             </table>
+
+Unterminated regexp literal
+[01:08:23.821] Browser ERROR   ./app/dashboard/hr-manager/page.tsx:551:20
+Parsing ecmascript source code failed
+  549 | }
+  550 |                     <td className="py-4 px-3 text-slate-600" colSpan={7}>No insurance brackets found</td>
+> 551 |                   </tr>
+      |                    ^^^^
+  552 |                 )}
+  553 |               </tbody>
+  554 |             </table>
+
+Unterminated regexp literal
+[01:08:53.668] Server  LOG      ✓ Compiled in 435ms
+[01:08:57.493] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[01:08:58.270] Browser LOG     [API] Base URL: http://localhost:500
+[01:08:59.194] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[01:11:28.107] Server  LOG      ✓ Compiled in 404ms
+[01:11:46.512] Server  LOG      ✓ Compiled in 899ms
+[01:12:30.532] Server  LOG      ✓ Compiled in 254ms
+[01:15:21.255] Server  LOG      ✓ Compiled in 794ms
+[01:19:30.295] Server  LOG      ✓ Compiled in 2s
+[01:19:46.623] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[01:19:47.187] Browser LOG     [API] Base URL: http://localhost:500
+[01:19:51.289] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[01:19:55.324] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[01:19:55.514] Browser LOG     [API] Base URL: http://localhost:500
+[01:19:56.334] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[01:25:11.305] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[01:25:11.849] Browser LOG     [API] Base URL: http://localhost:500
+[01:25:13.133] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[01:25:28.161] Server  LOG      ✓ Compiled in 1554ms
+[01:25:39.939] Server  LOG      ✓ Compiled in 601ms
+[01:32:56.292] Server  LOG      ✓ Compiled in 571ms
+[01:49:54.822] Server  LOG      ✓ Compiled in 304ms
+[01:50:14.921] Server  LOG      ✓ Compiled in 355ms
+[01:50:45.879] Server  LOG      ✓ Compiled in 300ms
+[01:53:33.949] Server  LOG      ✓ Compiled in 824ms
+[01:53:40.725] Server  LOG      ✓ Compiled in 188ms
+[01:53:47.896] Server  LOG      ✓ Compiled in 265ms
+[01:54:09.237] Server  LOG      ✓ Compiled in 415ms
+[01:54:38.609] Server  LOG      ✓ Compiled in 380ms
+[01:54:40.348] Browser ERROR   A component is changing a controlled input to be uncontrolled. This is likely caused by the value changing from a defined to undefined, which should not happen. Decide between using a controlled or uncontrolled input element for the lifetime of the component. More info: https://react.dev/link/controlled-components
+[01:54:56.355] Server  LOG      ✓ Compiled in 397ms
+[01:55:16.557] Server  LOG      ✓ Compiled in 224ms
+[02:02:04.664] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-specialist
+[02:02:07.796] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-specialist
+[02:02:12.302] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-specialist
+[02:02:12.587] Browser LOG     Fetching payroll policies...
+[02:02:12.587] Browser LOG     Fetching payroll policies...
+[02:02:13.455] Browser LOG     API Response: {"data":{"data":[{"__v":0,"_id":"693dfb48cdf013f586909a03","applicability":"Full Time Employees","createdAt":"2025-12-13T23:48:24.838Z","description":"Free food","effectiveDate":"2025-12-19T00:00:00.000Z","policyName":"Benifits","policyType":"Benefit","ruleDefinition":{"_id":"693dfb58cdf013f586909a0b","createdAt":"2025-12-13T23:48:40.897Z","fixedAmount":6000,"percentage":100,"thresholdAmount":50,"updatedAt":"2025-12-13T23:48:40.897Z"},"status":"draft","updatedAt":"2025-12-13T23:48:40.897Z"},{"__v":0,"_id":"693df591cdf013f5869099d0","applicability":"Contractors","createdAt":"2025-12-13T23:24:01.470Z","description":"After 8","effectiveDate":"2025-12-26T00:00:00.000Z","policyName":"Leave","policyType":"Leave","ruleDefinition":{"_id":"693df5a0cdf013f5869099d8","createdAt":"2025-12-13T23:24:16.767Z","fixedAmount":500,"percentage":80,"thresholdAmount":5,"updatedAt":"2025-12-13T23:24:16.767Z"},"status":"draft","updatedAt":"2025-12-13T23:24:16.767Z"},{"__v":0,"_id":"693a800b7e07119e5fd6a9db","applicability":"All Employees","approvedAt":"2024-12-15T00:00:00.000Z","approvedBy":"693a80047e07119e5fd6a8da","createdAt":"2025-12-11T08:25:47.836Z","createdBy":"693a80047e07119e5fd6a8da","description":"Standard deduction rules for all employees","effectiveDate":"2025-01-01T00:00:00.000Z","policyName":"Standard Deduction Policy","policyType":"Deduction","ruleDefinition":{"_id":"693a800b7e07119e5fd6a9dc","createdAt":"2025-12-11T08:25:47.836Z","fixedAmount":0,"percentage":10,"thresholdAmount":50000,"updatedAt":"2025-12-11T08:25:47.836Z"},"status":"approved","updatedAt":"2025-12-11T08:25:47.836Z"},{"__v":0,"_id":"693a800b7e07119e5fd6a9dd","applicability":"Full Time Employees","approvedAt":"2024-12-15T00:00:00.000Z","approvedBy":"693a80047e07119e5fd6a8da","createdAt":"2025-12-11T08:25:47.836Z","createdBy":"693a80047e07119e5fd6a8da","description":"Allowance for remote workers","effectiveDate":"2025-01-01T00:00:00.000Z","policyName":"Remote Work Allowance Policy","policyType":"Allowance","ruleDefinition":{"_id":"693a800b7e07119e5fd6a9de","createdAt":"2025-12-11T08:25:47.836Z","fixedAmount":200,"percentage":0,"thresholdAmount":1,"updatedAt":"2025-12-11T08:25:47.836Z"},"status":"approved","updatedAt":"2025-12-11T08:25:47.836Z"},{"__v":0,"_id":"693a800b7e07119e5fd6a9df","applicability":"All Employees","createdAt":"2025-12-11T08:25:47.836Z","createdBy":"693a80047e07119e5fd6a8da","description":"Penalty deductions for misconduct","effectiveDate":"2025-01-01T00:00:00.000Z","policyName":"Misconduct Penalty Policy","policyType":"Misconduct","ruleDefinition":{"_id":"693a800b7e07119e5fd6a9e0","createdAt":"2025-12-11T08:25:47.836Z","fixedAmount":100,"percentage":5,"thresholdAmount":1,"updatedAt":"2025-12-11T08:25:47.836Z"},"status":"draft","updatedAt":"2025-12-11T08:25:47.836Z"}],"limit":10,"message":"Payroll policies retrieved successfully","page":1,"statusCode":200,"total":5,"totalPages":1},"status":200}
+[02:02:13.455] Browser LOG     Found policies in data.data
+[02:02:13.631] Browser LOG     API Response: {"data":{"data":[{"__v":0,"_id":"693dfb48cdf013f586909a03","applicability":"Full Time Employees","createdAt":"2025-12-13T23:48:24.838Z","description":"Free food","effectiveDate":"2025-12-19T00:00:00.000Z","policyName":"Benifits","policyType":"Benefit","ruleDefinition":{"_id":"693dfb58cdf013f586909a0b","createdAt":"2025-12-13T23:48:40.897Z","fixedAmount":6000,"percentage":100,"thresholdAmount":50,"updatedAt":"2025-12-13T23:48:40.897Z"},"status":"draft","updatedAt":"2025-12-13T23:48:40.897Z"},{"__v":0,"_id":"693df591cdf013f5869099d0","applicability":"Contractors","createdAt":"2025-12-13T23:24:01.470Z","description":"After 8","effectiveDate":"2025-12-26T00:00:00.000Z","policyName":"Leave","policyType":"Leave","ruleDefinition":{"_id":"693df5a0cdf013f5869099d8","createdAt":"2025-12-13T23:24:16.767Z","fixedAmount":500,"percentage":80,"thresholdAmount":5,"updatedAt":"2025-12-13T23:24:16.767Z"},"status":"draft","updatedAt":"2025-12-13T23:24:16.767Z"},{"__v":0,"_id":"693a800b7e07119e5fd6a9db","applicability":"All Employees","approvedAt":"2024-12-15T00:00:00.000Z","approvedBy":"693a80047e07119e5fd6a8da","createdAt":"2025-12-11T08:25:47.836Z","createdBy":"693a80047e07119e5fd6a8da","description":"Standard deduction rules for all employees","effectiveDate":"2025-01-01T00:00:00.000Z","policyName":"Standard Deduction Policy","policyType":"Deduction","ruleDefinition":{"_id":"693a800b7e07119e5fd6a9dc","createdAt":"2025-12-11T08:25:47.836Z","fixedAmount":0,"percentage":10,"thresholdAmount":50000,"updatedAt":"2025-12-11T08:25:47.836Z"},"status":"approved","updatedAt":"2025-12-11T08:25:47.836Z"},{"__v":0,"_id":"693a800b7e07119e5fd6a9dd","applicability":"Full Time Employees","approvedAt":"2024-12-15T00:00:00.000Z","approvedBy":"693a80047e07119e5fd6a8da","createdAt":"2025-12-11T08:25:47.836Z","createdBy":"693a80047e07119e5fd6a8da","description":"Allowance for remote workers","effectiveDate":"2025-01-01T00:00:00.000Z","policyName":"Remote Work Allowance Policy","policyType":"Allowance","ruleDefinition":{"_id":"693a800b7e07119e5fd6a9de","createdAt":"2025-12-11T08:25:47.836Z","fixedAmount":200,"percentage":0,"thresholdAmount":1,"updatedAt":"2025-12-11T08:25:47.836Z"},"status":"approved","updatedAt":"2025-12-11T08:25:47.836Z"},{"__v":0,"_id":"693a800b7e07119e5fd6a9df","applicability":"All Employees","createdAt":"2025-12-11T08:25:47.836Z","createdBy":"693a80047e07119e5fd6a8da","description":"Penalty deductions for misconduct","effectiveDate":"2025-01-01T00:00:00.000Z","policyName":"Misconduct Penalty Policy","policyType":"Misconduct","ruleDefinition":{"_id":"693a800b7e07119e5fd6a9e0","createdAt":"2025-12-11T08:25:47.836Z","fixedAmount":100,"percentage":5,"thresholdAmount":1,"updatedAt":"2025-12-11T08:25:47.836Z"},"status":"draft","updatedAt":"2025-12-11T08:25:47.836Z"}],"limit":10,"message":"Payroll policies retrieved successfully","page":1,"statusCode":200,"total":5,"totalPages":1},"status":200}
+[02:02:13.631] Browser LOG     Found policies in data.data
+[02:02:19.777] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-specialist
+[02:02:19.777] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-specialist
+[02:02:21.424] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-specialist
+[02:02:28.925] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-specialist
+[02:02:29.349] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-specialist
+[02:02:31.967] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-specialist
+[02:02:35.675] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:02:35.952] Browser LOG     [API] Base URL: http://localhost:500
+[02:02:38.446] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:02:39.043] Browser LOG     [API] Base URL: http://localhost:500
+[02:02:39.043] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-specialist
+[02:02:39.780] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[02:02:40.803] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-specialist
+[02:02:42.048] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-specialist
+[02:02:46.688] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-specialist
+[02:02:48.599] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-specialist
+[02:05:35.927] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-manager
+[02:05:37.420] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-manager
+[02:05:39.645] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-manager
+[02:07:37.169] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-manager
+[02:08:02.162] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-manager
+[02:08:37.165] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-manager
+[02:09:01.162] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-manager
+[02:10:41.318] Server  LOG      ✓ Compiled in 419ms
+[02:10:42.173] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-manager
+[02:10:48.851] Server  LOG      ✓ Compiled in 437ms
+[02:10:49.873] Browser ERROR   Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. /dashboard/payroll-manager
+[02:10:56.890] Server  LOG      ✓ Compiled in 562ms
+[02:11:41.932] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:11:41.932] Browser LOG     [API] Base URL: http://localhost:500
+[02:11:43.734] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[02:13:07.723] Server  LOG      ○ Compiling /dashboard/system-admin/data-backup ...
+[02:13:31.902] Server  LOG      ✓ Compiled in 1136ms
+[02:13:42.972] Server  LOG      ○ Compiling /dashboard/hr-admin/change-requests ...
+[02:14:22.006] Server  LOG      ✓ Compiled in 592ms
+[02:16:30.011] Server  LOG      ✓ Compiled in 353ms
+[02:18:19.553] Server  LOG      ✓ Compiled in 302ms
+[02:18:28.391] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:18:28.528] Browser LOG     [API] Base URL: http://localhost:500
+[02:18:31.420] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:18:31.784] Browser LOG     [API] Base URL: http://localhost:500
+[02:18:32.961] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[02:19:53.855] Server  LOG      ✓ Compiled in 1457ms
+[02:20:00.891] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:20:01.237] Browser LOG     [API] Base URL: http://localhost:500
+[02:20:20.110] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[02:20:28.652] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:20:28.947] Browser LOG     [API] Base URL: http://localhost:500
+[02:20:29.747] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[02:20:37.201] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:20:37.201] Browser LOG     [API] Base URL: http://localhost:500
+[02:20:42.465] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[02:20:57.202] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:20:57.208] Browser LOG     [API] Base URL: http://localhost:500
+[02:21:33.457] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[02:22:13.460] Server  LOG      ○ Compiling /dashboard/hr-manager/insurance-brackets ...
+[02:22:39.042] Server  LOG      ✓ Compiled in 376ms
+[02:23:47.131] Server  LOG      ✓ Compiled in 182ms
+[02:25:26.223] Server  WARN     ⚠ Fast Refresh had to perform a full reload when ./app/services/payroll-configuration/index.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+[02:25:26.244] Server  LOG      ✓ Compiled in 967ms
+[02:25:30.981] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:25:50.115] Browser LOG     [API] Base URL: http://localhost:500
+[02:25:50.115] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior

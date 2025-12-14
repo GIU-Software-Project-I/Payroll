@@ -1575,33 +1575,230 @@ __turbopack_context__.s([
 ]);
 var __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/app/services/api.ts [app-client] (ecmascript)");
 ;
+// Helper function to build query strings
+const buildQueryString = (params)=>{
+    if (!params || Object.keys(params).length === 0) {
+        return '';
+    }
+    const searchParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value])=>{
+        if (value !== undefined && value !== null && value !== '') {
+            if (Array.isArray(value)) {
+                // Handle arrays: convert to comma-separated string or multiple params
+                value.forEach((item)=>{
+                    searchParams.append(key, String(item));
+                });
+            } else {
+                searchParams.append(key, String(value));
+            }
+        }
+    });
+    const queryString = searchParams.toString();
+    return queryString ? `?${queryString}` : '';
+};
 const payrollConfigurationService = {
-    getConfiguration: async ()=>{
-        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get('/payroll/configuration');
+    // ========== TAX RULES ==========
+    getTaxRules: async ()=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get('/payroll-configuration-requirements/tax-rules');
     },
-    updateConfiguration: async (data)=>{
-        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].patch('/payroll/configuration', data);
+    getTaxRuleById: async (id)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll-configuration-requirements/tax-rules/${id}`);
     },
-    getPayGrades: async ()=>{
-        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get('/payroll/pay-grades');
+    createTaxRule: async (data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].post('/payroll-configuration-requirements/tax-rules', data);
     },
-    createPayGrade: async (data)=>{
-        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].post('/payroll/pay-grades', data);
+    updateTaxRule: async (id, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].patch(`/payroll-configuration-requirements/tax-rules/${id}`, data);
     },
-    updatePayGrade: async (id, data)=>{
-        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].patch(`/payroll/pay-grades/${id}`, data);
+    approveTaxRule: async (id, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].patch(`/payroll-configuration-requirements/tax-rules/${id}/approve`, data);
     },
-    getAllowances: async ()=>{
-        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get('/payroll/allowances');
+    rejectTaxRule: async (id, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].patch(`/payroll-configuration-requirements/tax-rules/${id}/reject`, data);
+    },
+    deleteTaxRule: async (id)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].delete(`/payroll-configuration-requirements/tax-rules/${id}`);
+    },
+    // ========== INSURANCE BRACKETS ==========
+    getInsuranceBrackets: async ()=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get('/payroll-configuration-requirements/insurance-brackets');
+    },
+    getInsuranceBracketById: async (id)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll-configuration-requirements/insurance-brackets/${id}`);
+    },
+    createInsuranceBracket: async (data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].post('/payroll-configuration-requirements/insurance-brackets', data);
+    },
+    updateInsuranceBracket: async (id, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].patch(`/payroll-configuration-requirements/insurance-brackets/${id}`, data);
+    },
+    approveInsuranceBracket: async (id, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].patch(`/payroll-configuration-requirements/insurance-brackets/${id}/approve`, data);
+    },
+    rejectInsuranceBracket: async (id, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].patch(`/payroll-configuration-requirements/insurance-brackets/${id}/reject`, data);
+    },
+    deleteInsuranceBracket: async (id)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].delete(`/payroll-configuration-requirements/insurance-brackets/${id}`);
+    },
+    calculateContributions: async (id, salary)=>{
+        const url = `/payroll-configuration-requirements/insurance-brackets/${id}/calculate-contributions?salary=${salary}`;
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(url);
+    },
+    // ========== PAYROLL POLICIES ==========
+    getPayrollPolicies: async (queryParams)=>{
+        const queryString = buildQueryString(queryParams || {});
+        const url = `/payroll-configuration-requirements/policies/all${queryString}`;
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(url);
+    },
+    getPayrollPolicyById: async (id)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll-configuration-requirements/policies/${id}`);
+    },
+    createPayrollPolicy: async (data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].post('/payroll-configuration-requirements/policies', data);
+    },
+    updatePayrollPolicy: async (id, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].patch(`/payroll-configuration-requirements/policies/${id}`, data);
+    },
+    approvePayrollPolicy: async (id, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].patch(`/payroll-configuration-requirements/policies/${id}/approve`, data);
+    },
+    rejectPayrollPolicy: async (id, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].patch(`/payroll-configuration-requirements/policies/${id}/reject`, data);
+    },
+    deletePayrollPolicy: async (id)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].delete(`/payroll-configuration-requirements/policies/${id}`);
+    },
+    // ========== PAY TYPES ==========
+    getPayTypes: async (queryParams)=>{
+        const queryString = buildQueryString(queryParams || {});
+        const url = `/payroll-configuration-requirements/pay-types/all${queryString}`;
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(url);
+    },
+    getPayTypeById: async (id)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll-configuration-requirements/pay-types/${id}`);
+    },
+    createPayType: async (data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].post('/payroll-configuration-requirements/pay-types', data);
+    },
+    updatePayType: async (id, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].patch(`/payroll-configuration-requirements/pay-types/${id}`, data);
+    },
+    approvePayType: async (id, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].patch(`/payroll-configuration-requirements/pay-types/${id}/approve`, data);
+    },
+    rejectPayType: async (id, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].patch(`/payroll-configuration-requirements/pay-types/${id}/reject`, data);
+    },
+    deletePayType: async (id)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].delete(`/payroll-configuration-requirements/pay-types/${id}`);
+    },
+    // ========== ALLOWANCES ==========
+    getAllowances: async (queryParams)=>{
+        const queryString = buildQueryString(queryParams || {});
+        const url = `/payroll-configuration-requirements/allowances/all${queryString}`;
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(url);
+    },
+    getAllowanceById: async (id)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll-configuration-requirements/allowances/${id}`);
     },
     createAllowance: async (data)=>{
-        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].post('/payroll/allowances', data);
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].post('/payroll-configuration-requirements/allowances', data);
     },
-    getTaxRules: async ()=>{
-        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get('/payroll/tax-rules');
+    updateAllowance: async (id, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].patch(`/payroll-configuration-requirements/allowances/${id}`, data);
     },
-    updateTaxRules: async (data)=>{
-        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].patch('/payroll/tax-rules', data);
+    approveAllowance: async (id, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].patch(`/payroll-configuration-requirements/allowances/${id}/approve`, data);
+    },
+    rejectAllowance: async (id, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].patch(`/payroll-configuration-requirements/allowances/${id}/reject`, data);
+    },
+    deleteAllowance: async (id)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].delete(`/payroll-configuration-requirements/allowances/${id}`);
+    },
+    // ========== SIGNING BONUSES ==========
+    getSigningBonuses: async (queryParams)=>{
+        const queryString = buildQueryString(queryParams || {});
+        const url = `/payroll-configuration-requirements/signing-bonuses/all${queryString}`;
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(url);
+    },
+    getSigningBonusById: async (id)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll-configuration-requirements/signing-bonuses/${id}`);
+    },
+    createSigningBonus: async (data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].post('/payroll-configuration-requirements/signing-bonuses', data);
+    },
+    updateSigningBonus: async (id, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].patch(`/payroll-configuration-requirements/signing-bonuses/${id}`, data);
+    },
+    approveSigningBonus: async (id, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].patch(`/payroll-configuration-requirements/signing-bonuses/${id}/approve`, data);
+    },
+    rejectSigningBonus: async (id, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].patch(`/payroll-configuration-requirements/signing-bonuses/${id}/reject`, data);
+    },
+    deleteSigningBonus: async (id)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].delete(`/payroll-configuration-requirements/signing-bonuses/${id}`);
+    },
+    // ========== TERMINATION BENEFITS ==========
+    getTerminationBenefits: async (queryParams)=>{
+        const queryString = buildQueryString(queryParams || {});
+        const url = `/payroll-configuration-requirements/termination-benefits/all${queryString}`;
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(url);
+    },
+    getTerminationBenefitById: async (id)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll-configuration-requirements/termination-benefits/${id}`);
+    },
+    createTerminationBenefit: async (data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].post('/payroll-configuration-requirements/termination-benefits', data);
+    },
+    updateTerminationBenefit: async (id, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].patch(`/payroll-configuration-requirements/termination-benefits/${id}`, data);
+    },
+    approveTerminationBenefit: async (id, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].patch(`/payroll-configuration-requirements/termination-benefits/${id}/approve`, data);
+    },
+    rejectTerminationBenefit: async (id, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].patch(`/payroll-configuration-requirements/termination-benefits/${id}/reject`, data);
+    },
+    deleteTerminationBenefit: async (id)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].delete(`/payroll-configuration-requirements/termination-benefits/${id}`);
+    },
+    calculateTerminationEntitlements: async (employeeData)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].post('/payroll-configuration-requirements/termination-benefits/calculate', employeeData);
+    },
+    // ========== PAY GRADES ==========
+    getPayGrades: async (status)=>{
+        const queryString = status ? `?status=${encodeURIComponent(status)}` : '';
+        // Align with other list endpoints that use /all
+        const url = `/payroll-configuration-requirements/pay-grades/all${queryString}`;
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(url);
+    },
+    getPayGradeById: async (id)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll-configuration-requirements/pay-grades/${id}`);
+    },
+    createPayGrade: async (data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].post('/payroll-configuration-requirements/pay-grades', data);
+    },
+    updatePayGrade: async (id, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].patch(`/payroll-configuration-requirements/pay-grades/${id}`, data);
+    },
+    approvePayGrade: async (id, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].patch(`/payroll-configuration-requirements/pay-grades/${id}/approve`, data);
+    },
+    rejectPayGrade: async (id, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].patch(`/payroll-configuration-requirements/pay-grades/${id}/reject`, data);
+    },
+    deletePayGrade: async (id)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].delete(`/payroll-configuration-requirements/pay-grades/${id}`);
+    },
+    // ========== COMPANY SETTINGS ==========
+    getCompanyWideSettings: async ()=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get('/payroll-configuration-requirements/company-settings');
+    },
+    updateCompanyWideSettings: async (data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].put('/payroll-configuration-requirements/company-settings', data);
     }
 };
 if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
@@ -1660,32 +1857,235 @@ __turbopack_context__.s([
 var __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/app/services/api.ts [app-client] (ecmascript)");
 ;
 const payrollTrackingService = {
-    getPayslip: async (id)=>{
-        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll/payslip/${id}`);
+    // ========== Employee Self-Service Endpoints ==========
+    // GET /payroll/tracking/employee/:employeeId/payslips
+    getEmployeePayslips: async (employeeId)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll/tracking/employee/${employeeId}/payslips`);
     },
-    getPayslips: async ()=>{
-        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get('/payroll/payslips');
+    // GET /payroll/tracking/payslip/:payslipId/employee/:employeeId
+    getPayslipDetails: async (payslipId, employeeId)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll/tracking/payslip/${payslipId}/employee/${employeeId}`);
     },
-    downloadPayslip: async (id)=>{
-        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll/payslip/${id}/download`);
+    // GET /payroll/tracking/payslip/:payslipId/employee/:employeeId/download
+    downloadPayslip: async (payslipId, employeeId)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll/tracking/payslip/${payslipId}/employee/${employeeId}/download`);
     },
-    getSalaryHistory: async ()=>{
-        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get('/payroll/salary-history');
+    // GET /payroll/tracking/employee/:employeeId/base-salary
+    getBaseSalary: async (employeeId)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll/tracking/employee/${employeeId}/base-salary`);
     },
-    getDeductions: async ()=>{
-        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get('/payroll/deductions');
+    // GET /payroll/tracking/employee/:employeeId/leave-compensation
+    getLeaveCompensation: async (employeeId)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll/tracking/employee/${employeeId}/leave-compensation`);
     },
-    submitDispute: async (data)=>{
-        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].post('/payroll/dispute', data);
+    // GET /payroll/tracking/employee/:employeeId/transportation
+    getTransportationCompensation: async (employeeId)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll/tracking/employee/${employeeId}/transportation`);
     },
-    getDisputes: async ()=>{
-        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get('/payroll/disputes');
+    // GET /payroll/tracking/employee/:employeeId/tax-deductions
+    getTaxDeductions: async (employeeId, payslipId)=>{
+        const query = payslipId ? `?payslipId=${payslipId}` : '';
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll/tracking/employee/${employeeId}/tax-deductions${query}`);
     },
-    submitClaim: async (data)=>{
-        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].post('/payroll/claim', data);
+    // GET /payroll/tracking/employee/:employeeId/insurance-deductions
+    getInsuranceDeductions: async (employeeId, payslipId)=>{
+        const query = payslipId ? `?payslipId=${payslipId}` : '';
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll/tracking/employee/${employeeId}/insurance-deductions${query}`);
     },
-    getClaims: async ()=>{
-        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get('/payroll/claims');
+    // GET /payroll/tracking/employee/:employeeId/misconduct-deductions
+    getMisconductDeductions: async (employeeId, payslipId)=>{
+        const query = payslipId ? `?payslipId=${payslipId}` : '';
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll/tracking/employee/${employeeId}/misconduct-deductions${query}`);
+    },
+    // GET /payroll/tracking/employee/:employeeId/attendance-based-deductions
+    getAttendanceBasedDeductions: async (employeeId, options)=>{
+        const params = new URLSearchParams();
+        if (options?.payslipId) params.append('payslipId', options.payslipId);
+        if (options?.from) params.append('from', options.from);
+        if (options?.to) params.append('to', options.to);
+        const query = params.toString() ? `?${params.toString()}` : '';
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll/tracking/employee/${employeeId}/attendance-based-deductions${query}`);
+    },
+    // GET /payroll/tracking/employee/:employeeId/unpaid-leave-deductions
+    getUnpaidLeaveDeductions: async (employeeId, options)=>{
+        const params = new URLSearchParams();
+        if (options?.payslipId) params.append('payslipId', options.payslipId);
+        if (options?.from) params.append('from', options.from);
+        if (options?.to) params.append('to', options.to);
+        const query = params.toString() ? `?${params.toString()}` : '';
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll/tracking/employee/${employeeId}/unpaid-leave-deductions${query}`);
+    },
+    // GET /payroll/tracking/employee/:employeeId/salary-history
+    getSalaryHistory: async (employeeId)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll/tracking/employee/${employeeId}/salary-history`);
+    },
+    // GET /payroll/tracking/employee/:employeeId/employer-contributions
+    getEmployerContributions: async (employeeId, payslipId)=>{
+        const query = payslipId ? `?payslipId=${payslipId}` : '';
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll/tracking/employee/${employeeId}/employer-contributions${query}`);
+    },
+    // GET /payroll/tracking/employee/:employeeId/tax-documents
+    getTaxDocuments: async (employeeId, year)=>{
+        const query = year ? `?year=${year}` : '';
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll/tracking/employee/${employeeId}/tax-documents${query}`);
+    },
+    // GET /payroll/tracking/employee/:employeeId/tax-documents/:year/download
+    downloadAnnualTaxStatement: async (employeeId, year)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll/tracking/employee/${employeeId}/tax-documents/${year}/download`);
+    },
+    // POST /payroll/tracking/employee/:employeeId/disputes
+    createDispute: async (employeeId, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].post(`/payroll/tracking/employee/${employeeId}/disputes`, data);
+    },
+    // POST /payroll/tracking/employee/:employeeId/claims
+    createClaim: async (employeeId, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].post(`/payroll/tracking/employee/${employeeId}/claims`, data);
+    },
+    // GET /payroll/tracking/employee/:employeeId/track-requests
+    trackClaimsAndDisputes: async (employeeId)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll/tracking/employee/${employeeId}/track-requests`);
+    },
+    // ========== Operational Reports Endpoints ==========
+    // GET /payroll/tracking/reports/department-payroll
+    generateDepartmentPayrollReport: async (options)=>{
+        const params = new URLSearchParams();
+        if (options?.departmentId) params.append('departmentId', options.departmentId);
+        if (options?.startDate) params.append('startDate', options.startDate);
+        if (options?.endDate) params.append('endDate', options.endDate);
+        const query = params.toString() ? `?${params.toString()}` : '';
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll/tracking/reports/department-payroll${query}`);
+    },
+    // GET /payroll/tracking/reports/payroll-summary
+    generatePayrollSummary: async (type, period)=>{
+        const params = new URLSearchParams();
+        params.append('type', type);
+        if (period) params.append('period', period);
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll/tracking/reports/payroll-summary?${params.toString()}`);
+    },
+    // GET /payroll/tracking/reports/compliance
+    generateComplianceReport: async (type, year)=>{
+        const params = new URLSearchParams();
+        params.append('type', type);
+        if (year) params.append('year', year.toString());
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll/tracking/reports/compliance?${params.toString()}`);
+    },
+    // ========== Disputes and Claims Approval Endpoints ==========
+    // PUT /payroll/tracking/disputes/:disputeId/review
+    reviewDispute: async (disputeId, specialistId, action, reason)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].put(`/payroll/tracking/disputes/${disputeId}/review?specialistId=${specialistId}&action=${action}`, {
+            reason
+        });
+    },
+    // PUT /payroll/tracking/disputes/:disputeId/confirm
+    confirmDisputeApproval: async (disputeId, managerId, action, reason)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].put(`/payroll/tracking/disputes/${disputeId}/confirm?managerId=${managerId}&action=${action}`, {
+            reason
+        });
+    },
+    // GET /payroll/tracking/disputes/approved
+    getApprovedDisputes: async (financeStaffId)=>{
+        const query = financeStaffId ? `?financeStaffId=${financeStaffId}` : '';
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll/tracking/disputes/approved${query}`);
+    },
+    // PUT /payroll/tracking/claims/:claimId/review
+    reviewClaim: async (claimId, specialistId, action, approvedAmount, reason)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].put(`/payroll/tracking/claims/${claimId}/review?specialistId=${specialistId}&action=${action}`, {
+            approvedAmount,
+            reason
+        });
+    },
+    // PUT /payroll/tracking/claims/:claimId/confirm
+    confirmClaimApproval: async (claimId, managerId, action, reason)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].put(`/payroll/tracking/claims/${claimId}/confirm?managerId=${managerId}&action=${action}`, {
+            reason
+        });
+    },
+    // GET /payroll/tracking/claims/approved
+    getApprovedClaims: async (financeStaffId)=>{
+        const query = financeStaffId ? `?financeStaffId=${financeStaffId}` : '';
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll/tracking/claims/approved${query}`);
+    },
+    // ========== Refund Process Endpoints ==========
+    // POST /payroll/tracking/refunds/dispute/:disputeId
+    generateDisputeRefund: async (disputeId, financeStaffId, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].post(`/payroll/tracking/refunds/dispute/${disputeId}?financeStaffId=${financeStaffId}`, data);
+    },
+    // POST /payroll/tracking/refunds/claim/:claimId
+    generateClaimRefund: async (claimId, financeStaffId, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].post(`/payroll/tracking/refunds/claim/${claimId}?financeStaffId=${financeStaffId}`, data);
+    },
+    // GET /payroll/tracking/refunds/pending
+    getPendingRefunds: async ()=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get('/payroll/tracking/refunds/pending');
+    },
+    // PUT /payroll/tracking/refunds/:refundId/mark-paid
+    markRefundAsPaid: async (refundId, payrollRunId)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].put(`/payroll/tracking/refunds/${refundId}/mark-paid`, {
+            payrollRunId
+        });
+    },
+    // ========== CRUD Endpoints for Claims ==========
+    // GET /payroll/tracking/claims
+    getAllClaims: async (status, employeeId)=>{
+        const params = new URLSearchParams();
+        if (status) params.append('status', status);
+        if (employeeId) params.append('employeeId', employeeId);
+        const query = params.toString() ? `?${params.toString()}` : '';
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll/tracking/claims${query}`);
+    },
+    // GET /payroll/tracking/claims/:id
+    getClaimById: async (id)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll/tracking/claims/${id}`);
+    },
+    // PUT /payroll/tracking/claims/:id
+    updateClaim: async (id, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].put(`/payroll/tracking/claims/${id}`, data);
+    },
+    // DELETE /payroll/tracking/claims/:id
+    deleteClaim: async (id)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].delete(`/payroll/tracking/claims/${id}`);
+    },
+    // ========== CRUD Endpoints for Disputes ==========
+    // GET /payroll/tracking/disputes
+    getAllDisputes: async (status, employeeId)=>{
+        const params = new URLSearchParams();
+        if (status) params.append('status', status);
+        if (employeeId) params.append('employeeId', employeeId);
+        const query = params.toString() ? `?${params.toString()}` : '';
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll/tracking/disputes${query}`);
+    },
+    // GET /payroll/tracking/disputes/:id
+    getDisputeById: async (id)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll/tracking/disputes/${id}`);
+    },
+    // PUT /payroll/tracking/disputes/:id
+    updateDispute: async (id, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].put(`/payroll/tracking/disputes/${id}`, data);
+    },
+    // DELETE /payroll/tracking/disputes/:id
+    deleteDispute: async (id)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].delete(`/payroll/tracking/disputes/${id}`);
+    },
+    // ========== CRUD Endpoints for Refunds ==========
+    // GET /payroll/tracking/refunds
+    getAllRefunds: async (status, employeeId)=>{
+        const params = new URLSearchParams();
+        if (status) params.append('status', status);
+        if (employeeId) params.append('employeeId', employeeId);
+        const query = params.toString() ? `?${params.toString()}` : '';
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll/tracking/refunds${query}`);
+    },
+    // GET /payroll/tracking/refunds/:id
+    getRefundById: async (id)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get(`/payroll/tracking/refunds/${id}`);
+    },
+    // PUT /payroll/tracking/refunds/:id
+    updateRefund: async (id, data)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].put(`/payroll/tracking/refunds/${id}`, data);
+    },
+    // DELETE /payroll/tracking/refunds/:id
+    deleteRefund: async (id)=>{
+        return __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$services$2f$api$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].delete(`/payroll/tracking/refunds/${id}`);
     }
 };
 if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
