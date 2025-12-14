@@ -6,6 +6,7 @@
   "/dashboard/payroll-specialist/pay-types/page": "app/dashboard/payroll-specialist/pay-types/page.js",
   "/dashboard/payroll-specialist/payroll-policies/page": "app/dashboard/payroll-specialist/payroll-policies/page.js",
   "/dashboard/payroll-specialist/signing-bonuses/page": "app/dashboard/payroll-specialist/signing-bonuses/page.js",
+  "/dashboard/payroll-specialist/termination-benefits/page": "app/dashboard/payroll-specialist/termination-benefits/page.js",
   "/dashboard/payroll/page": "app/dashboard/payroll/page.js",
   "/page": "app/page.js"
 }
