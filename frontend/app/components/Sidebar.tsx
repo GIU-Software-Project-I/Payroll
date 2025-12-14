@@ -184,6 +184,26 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
           </svg>
         );
+      case 'gift':
+        return (
+          <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12v7a2 2 0 01-2 2H6a2 2 0 01-2-2v-7m16 0H4m16 0V9a2 2 0 00-2-2h-3.28a2 2 0 01-1.788-1.106L12 3l-1.932 2.894A2 2 0 018.28 7H5a2 2 0 00-2 2v3m9-3v12m0-12H7m5 0h4" />
+          </svg>
+        );
+      case 'award':
+        return (
+          <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5 2 1-4-3-3 4-.5L11 7l2 4.5 4 .5-3 3 1 4-5-2z" />
+            <circle cx="11" cy="7" r="3" strokeWidth={2} />
+          </svg>
+        );
+      case 'package':
+        return (
+          <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 16V8a2 2 0 00-1-1.732l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.732l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.27 7.96L12 13l8.73-5.04M12 22V13" />
+          </svg>
+        );
       case 'link':
         return (
           <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -213,7 +233,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
     if (hasChildren) {
       return (
-        <div key={item.href}>
+        <div key={`${item.href}-${item.label}`}>
           <button
             onClick={() => toggleExpand(item.label)}
             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
@@ -248,7 +268,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
     return (
       <Link
-        key={item.href}
+        key={`${item.href}-${item.label}`}
         href={item.href}
         onClick={onClose}
         className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${

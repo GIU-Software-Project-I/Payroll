@@ -251,8 +251,7 @@ export const payrollConfigurationService = {
   // ========== PAY GRADES ==========
   getPayGrades: async (status?: string) => {
     const queryString = status ? `?status=${encodeURIComponent(status)}` : '';
-    // Align with other list endpoints that use /all
-    const url = `/payroll-configuration-requirements/pay-grades/all${queryString}`;
+    const url = `/payroll-configuration-requirements/pay-grades${queryString}`;
     return apiService.get(url);
   },
 

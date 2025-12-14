@@ -51,7 +51,20 @@ export default function PayGradesPage() {
     setError(null);
     try {
       const res = await payrollConfigurationService.getPayGrades();
-      const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+      if ((res as any)?.error) {
+        throw new Error((res as any).error);
+      }
+
+      const data = (res as any)?.data;
+      const candidates = [
+        data?.payGrades,
+        data?.data?.payGrades,
+        data?.data,
+        data,
+        res,
+      ];
+
+      const list = candidates.find(Array.isArray) || [];
       setItems(list.map(normalize));
     } catch (e: any) {
       setError(e?.message ?? "Failed to load pay grades");
