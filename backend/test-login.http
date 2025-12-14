@@ -1,0 +1,41 @@
+### Debug: Check if user exists in DB
+POST http://localhost:8000/debug/check-user
+Content-Type: application/json
+
+{
+  "email": "payroll.specialist@company.payroll-specialist.com"
+}
+
+### Test Login Endpoint
+POST http://localhost:8000/auth/login
+Content-Type: application/json
+
+{
+  "email": "payroll.specialist@company.payroll-specialist.com",
+  "password": "RoleUser@1234"
+}
+
+### Test Invalid Credentials (for comparison)
+POST http://localhost:8000/auth/login
+Content-Type: application/json
+
+{
+  "email": "wrong@example.com",
+  "password": "wrongpassword"
+}
+
+### Test Missing Password
+POST http://localhost:8000/auth/login
+Content-Type: application/json
+
+{
+  "email": "payroll.specialist@company.payroll-specialist.com"
+}
+
+### Test Missing Email
+POST http://localhost:8000/auth/login
+Content-Type: application/json
+
+{
+  "password": "RoleUser@1234"
+}
