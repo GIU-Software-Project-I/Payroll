@@ -1,0 +1,11 @@
+{
+  "/(auth)/login/page": "app/(auth)/login/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/dashboard/department-employee/employee-profile/page": "app/dashboard/department-employee/employee-profile/page.js",
+  "/dashboard/department-employee/organization/page": "app/dashboard/department-employee/organization/page.js",
+  "/dashboard/department-employee/page": "app/dashboard/department-employee/page.js",
+  "/dashboard/department-employee/performance/page": "app/dashboard/department-employee/performance/page.js",
+  "/dashboard/hr-admin/page": "app/dashboard/hr-admin/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/page": "app/page.js"
+}

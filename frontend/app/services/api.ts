@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:500';
 
 if (typeof window !== 'undefined') {
   console.log('[API] Base URL:', API_BASE_URL);
@@ -101,4 +101,3 @@ class ApiService {
 
 export const api = new ApiService(API_BASE_URL);
 export default api;
-

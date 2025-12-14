@@ -1,0 +1,45 @@
+[00:00:07.113] Server  LOG      ✓ Ready in 5.4s
+[00:07:46.176] Server  LOG      ○ Compiling / ...
+[00:08:12.688] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:08:12.883] Browser LOG     [API] Base URL: http://localhost:5000
+[00:08:17.750] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[00:11:40.271] Browser ERROR   [API] Request failed: http://localhost:5000/auth/login
+[00:11:40.274] Browser ERROR   [API] Error: {}
+[00:11:49.040] Browser ERROR   [API] Request failed: http://localhost:5000/auth/login
+[00:11:49.040] Browser ERROR   [API] Error: {}
+[00:11:50.907] Browser ERROR   [API] Request failed: http://localhost:5000/auth/login
+[00:11:50.910] Browser ERROR   [API] Error: {}
+[00:11:51.662] Browser ERROR   [API] Request failed: http://localhost:5000/auth/login
+[00:11:51.663] Browser ERROR   [API] Error: {}
+[00:12:21.496] Browser ERROR   [API] Request failed: http://localhost:5000/auth/login
+[00:12:21.496] Browser ERROR   [API] Error: {}
+[00:13:06.475] Browser ERROR   [API] Request failed: http://localhost:5000/auth/login
+[00:13:06.475] Browser ERROR   [API] Error: {}
+[00:13:07.097] Browser ERROR   [API] Request failed: http://localhost:5000/auth/login
+[00:13:07.097] Browser ERROR   [API] Error: {}
+[00:18:08.266] Server  LOG        Reload env: .env.local
+[00:18:10.536] Server  LOG      ✓ Compiled in 1546ms
+[00:18:10.572] Server  WARN     ⚠ Fast Refresh had to perform a full reload when ./app/services/api.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+[00:18:12.700] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:18:14.017] Browser LOG     [API] Base URL: http://localhost:500
+[00:18:28.362] Server  WARN     ⚠ Fast Refresh had to perform a full reload when ./app/services/api.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+[00:18:28.447] Server  LOG      ✓ Compiled in 292ms
+[00:18:30.740] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:18:31.216] Browser LOG     [API] Base URL: http://localhost:500
+[00:19:04.732] Server  LOG      ○ Compiling /dashboard ...
+[00:19:09.442] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[00:41:36.191] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:41:36.448] Browser LOG     [API] Base URL: http://localhost:500
+[00:41:38.562] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:41:38.562] Browser LOG     [API] Base URL: http://localhost:500
+[00:41:39.531] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[00:41:42.594] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:41:42.594] Browser LOG     [API] Base URL: http://localhost:500
+[00:41:43.944] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:41:44.277] Browser LOG     [API] Base URL: http://localhost:500
+[00:41:44.594] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+[00:41:47.205] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:41:47.205] Browser LOG     [API] Base URL: http://localhost:500
+[00:41:48.675] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:41:48.675] Browser LOG     [API] Base URL: http://localhost:500
+[00:41:49.298] Browser WARN    Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
