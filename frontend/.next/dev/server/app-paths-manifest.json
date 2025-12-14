@@ -1,21 +1,10 @@
 {
   "/(auth)/login/page": "app/(auth)/login/page.js",
-  "/_not-found/page": "app/_not-found/page.js",
-  "/dashboard/department-employee/employee-profile/page": "app/dashboard/department-employee/employee-profile/page.js",
-  "/dashboard/hr-admin/change-requests/page": "app/dashboard/hr-admin/change-requests/page.js",
-  "/dashboard/hr-admin/page": "app/dashboard/hr-admin/page.js",
-  "/dashboard/hr-manager/insurance-brackets/page": "app/dashboard/hr-manager/insurance-brackets/page.js",
-  "/dashboard/hr-manager/page": "app/dashboard/hr-manager/page.js",
-  "/dashboard/page": "app/dashboard/page.js",
-  "/dashboard/payroll-manager/configuration-approval/page": "app/dashboard/payroll-manager/configuration-approval/page.js",
-  "/dashboard/payroll-manager/page": "app/dashboard/payroll-manager/page.js",
+  "/dashboard/payroll-specialist/allowances/page": "app/dashboard/payroll-specialist/allowances/page.js",
   "/dashboard/payroll-specialist/page": "app/dashboard/payroll-specialist/page.js",
   "/dashboard/payroll-specialist/pay-grades/page": "app/dashboard/payroll-specialist/pay-grades/page.js",
   "/dashboard/payroll-specialist/pay-types/page": "app/dashboard/payroll-specialist/pay-types/page.js",
   "/dashboard/payroll-specialist/payroll-policies/page": "app/dashboard/payroll-specialist/payroll-policies/page.js",
   "/dashboard/payroll/page": "app/dashboard/payroll/page.js",
-  "/dashboard/system-admin/company-settings/page": "app/dashboard/system-admin/company-settings/page.js",
-  "/dashboard/system-admin/data-backup/page": "app/dashboard/system-admin/data-backup/page.js",
-  "/dashboard/system-admin/page": "app/dashboard/system-admin/page.js",
   "/page": "app/page.js"
 }

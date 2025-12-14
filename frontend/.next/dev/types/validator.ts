@@ -216,15 +216,6 @@ type LayoutConfig<Route extends LayoutRoutes = LayoutRoutes> = {
   type __Unused = __Check
 }
 
-// Validate ../../../app/dashboard/hr-manager/Insurance-brackets/page.tsx
-{
-  type __IsExpected<Specific extends AppPageConfig<"/dashboard/hr-manager/Insurance-brackets">> = Specific
-  const handler = {} as typeof import("../../../app/dashboard/hr-manager/Insurance-brackets/page.js")
-  type __Check = __IsExpected<typeof handler>
-  // @ts-ignore
-  type __Unused = __Check
-}
-
 // Validate ../../../app/dashboard/hr-manager/disputes/page.tsx
 {
   type __IsExpected<Specific extends AppPageConfig<"/dashboard/hr-manager/disputes">> = Specific
@@ -328,6 +319,15 @@ type LayoutConfig<Route extends LayoutRoutes = LayoutRoutes> = {
 {
   type __IsExpected<Specific extends AppPageConfig<"/dashboard/payroll-manager">> = Specific
   const handler = {} as typeof import("../../../app/dashboard/payroll-manager/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../../app/dashboard/payroll-specialist/allowances/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/dashboard/payroll-specialist/allowances">> = Specific
+  const handler = {} as typeof import("../../../app/dashboard/payroll-specialist/allowances/page.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check
