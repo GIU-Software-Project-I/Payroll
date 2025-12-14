@@ -50,6 +50,7 @@ const DEPARTMENT_EMPLOYEE_NAV: NavItem[] = [
     icon: 'clock',
   },
   {
+<<<<<<< HEAD
     label: 'Payroll Tracking',
     href: '/dashboard/department-employee/payroll-tracking',
     icon: 'dollar-sign',
@@ -61,6 +62,11 @@ const DEPARTMENT_EMPLOYEE_NAV: NavItem[] = [
       { label: 'Tax Documents', href: '/dashboard/department-employee/payroll-tracking/tax-documents', icon: 'folder' },
       { label: 'Claims & Disputes', href: '/dashboard/department-employee/payroll-tracking/claims-disputes', icon: 'alert-circle' },
     ],
+=======
+    label: 'My Payslips',
+    href: '/dashboard/department-employee/payroll',
+    icon: 'dollar-sign',
+>>>>>>> 71220df0a6b65d5d8ca1695dd2e06044cc293006
   },
 ];
 
@@ -115,6 +121,14 @@ const HR_MANAGER_NAV: NavItem[] = [
     icon: 'home',
   },
   {
+<<<<<<< HEAD
+=======
+    label: 'Insurance Brackets',
+    href: '/dashboard/hr-manager/insurance-brackets',
+    icon: 'shield',
+  },
+  {
+>>>>>>> 71220df0a6b65d5d8ca1695dd2e06044cc293006
     label: 'Employees',
     href: '/dashboard/hr-manager/employee-management',
     icon: 'users',
@@ -288,16 +302,32 @@ const SYSTEM_ADMIN_NAV: NavItem[] = [
     ],
   },
   {
+<<<<<<< HEAD
+=======
+    label: 'Company Settings',
+    href: '/dashboard/system-admin/company-settings',
+    icon: 'settings',
+  },
+  {
+    label: 'Data Backup',
+    href: '/dashboard/system-admin/data-backup',
+    icon: 'database',
+  },
+  {
+>>>>>>> 71220df0a6b65d5d8ca1695dd2e06044cc293006
     label: 'User Management',
     href: '/dashboard/system-admin/users',
     icon: 'users',
   },
   {
+<<<<<<< HEAD
     label: 'System Config',
     href: '/dashboard/system-admin/config',
     icon: 'settings',
   },
   {
+=======
+>>>>>>> 71220df0a6b65d5d8ca1695dd2e06044cc293006
     label: 'Audit Logs',
     href: '/dashboard/system-admin/audit',
     icon: 'file-text',
@@ -319,6 +349,23 @@ const PAYROLL_SPECIALIST_NAV: NavItem[] = [
     icon: 'home',
   },
   {
+<<<<<<< HEAD
+=======
+    label: 'Configuration',
+    href: '/dashboard/payroll-specialist',
+    icon: 'settings',
+    children: [
+      { label: 'Pay Grades', href: '/dashboard/payroll-specialist/pay-grades', icon: 'briefcase' },
+      { label: 'Payroll Policies', href: '/dashboard/payroll-specialist/payroll-policies', icon: 'file-text' },
+      { label: 'Pay Types', href: '/dashboard/payroll-specialist/pay-types', icon: 'credit-card' },
+      { label: 'Allowances', href: '/dashboard/payroll-specialist/allowances', icon: 'gift' },
+      { label: 'Signing Bonuses', href: '/dashboard/payroll-specialist/signing-bonuses', icon: 'award' },
+      { label: 'Termination Benefits', href: '/dashboard/payroll-specialist/termination-benefits', icon: 'package' },
+      { label: 'Tax Rules', href: '/dashboard/payroll-specialist/tax-rules', icon: 'percent' },
+    ],
+  },
+  {
+>>>>>>> 71220df0a6b65d5d8ca1695dd2e06044cc293006
     label: 'Payroll Processing',
     href: '/dashboard/payroll-specialist/processing',
     icon: 'dollar-sign',
@@ -355,6 +402,14 @@ const PAYROLL_MANAGER_NAV: NavItem[] = [
     icon: 'home',
   },
   {
+<<<<<<< HEAD
+=======
+    label: 'Configuration Approval',
+    href: '/dashboard/payroll-manager/configuration-approval',
+    icon: 'check-circle',
+  },
+  {
+>>>>>>> 71220df0a6b65d5d8ca1695dd2e06044cc293006
     label: 'Payroll Overview',
     href: '/dashboard/payroll-manager/overview',
     icon: 'dollar-sign',
@@ -365,6 +420,7 @@ const PAYROLL_MANAGER_NAV: NavItem[] = [
     icon: 'play-circle',
   },
   {
+<<<<<<< HEAD
     label: 'Approvals',
     href: '/dashboard/payroll-manager/approvals',
     icon: 'check-circle',
@@ -375,6 +431,8 @@ const PAYROLL_MANAGER_NAV: NavItem[] = [
     icon: 'settings',
   },
   {
+=======
+>>>>>>> 71220df0a6b65d5d8ca1695dd2e06044cc293006
     label: 'Reports',
     href: '/dashboard/payroll-manager/reports',
     icon: 'file-text',

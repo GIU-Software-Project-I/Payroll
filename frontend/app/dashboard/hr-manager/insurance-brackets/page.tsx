@@ -30,7 +30,7 @@ type EditState = {
   employerRate: string;
 } | null;
 
-export default function HRManagerPage() {
+export default function InsuranceBracketsPage() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -175,21 +175,11 @@ export default function HRManagerPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Insurance Brackets Management</h1>
+        <h1 className="text-3xl font-bold text-slate-900">Insurance Brackets Review and Update</h1>
         <p className="text-slate-600 mt-2">Review, update, and approve insurance bracket configurations</p>
       </div>
 
-      {/* Info Banner */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
-        <p className="font-medium">📋 REQ-PY-22: HR Manager - Insurance Bracket Authority</p>
-        <ul className="list-disc ml-5 mt-2 space-y-1">
-          <li><strong>Exclusive approval authority</strong> for all insurance bracket configurations</li>
-          <li>Review and approve/reject insurance brackets created by specialists</li>
-          <li>Edit brackets to update when policies or regulations change</li>
-          <li>Delete brackets when necessary to maintain compliance</li>
-          <li>Ensure payroll calculations remain accurate and compliant</li>
-        </ul>
-      </div>
+ 
 
       {/* Messages */}
       {error && (
@@ -414,4 +404,3 @@ export default function HRManagerPage() {
     </div>
   );
 }
-
