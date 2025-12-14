@@ -184,8 +184,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
           </svg>
         );
-<<<<<<< HEAD
-=======
       case 'gift':
         return (
           <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -206,7 +204,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.27 7.96L12 13l8.73-5.04M12 22V13" />
           </svg>
         );
->>>>>>> 71220df0a6b65d5d8ca1695dd2e06044cc293006
       case 'link':
         return (
           <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -236,11 +233,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
     if (hasChildren) {
       return (
-<<<<<<< HEAD
-        <div key={item.href}>
-=======
         <div key={`${item.href}-${item.label}`}>
->>>>>>> 71220df0a6b65d5d8ca1695dd2e06044cc293006
           <button
             onClick={() => toggleExpand(item.label)}
             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
@@ -275,11 +268,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
     return (
       <Link
-<<<<<<< HEAD
-        key={item.href}
-=======
         key={`${item.href}-${item.label}`}
->>>>>>> 71220df0a6b65d5d8ca1695dd2e06044cc293006
         href={item.href}
         onClick={onClose}
         className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
