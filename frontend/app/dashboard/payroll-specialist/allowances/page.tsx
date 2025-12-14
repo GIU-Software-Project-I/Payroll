@@ -422,51 +422,51 @@ export default function AllowancesPage() {
         </div>
       )}
 
-      {/* Filters */}
-      <div className="bg-white rounded-lg border border-slate-200 p-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Search Allowances
-            </label>
-            <input
-              type="text"
-              name="search"
-              value={filters.search}
-              onChange={handleFilterChange}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Search by name..."
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Status Filter
-            </label>
-            <select
-              name="status"
-              value={filters.status}
-              onChange={handleFilterChange}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">All Statuses</option>
-              <option value="draft">Draft</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
-            </select>
-          </div>
-          <div className="flex items-end">
-            <button
-              onClick={() => {
-                setFilters({ search: '', status: '' });
-                setPagination(prev => ({ ...prev, page: 1 }));
-              }}
-              className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium w-full"
-            >
-              Clear Filters
-            </button>
-          </div>
-        </div>
-      </div>
+  {/* Filters */}
+<div className="bg-white rounded-lg border border-slate-200 p-4">
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div>
+      <label className="block text-sm font-medium text-slate-700 mb-2">
+        Search Allowances
+      </label>
+      <input
+        type="text"
+        name="search"
+        value={filters.search}
+        onChange={handleFilterChange}
+        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+        placeholder="Search by name..."
+      />
+    </div>
+    <div>
+      <label className="block text-sm font-medium text-slate-700 mb-2">
+        Status Filter
+      </label>
+      <select
+        name="status"
+        value={filters.status}
+        onChange={handleFilterChange}
+        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+      >
+        <option value="">All Statuses</option>
+        <option value="draft">Draft</option>
+        <option value="approved">Approved</option>
+        <option value="rejected">Rejected</option>
+      </select>
+    </div>
+    <div className="flex items-end">
+      <button
+        onClick={() => {
+          setFilters({ search: '', status: '' });
+          setPagination(prev => ({ ...prev, page: 1 }));
+        }}
+        className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium w-full"
+      >
+        Clear Filters
+      </button>
+    </div>
+  </div>
+</div>
 
       {/* Allowances Table */}
       <div className="bg-white rounded-lg border border-slate-200 shadow-sm">
@@ -627,94 +627,94 @@ export default function AllowancesPage() {
         </ul>
       </div>
 
-      {/* Create Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-slate-200">
-              <h3 className="text-xl font-bold text-slate-900">
-                Create New Allowance
-              </h3>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Allowance Name *
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                  placeholder="e.g., Transportation Allowance"
-                  list="allowance-suggestions"
-                />
-                <datalist id="allowance-suggestions">
-                  {commonAllowanceTypes.map((option) => (
-                    <option key={option.value} value={option.value} />
-                  ))}
-                </datalist>
-                <p className="text-xs text-slate-500 mt-1">
-                  Enter a unique name for this allowance. Common types include Housing, Transportation, Meal, etc.
-                </p>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Amount (USD) *
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="text-slate-500">$</span>
-                  </div>
-                  <input
-                    type="number"
-                    name="amount"
-                    value={formData.amount}
-                    onChange={handleChange}
-                    className="w-full pl-8 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                    placeholder="e.g., 500"
-                    step="0.01"
-                    min="0"
-                  />
-                </div>
-                <p className="text-xs text-slate-500 mt-1">
-                  Monthly amount for this allowance. Must be 0 or greater.
-                </p>
-              </div>
-              
-              <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                <p className="text-sm font-medium text-amber-800 mb-2">ℹ️ Important Notes</p>
-                <ul className="text-xs text-amber-700 space-y-1">
-                  <li>• Allowance will be created as <span className="font-semibold">DRAFT</span></li>
-                  <li>• Payroll Manager approval is required before use</li>
-                  <li>• Duplicate names are not allowed</li>
-                  <li>• Only you can delete your draft allowances</li>
-                </ul>
-              </div>
-            </div>
-            <div className="p-6 border-t border-slate-200 flex justify-end gap-3">
-              <button
-                onClick={() => setShowCreateModal(false)}
-                disabled={actionLoading}
-                className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateAllowance}
-                disabled={actionLoading}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-400 transition-colors font-medium"
-              >
-                {actionLoading ? 'Creating...' : 'Create Allowance'}
-              </button>
-            </div>
-          </div>
+  {/* Create Modal */}
+{showCreateModal && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <div className="p-6 border-b border-slate-200">
+        <h3 className="text-xl font-bold text-slate-900">
+          Create New Allowance
+        </h3>
+      </div>
+      <div className="p-6 space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">
+            Allowance Name *
+          </label>
+          <input
+            type="text"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+            required
+            placeholder="e.g., Transportation Allowance"
+            list="allowance-suggestions"
+          />
+          <datalist id="allowance-suggestions">
+            {commonAllowanceTypes.map((option) => (
+              <option key={option.value} value={option.value} />
+            ))}
+          </datalist>
+          <p className="text-xs text-slate-500 mt-1">
+            Enter a unique name for this allowance. Common types include Housing, Transportation, Meal, etc.
+          </p>
         </div>
-      )}
+        
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">
+            Amount (USD) *
+          </label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <span className="text-slate-500">$</span>
+            </div>
+            <input
+              type="number"
+              name="amount"
+              value={formData.amount}
+              onChange={handleChange}
+              className="w-full pl-8 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+              required
+              placeholder="e.g., 500"
+              step="0.01"
+              min="0"
+            />
+          </div>
+          <p className="text-xs text-slate-500 mt-1">
+            Monthly amount for this allowance. Must be 0 or greater.
+          </p>
+        </div>
+        
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <p className="text-sm font-medium text-amber-800 mb-2">ℹ️ Important Notes</p>
+          <ul className="text-xs text-amber-700 space-y-1">
+            <li>• Allowance will be created as <span className="font-semibold">DRAFT</span></li>
+            <li>• Payroll Manager approval is required before use</li>
+            <li>• Duplicate names are not allowed</li>
+            <li>• Only you can delete your draft allowances</li>
+          </ul>
+        </div>
+      </div>
+      <div className="p-6 border-t border-slate-200 flex justify-end gap-3">
+        <button
+          onClick={() => setShowCreateModal(false)}
+          disabled={actionLoading}
+          className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors font-medium"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleCreateAllowance}
+          disabled={actionLoading}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-400 transition-colors font-medium"
+        >
+          {actionLoading ? 'Creating...' : 'Create Allowance'}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* View Modal */}
       {showViewModal && selectedAllowance && (
