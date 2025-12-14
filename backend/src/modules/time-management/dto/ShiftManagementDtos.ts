@@ -209,6 +209,11 @@ export class BulkAssignTarget {
     employeeId?: string;
     departmentId?: string;
     positionId?: string;
+    @ApiPropertyOptional({
+        description: 'Optional schedule rule for this specific target (overrides bulk scheduleRuleId if provided)',
+        example: '507f1f77bcf86cd799439040'
+    })
+    scheduleRuleId?: string;
 }
 
 export class BulkAssignShiftDto {
