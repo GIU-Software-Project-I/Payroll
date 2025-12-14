@@ -107,6 +107,11 @@ const HR_MANAGER_NAV: NavItem[] = [
     icon: 'home',
   },
   {
+    label: 'Insurance Brackets',
+    href: '/dashboard/hr-manager/insurance-brackets',
+    icon: 'shield',
+  },
+  {
     label: 'Employees',
     href: '/dashboard/hr-manager/employee-management',
     icon: 'users',
@@ -280,14 +285,19 @@ const SYSTEM_ADMIN_NAV: NavItem[] = [
     ],
   },
   {
+    label: 'Company Settings',
+    href: '/dashboard/system-admin/company-settings',
+    icon: 'settings',
+  },
+  {
+    label: 'Data Backup',
+    href: '/dashboard/system-admin/data-backup',
+    icon: 'database',
+  },
+  {
     label: 'User Management',
     href: '/dashboard/system-admin/users',
     icon: 'users',
-  },
-  {
-    label: 'System Config',
-    href: '/dashboard/system-admin/config',
-    icon: 'settings',
   },
   {
     label: 'Audit Logs',
@@ -311,14 +321,18 @@ const PAYROLL_SPECIALIST_NAV: NavItem[] = [
     icon: 'home',
   },
   {
-    label: 'Payroll Policies',
-    href: '/dashboard/payroll-specialist/payroll-policies',
-    icon: 'dollar-sign'
-  },
-  {
-    label: 'Pay Types',
-    href: '/dashboard/payroll-specialist/pay-types',
-    icon: 'dollar-sign'
+    label: 'Configuration',
+    href: '/dashboard/payroll-specialist',
+    icon: 'settings',
+    children: [
+      { label: 'Pay Grades', href: '/dashboard/payroll-specialist/pay-grades', icon: 'briefcase' },
+      { label: 'Payroll Policies', href: '/dashboard/payroll-specialist/payroll-policies', icon: 'file-text' },
+      { label: 'Pay Types', href: '/dashboard/payroll-specialist/pay-types', icon: 'credit-card' },
+      { label: 'Allowances', href: '/dashboard/payroll-specialist/allowances', icon: 'gift' },
+      { label: 'Signing Bonuses', href: '/dashboard/payroll-specialist/signing-bonuses', icon: 'award' },
+      { label: 'Termination Benefits', href: '/dashboard/payroll-specialist/termination-benefits', icon: 'package' },
+      { label: 'Tax Rules', href: '/dashboard/payroll-specialist/tax-rules', icon: 'percent' },
+    ],
   },
   {
     label: 'Payroll Processing',
@@ -357,6 +371,11 @@ const PAYROLL_MANAGER_NAV: NavItem[] = [
     icon: 'home',
   },
   {
+    label: 'Configuration Approval',
+    href: '/dashboard/payroll-manager/configuration-approval',
+    icon: 'check-circle',
+  },
+  {
     label: 'Payroll Overview',
     href: '/dashboard/payroll-manager/overview',
     icon: 'dollar-sign',
@@ -365,16 +384,6 @@ const PAYROLL_MANAGER_NAV: NavItem[] = [
     label: 'Payroll Runs',
     href: '/dashboard/payroll-manager/runs',
     icon: 'play-circle',
-  },
-  {
-    label: 'Approvals',
-    href: '/dashboard/payroll-manager/approvals',
-    icon: 'check-circle',
-  },
-  {
-    label: 'Configuration',
-    href: '/dashboard/payroll-manager/config',
-    icon: 'settings',
   },
   {
     label: 'Reports',
