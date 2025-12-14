@@ -311,6 +311,16 @@ const PAYROLL_SPECIALIST_NAV: NavItem[] = [
     icon: 'home',
   },
   {
+    label: 'Payroll Policies',
+    href: '/dashboard/payroll-specialist/payroll-policies',
+    icon: 'dollar-sign'
+  },
+  {
+    label: 'Pay Types',
+    href: '/dashboard/payroll-specialist/pay-types',
+    icon: 'dollar-sign'
+  },
+  {
     label: 'Payroll Processing',
     href: '/dashboard/payroll-specialist/processing',
     icon: 'dollar-sign',
