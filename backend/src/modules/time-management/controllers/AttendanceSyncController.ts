@@ -288,6 +288,27 @@ export class AttendanceSyncController {
 
         return this.syncService.countAbsencesByDateRange(employeeId, parsedStartDate, parsedEndDate);
     }
+
+    @Post('time-requests/escalate')
+    @ApiOperation({
+        summary: 'Manually escalate pending time requests before payroll cut-off',
+        description: 'Triggers manual escalation of pending leave requests and time exceptions that have not been reviewed before the monthly payroll cut-off date'
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Time requests escalated successfully',
+        schema: {
+            type: 'object',
+            properties: {
+                leaveEscalations: { type: 'number', description: 'Number of leave requests escalated' },
+                exceptionEscalations: { type: 'number', description: 'Number of time exceptions escalated' },
+            }
+        }
+    })
+    @ApiResponse({ status: 500, description: 'Escalation failed' })
+    async escalateTimeRequests() {
+        return await this.syncService.manuallyEscalateTimeRequests();
+    }
 }
 
 

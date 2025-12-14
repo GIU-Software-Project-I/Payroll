@@ -26,7 +26,8 @@ export class ShiftExpiryScheduler {
      * CRON: default '0 8 * * *' (08:00 server time).
      * Automatically finds HR/Admin users to notify - no configuration required!
      */
-    @Cron('0 8 * * *')
+    // Run daily at 02:00 server time to notify about expiring shift assignments
+    @Cron('16 20 * * *')  // At 19:38 (7:38 PM) every day
     async runDaily() {
         try {
             const daysEnv = Number(process.env.SHIFT_EXPIRY_NOTIFICATION_DAYS ?? 7);
@@ -60,55 +61,40 @@ export class ShiftExpiryScheduler {
 
             for (const a of assignments) {
                 try {
+                    // Skip this assignment if any notification for it already exists (prevents duplicates across runs)
+                    const anyNotif = await this.notificationModel.findOne({ message: { $regex: a._id.toString() } }).lean();
+                    if (anyNotif) {
+                        this.logger.debug(`Skipping assignment ${a._id} because notification already exists`);
+                        continue;
+                    }
                     const expiryDate = a.endDate?.toISOString().slice(0,10);
 
-                    // Notify all HR/Admin users
-                    for (const hrUser of hrUsers) {
-                        // prevent duplicate notification for the same assignment on the same day
-                        const alreadyNotified = await this.notificationModel.findOne({
-                            to: hrUser.employeeProfileId,
-                            type: 'SHIFT_EXPIRY',
-                            message: { $regex: a._id.toString() },
-                            createdAt: { $gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()) },
-                        }).lean();
-
-                        if (!alreadyNotified) {
-                            const msg = `Shift assignment ${a._id} for employee ${a.employeeId} expires on ${expiryDate}. Please review for renewal or reassignment.`;
-
-                            await this.notificationModel.create({
-                                to: hrUser.employeeProfileId,
-                                type: 'SHIFT_EXPIRY',
-                                message: msg,
-                            } as any);
-
-                            notificationCount++;
-                            this.logger.debug(`Notified HR user ${hrUser.workEmail} about expiring assignment ${a._id}`);
-                        }
+                    // Create only one notification per assignment: choose primary recipient
+                    let primaryRecipient: any = null;
+                    let primaryType = 'SHIFT_EXPIRY';
+                    if (hrUsers && hrUsers.length > 0 && hrUsers[0].employeeProfileId) {
+                        primaryRecipient = hrUsers[0].employeeProfileId;
+                        primaryType = 'SHIFT_EXPIRY';
+                    } else if (a.employeeId) {
+                        primaryRecipient = a.employeeId;
+                        primaryType = 'SHIFT_EXPIRY_EMPLOYEE';
                     }
 
-                    // Notify the employee
-                    if (a.employeeId) {
+                    if (primaryRecipient) {
+                        const msg = `Shift assignment ${a._id} for employee ${a.employeeId} expires on ${expiryDate}. Please review for renewal or reassignment.`;
                         try {
-                            const alreadyNotified = await this.notificationModel.findOne({
-                                to: a.employeeId,
-                                type: 'SHIFT_EXPIRY_EMPLOYEE',
-                                message: { $regex: a._id.toString() },
-                                createdAt: { $gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()) },
-                            }).lean();
-
-                            if (!alreadyNotified) {
-                                await this.notificationModel.create({
-                                    to: a.employeeId,
-                                    type: 'SHIFT_EXPIRY_EMPLOYEE',
-                                    message: `Your shift assignment expires on ${expiryDate}. Please contact HR if renewal is needed.`,
-                                } as any);
-
-                                notificationCount++;
-                                this.logger.debug(`Notified employee ${a.employeeId} about their expiring assignment`);
-                            }
+                            await this.notificationModel.create({
+                                to: primaryRecipient,
+                                type: primaryType,
+                                message: msg,
+                            } as any);
+                            notificationCount++;
+                            this.logger.debug(`Created single notification for assignment ${a._id} to recipient ${primaryRecipient}`);
                         } catch (e) {
-                            this.logger.warn('Failed to create notification for employee', e);
+                            this.logger.warn('Failed to create notification for primary recipient', e);
                         }
+                    } else {
+                        this.logger.warn(`No recipient found for assignment ${a._id}; skipping notification`);
                     }
                 } catch (e) {
                     this.logger.warn('Failed processing an expiring assignment', e);
