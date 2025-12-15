@@ -330,7 +330,7 @@ const PAYROLL_SPECIALIST_NAV: NavItem[] = [
   },
   {
     label: 'Configuration',
-    href: '/dashboard/payroll-specialist',
+    href: '/dashboard/payroll-specialist/pay-grades',
     icon: 'settings',
     children: [
       { label: 'Pay Grades', href: '/dashboard/payroll-specialist/pay-grades', icon: 'briefcase' },
@@ -343,24 +343,16 @@ const PAYROLL_SPECIALIST_NAV: NavItem[] = [
     ],
   },
   {
-    label: 'Payroll Processing',
-    href: '/dashboard/payroll-specialist/processing',
-    icon: 'dollar-sign',
-  },
-  {
     label: 'Payroll Runs',
     href: '/dashboard/payroll-specialist/runs',
     icon: 'play-circle',
-  },
-  {
-    label: 'Employee Payroll',
-    href: '/dashboard/payroll-specialist/employees',
-    icon: 'users',
-  },
-  {
-    label: 'Reports',
-    href: '/dashboard/payroll-specialist/reports',
-    icon: 'file-text',
+    children: [
+      { label: 'All Runs', href: '/dashboard/payroll-specialist/runs', icon: 'file-text' },
+      { label: 'Create New Run', href: '/dashboard/payroll-specialist/runs?tab=create', icon: 'plus' },
+      { label: 'Signing Bonuses', href: '/dashboard/payroll-specialist/runs?tab=bonuses', icon: 'award' },
+      { label: 'Termination Benefits', href: '/dashboard/payroll-specialist/runs?tab=termination', icon: 'package' },
+      { label: 'View Payslips', href: '/dashboard/payroll-specialist/runs?tab=payslips', icon: 'file' },
+    ],
   },
   {
     label: 'My Profile',
@@ -379,24 +371,20 @@ const PAYROLL_MANAGER_NAV: NavItem[] = [
     icon: 'home',
   },
   {
-    label: 'Configuration Approval',
-    href: '/dashboard/payroll-manager/configuration-approval',
-    icon: 'check-circle',
-  },
-  {
-    label: 'Payroll Overview',
-    href: '/dashboard/payroll-manager/overview',
-    icon: 'dollar-sign',
-  },
-  {
     label: 'Payroll Runs',
     href: '/dashboard/payroll-manager/runs',
     icon: 'play-circle',
+    children: [
+      { label: 'All Runs', href: '/dashboard/payroll-manager/runs', icon: 'file-text' },
+      { label: 'Pending Approval', href: '/dashboard/payroll-manager/runs?filter=pending', icon: 'clock' },
+      { label: 'Approved', href: '/dashboard/payroll-manager/runs?filter=approved', icon: 'check-circle' },
+      { label: 'Frozen', href: '/dashboard/payroll-manager/runs?filter=frozen', icon: 'lock' },
+    ],
   },
   {
-    label: 'Reports',
-    href: '/dashboard/payroll-manager/reports',
-    icon: 'file-text',
+    label: 'Configuration Approval',
+    href: '/dashboard/payroll-manager/configuration-approval',
+    icon: 'check-circle',
   },
   {
     label: 'My Profile',
@@ -459,22 +447,21 @@ const FINANCE_STAFF_NAV: NavItem[] = [
     label: 'Payroll Runs',
     href: '/dashboard/finance-staff/runs',
     icon: 'play-circle',
+    children: [
+      { label: 'All Runs', href: '/dashboard/finance-staff/runs', icon: 'file-text' },
+      { label: 'Pending Approval', href: '/dashboard/finance-staff/runs?filter=pending', icon: 'clock' },
+      { label: 'Generate Payslips', href: '/dashboard/finance-staff/runs?filter=approved', icon: 'file' },
+    ],
   },
   {
-    label: 'Payroll Reports',
-    href: '/dashboard/finance-staff/payroll-reports',
-    icon: 'dollar-sign',
+    label: 'My Profile',
+    href: '/dashboard/department-employee/employee-profile',
+    icon: 'user',
   },
-  {
-    label: 'Budget',
-    href: '/dashboard/finance-staff/budget',
-    icon: 'trending-up',
-  },
-  {
-    label: 'Expenses',
-    href: '/dashboard/finance-staff/expenses',
-    icon: 'credit-card',
-  },
+];
+
+// Keep the rest for backward compatibility - these are placeholder nav items
+const FINANCE_STAFF_PLACEHOLDER: NavItem[] = [
   {
     label: 'Reports',
     href: '/dashboard/finance-staff/reports',

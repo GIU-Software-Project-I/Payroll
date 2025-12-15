@@ -4,6 +4,38 @@
    HRMS DESIGN SYSTEM - SLATE + INDIGO THEME
    ============================================ */
 
+/* Custom Scrollbar Styles */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Ensure scroll containers show scrollbars */
+.overflow-auto,
+.overflow-y-auto,
+.overflow-x-auto {
+  scrollbar-gutter: stable;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #0f172a;
@@ -281,6 +313,47 @@ body {
 
 .animate-slideDown {
   animation: slideDown 0.3s ease-out;
+}
+
+/* Scrollable container utilities */
+.scroll-container {
+  overflow: auto;
+  max-height: 100%;
+}
+
+.scroll-container-sm {
+  overflow: auto;
+  max-height: 300px;
+}
+
+.scroll-container-md {
+  overflow: auto;
+  max-height: 500px;
+}
+
+.scroll-container-lg {
+  overflow: auto;
+  max-height: 700px;
+}
+
+/* Card with scroll */
+.card-scroll {
+  @apply bg-white rounded-lg border border-slate-200 shadow-sm;
+  overflow: auto;
+  max-height: 500px;
+}
+
+/* Table scroll wrapper */
+.table-scroll {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 600px;
+}
+
+/* Modal scroll content */
+.modal-scroll {
+  overflow-y: auto;
+  max-height: calc(100vh - 200px);
 }
 
 @media (prefers-color-scheme: dark) {

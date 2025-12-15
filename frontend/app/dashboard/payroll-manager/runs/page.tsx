@@ -1,10 +1,36 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { payrollExecutionService } from '@/app/services/payroll-execution';
+
+// Helper function to format payrollPeriod object to string
+const formatPayrollPeriod = (period: any): string => {
+  if (!period) return 'No Period';
+  if (typeof period === 'string') {
+    // Try to parse as date
+    const d = new Date(period);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+    }
+    return period;
+  }
+  if (typeof period === 'object') {
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const month = period.month !== undefined ? monthNames[period.month] || `Month ${period.month}` : '';
+    const year = period.year || '';
+    if (month && year) return `${month} ${year}`;
+    if (period.startDate && period.endDate) {
+      return `${new Date(period.startDate).toLocaleDateString()} - ${new Date(period.endDate).toLocaleDateString()}`;
+    }
+    return 'No Period';
+  }
+  return String(period);
+};
 
 interface PayrollRun {
   _id: string;
+  runId?: string;
   payrollPeriod?: string;
   entity?: string;
   status?: string;
@@ -15,9 +41,15 @@ interface PayrollRun {
   totalDeductions?: number;
   totalAllowances?: number;
   totalBaseSalary?: number;
+  totalOvertime?: number;
+  totalPenalties?: number;
+  totalTaxDeductions?: number;
+  totalInsuranceDeductions?: number;
   irregularitiesCount?: number;
   irregularities?: string[];
   createdAt?: string;
+  processedAt?: string;
+  paymentStatus?: string;
   approvedByManager?: boolean;
   approvedByManagerAt?: string;
   approvedByFinance?: boolean;
@@ -54,6 +86,9 @@ interface EmployeePayrollDetail {
 }
 
 export default function PayrollManagerRunsPage() {
+  const searchParams = useSearchParams();
+  const filterFromUrl = searchParams.get('filter');
+  
   const [runs, setRuns] = useState<PayrollRun[]>([]);
   const [selectedRun, setSelectedRun] = useState<PayrollRun | null>(null);
   const [runDetails, setRunDetails] = useState<any>(null);
@@ -64,7 +99,23 @@ export default function PayrollManagerRunsPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   
-  const [activeTab, setActiveTab] = useState<'pending' | 'all' | 'frozen'>('pending');
+  // Map URL filter to tab
+  const getInitialTab = (): 'pending' | 'all' | 'frozen' | 'approved' => {
+    if (filterFromUrl === 'pending') return 'pending';
+    if (filterFromUrl === 'frozen') return 'frozen';
+    if (filterFromUrl === 'approved') return 'approved' as any;
+    return 'all';
+  };
+  const [activeTab, setActiveTab] = useState<'pending' | 'all' | 'frozen'>(getInitialTab() as 'pending' | 'all' | 'frozen');
+
+  // Sync tab with URL changes
+  useEffect(() => {
+    if (filterFromUrl) {
+      if (filterFromUrl === 'pending') setActiveTab('pending');
+      else if (filterFromUrl === 'frozen') setActiveTab('frozen');
+      else setActiveTab('all');
+    }
+  }, [filterFromUrl]);
 
   useEffect(() => {
     fetchRuns();
@@ -158,7 +209,7 @@ export default function PayrollManagerRunsPage() {
   };
 
   const handleFreeze = async (id: string) => {
-    const reason = prompt('Enter reason for freezing this payroll (REQ-PY-7):');
+    const reason = prompt('Enter reason for freezing this payroll:');
     if (!reason) return;
     setLoading(true);
     setError('');
@@ -179,7 +230,7 @@ export default function PayrollManagerRunsPage() {
   };
 
   const handleUnfreeze = async (id: string) => {
-    const reason = prompt('Enter reason for unfreezing this payroll (REQ-PY-19):');
+    const reason = prompt('Enter reason for unfreezing this payroll:');
     if (!reason) return;
     setLoading(true);
     setError('');
@@ -229,7 +280,7 @@ export default function PayrollManagerRunsPage() {
       <div className="max-w-7xl mx-auto">
         <h1 className="text-2xl font-bold text-black mb-2">Payroll Manager - Review & Approval</h1>
         <p className="text-gray-600 mb-6">
-          Review payroll runs, approve, and manage freeze/unfreeze (REQ-PY-20, REQ-PY-22, REQ-PY-7, REQ-PY-19)
+          Review payroll runs, approve, and manage freeze/unfreeze operations
         </p>
 
         {/* Messages */}
@@ -339,7 +390,7 @@ export default function PayrollManagerRunsPage() {
                 <div className="flex justify-between items-start mb-3">
                   <div>
                     <span className="font-semibold text-black text-lg">
-                      {run.payrollPeriod ? new Date(run.payrollPeriod).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }) : 'No Period'}
+                      {formatPayrollPeriod(run.payrollPeriod)}
                     </span>
                     <p className="text-sm text-gray-500">{run.entity || 'Default Entity'}</p>
                   </div>
@@ -395,10 +446,10 @@ export default function PayrollManagerRunsPage() {
                 <div className="flex justify-between items-start">
                   <div>
                     <h2 className="text-xl font-bold text-black">
-                      Payroll Run Review (REQ-PY-20)
+                      Payroll Run Review
                     </h2>
                     <p className="text-gray-500">
-                      {selectedRun.payrollPeriod ? new Date(selectedRun.payrollPeriod).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }) : 'No Period'}
+                      {formatPayrollPeriod(selectedRun.payrollPeriod)}
                       {' - '}{selectedRun.entity || 'Default Entity'}
                     </p>
                   </div>
@@ -459,7 +510,7 @@ export default function PayrollManagerRunsPage() {
                     <p className="text-2xl font-bold text-green-700">{formatCurrency(selectedRun.totalnetpay)}</p>
                   </div>
                   <div className="bg-orange-50 p-4 rounded-lg">
-                    <span className="text-gray-500 text-sm">Irregularities (REQ-PY-5)</span>
+                    <span className="text-gray-500 text-sm">Irregularities</span>
                     <p className={`text-2xl font-bold ${(selectedRun.irregularitiesCount || 0) > 0 ? 'text-orange-600' : 'text-black'}`}>
                       {selectedRun.irregularitiesCount || 0}
                     </p>
@@ -494,7 +545,7 @@ export default function PayrollManagerRunsPage() {
 
                 {/* Approval Timeline */}
                 <div className="border-t pt-4">
-                  <h3 className="font-semibold text-black mb-3">Approval Workflow (BR 30)</h3>
+                  <h3 className="font-semibold text-black mb-3">Approval Workflow</h3>
                   <div className="flex gap-4">
                     <div className={`flex-1 p-4 rounded-lg border-2 ${
                       selectedRun.approvedByManager 
@@ -539,7 +590,7 @@ export default function PayrollManagerRunsPage() {
                 {/* Employee Payroll Details */}
                 {employeeDetails.length > 0 && (
                   <div className="border-t pt-4">
-                    <h3 className="font-semibold text-black mb-3">Employee Payroll Details (REQ-PY-6)</h3>
+                    <h3 className="font-semibold text-black mb-3">Employee Payroll Details</h3>
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead className="bg-gray-100">
@@ -583,15 +634,115 @@ export default function PayrollManagerRunsPage() {
                   </div>
                 )}
 
-                {/* Raw Details */}
-                {runDetails && !employeeDetails.length && (
-                  <div className="border-t pt-4">
-                    <h3 className="font-semibold text-black mb-2">Run Details</h3>
-                    <pre className="bg-gray-100 p-3 rounded-lg text-xs overflow-auto max-h-40 text-black">
-                      {JSON.stringify(runDetails, null, 2)}
-                    </pre>
+                {/* Run Details - Always show comprehensive info */}
+                <div className="border-t pt-4">
+                  <h3 className="font-semibold text-black mb-2">Run Details</h3>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                      {/* Run ID */}
+                      {(runDetails?.runId || selectedRun.runId) && (
+                        <>
+                          <span className="text-gray-600">Run ID:</span>
+                          <span className="font-medium text-black">{runDetails?.runId || selectedRun.runId}</span>
+                        </>
+                      )}
+                      
+                      {/* Period */}
+                      <span className="text-gray-600">Period:</span>
+                      <span className="font-medium text-black">
+                        {formatPayrollPeriod(runDetails?.payrollPeriod || selectedRun.payrollPeriod)}
+                      </span>
+                      
+                      {/* Entity/Department */}
+                      <span className="text-gray-600">Department:</span>
+                      <span className="font-medium text-black">{runDetails?.entity || selectedRun.entity || '-'}</span>
+                      
+                      {/* Employees */}
+                      <span className="text-gray-600">Employees:</span>
+                      <span className="font-medium text-black">{runDetails?.employees || runDetails?.totalEmployees || selectedRun.employees || 0}</span>
+                      
+                      {/* Status */}
+                      <span className="text-gray-600">Status:</span>
+                      <span className="font-medium text-black capitalize">{selectedRun.status || '-'}</span>
+                      
+                      {/* Payment Status */}
+                      {(runDetails?.paymentStatus || selectedRun.paymentStatus) && (
+                        <>
+                          <span className="text-gray-600">Payment Status:</span>
+                          <span className="font-medium text-black capitalize">{runDetails?.paymentStatus || selectedRun.paymentStatus}</span>
+                        </>
+                      )}
+                      
+                      {/* Base Salary Total */}
+                      {(runDetails?.totalBaseSalary !== undefined) && (
+                        <>
+                          <span className="text-gray-600">Base Salaries:</span>
+                          <span className="font-medium text-black">EGP {runDetails?.totalBaseSalary?.toLocaleString() || '0'}</span>
+                        </>
+                      )}
+                      
+                      {/* Allowances */}
+                      {(runDetails?.totalAllowances !== undefined) && (
+                        <>
+                          <span className="text-gray-600">Total Allowances:</span>
+                          <span className="font-medium text-green-700">+EGP {runDetails?.totalAllowances?.toLocaleString() || '0'}</span>
+                        </>
+                      )}
+                      
+                      {/* Overtime */}
+                      {(runDetails?.totalOvertime !== undefined && runDetails?.totalOvertime > 0) && (
+                        <>
+                          <span className="text-gray-600">Overtime:</span>
+                          <span className="font-medium text-blue-700">+EGP {runDetails?.totalOvertime?.toLocaleString() || '0'}</span>
+                        </>
+                      )}
+                      
+                      {/* Penalties */}
+                      {(runDetails?.totalPenalties !== undefined && runDetails?.totalPenalties > 0) && (
+                        <>
+                          <span className="text-gray-600">Penalties:</span>
+                          <span className="font-medium text-red-600">-EGP {runDetails?.totalPenalties?.toLocaleString() || '0'}</span>
+                        </>
+                      )}
+                      
+                      {/* Created Date */}
+                      <span className="text-gray-600">Created:</span>
+                      <span className="font-medium text-black">
+                        {new Date(runDetails?.createdAt || selectedRun.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                      </span>
+                      
+                      {/* Processed Date */}
+                      {(runDetails?.processedAt || selectedRun.processedAt) && (
+                        <>
+                          <span className="text-gray-600">Processed:</span>
+                          <span className="font-medium text-black">
+                            {new Date(runDetails?.processedAt || selectedRun.processedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                          </span>
+                        </>
+                      )}
+                      
+                      {/* Manager Approval Date */}
+                      {(runDetails?.managerApprovalDate || selectedRun.managerApprovalDate) && (
+                        <>
+                          <span className="text-gray-600">Manager Approved:</span>
+                          <span className="font-medium text-green-700">
+                            {new Date(runDetails?.managerApprovalDate || selectedRun.managerApprovalDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                          </span>
+                        </>
+                      )}
+                      
+                      {/* Finance Approval Date */}
+                      {(runDetails?.financeApprovalDate || selectedRun.financeApprovalDate) && (
+                        <>
+                          <span className="text-gray-600">Finance Approved:</span>
+                          <span className="font-medium text-green-700">
+                            {new Date(runDetails?.financeApprovalDate || selectedRun.financeApprovalDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                          </span>
+                        </>
+                      )}
+                    </div>
                   </div>
-                )}
+                </div>
 
                 {/* Action Buttons */}
                 <div className="border-t pt-4 space-y-3">
@@ -602,7 +753,7 @@ export default function PayrollManagerRunsPage() {
                       disabled={loading}
                       className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 disabled:opacity-50"
                     >
-                      ✓ Approve Payroll Run (REQ-PY-22)
+                      ✓ Approve Payroll Run
                     </button>
                   )}
                   
@@ -620,24 +771,33 @@ export default function PayrollManagerRunsPage() {
 
                   {/* Freeze/Unfreeze buttons - only show for appropriate statuses */}
                   {(selectedRun.status === 'approved' || selectedRun.status === 'locked' || selectedRun.status === 'unlocked') && (
-                    <div className="flex gap-3">
-                      {selectedRun.status === 'approved' || selectedRun.status === 'unlocked' ? (
-                        <button
-                          onClick={() => handleFreeze(selectedRun._id)}
-                          disabled={loading}
-                          className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
-                        >
-                          🔒 Freeze Payroll (REQ-PY-7)
-                        </button>
-                      ) : selectedRun.status === 'locked' ? (
-                        <button
-                          onClick={() => handleUnfreeze(selectedRun._id)}
-                          disabled={loading}
-                          className="flex-1 bg-orange-600 text-white py-3 rounded-lg font-medium hover:bg-orange-700 disabled:opacity-50"
-                        >
-                          🔓 Unfreeze Payroll (REQ-PY-19)
-                        </button>
-                      ) : null}
+                    <div className="space-y-3">
+                      {selectedRun.status === 'unlocked' && (
+                        <div className="text-sm text-purple-700 bg-purple-50 p-3 rounded-lg border border-purple-200">
+                          <strong>🔓 Unlocked for Corrections</strong>
+                          <p className="mt-1">This run is unlocked. The Payroll Specialist can make edits and resubmit for the full approval cycle (Manager → Finance → Lock).</p>
+                          <p className="mt-1 text-xs">You can also directly re-freeze if no changes are needed.</p>
+                        </div>
+                      )}
+                      <div className="flex gap-3">
+                        {selectedRun.status === 'approved' || selectedRun.status === 'unlocked' ? (
+                          <button
+                            onClick={() => handleFreeze(selectedRun._id)}
+                            disabled={loading}
+                            className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
+                          >
+                            🔒 {selectedRun.status === 'unlocked' ? 'Re-Freeze Payroll' : 'Freeze Payroll'}
+                          </button>
+                        ) : selectedRun.status === 'locked' ? (
+                          <button
+                            onClick={() => handleUnfreeze(selectedRun._id)}
+                            disabled={loading}
+                            className="flex-1 bg-orange-600 text-white py-3 rounded-lg font-medium hover:bg-orange-700 disabled:opacity-50"
+                          >
+                            🔓 Unfreeze for Corrections
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
                   )}
                 </div>

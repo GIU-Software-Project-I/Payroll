@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Teammates working on these - exclude from this branch
+/app/dashboard/finance-staff/page.tsx
+/app/dashboard/finance-staff/runs/page.tsx
+/app/dashboard/payroll-specialist/page.tsx
+/app/dashboard/payroll-specialist/runs/page.tsx

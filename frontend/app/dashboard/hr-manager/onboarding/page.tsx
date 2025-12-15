@@ -193,7 +193,7 @@ export default function OnboardingDashboard() {
                         Contract: {contractIdDisplay}
                       </p>
                       <p className="text-sm text-gray-500">
-                        Created: {new Date(onboarding.createdAt).toLocaleDateString()}
+                        Created: {onboarding.createdAt ? new Date(onboarding.createdAt).toLocaleDateString() : 'N/A'}
                       </p>
                     </div>
                     <div className="text-right">

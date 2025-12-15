@@ -160,7 +160,7 @@ export default function SystemAdminOffboardingPage() {
                         </p>
                       )}
                       <p className="text-sm text-gray-500">
-                        Approved: {new Date(request.updatedAt).toLocaleDateString()}
+                        Approved: {request.updatedAt ? new Date(request.updatedAt).toLocaleDateString() : 'N/A'}
                       </p>
                     </div>
                     <button

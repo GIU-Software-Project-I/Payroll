@@ -30,13 +30,23 @@ export default function PayrollManagerPage() {
       const data = (res?.data || res) as any;
       const items = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
       
-      const pending = items.filter((r: any) => 
-        (r.status === 'under_review' || r.status === 'processing') && !r.approvedByManager
-      ).length;
+      // Normalize status for comparison
+      const normalizeStatus = (s: string) => (s || '').toLowerCase().replace(/\s+/g, '_');
       
-      const totalPay = items.reduce((sum: number, r: any) => sum + (r.totalnetpay || 0), 0);
+      // Pending manager approval: status is 'under_review' (submitted by specialist for manager review)
+      const pending = items.filter((r: any) => {
+        const status = normalizeStatus(r.status);
+        return status === 'under_review';
+      }).length;
+      
+      const totalPay = items.reduce((sum: number, r: any) => sum + (r.totalnetpay || r.totalNetPay || 0), 0);
       const totalExceptions = items.reduce((sum: number, r: any) => sum + (r.exceptions || 0), 0);
-      const frozen = items.filter((r: any) => r.frozen).length;
+      
+      // Frozen/Locked runs: status is 'locked' or 'frozen', or has frozen=true
+      const frozen = items.filter((r: any) => {
+        const status = (r.status || '').toLowerCase();
+        return status === 'locked' || status === 'frozen' || r.frozen === true;
+      }).length;
       
       setStats({
         pendingApprovals: pending,
@@ -59,7 +69,7 @@ export default function PayrollManagerPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-slate-900">Payroll Manager Dashboard</h1>
-        <p className="text-slate-800 mt-2">Review, approve, and manage payroll runs (REQ-PY-20, REQ-PY-22)</p>
+        <p className="text-slate-800 mt-2">Review, approve, and manage payroll runs</p>
       </div>
 
       {/* Quick Stats */}
@@ -93,14 +103,14 @@ export default function PayrollManagerPage() {
       {/* Quick Actions */}
       <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
         <h2 className="text-lg font-semibold text-slate-900 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <Link 
             href="/dashboard/payroll-manager/runs"
             className="p-4 border border-slate-200 rounded-lg hover:border-green-300 hover:bg-green-50 transition-colors text-center block"
           >
             <div className="text-2xl mb-2">✅</div>
             <p className="font-medium text-slate-900">Approve Payroll</p>
-            <p className="text-xs text-slate-500 mt-1">REQ-PY-22</p>
+            <p className="text-xs text-slate-500 mt-1">Review & approve runs</p>
           </Link>
           <Link 
             href="/dashboard/payroll-manager/runs"
@@ -108,15 +118,15 @@ export default function PayrollManagerPage() {
           >
             <div className="text-2xl mb-2">🔒</div>
             <p className="font-medium text-slate-900">Freeze/Unfreeze</p>
-            <p className="text-xs text-slate-500 mt-1">REQ-PY-7, REQ-PY-19</p>
+            <p className="text-xs text-slate-500 mt-1">Lock finalized payroll</p>
           </Link>
           <Link 
-            href="/dashboard/payroll-manager/runs"
+            href="/dashboard/payroll-manager/irregularities"
             className="p-4 border border-slate-200 rounded-lg hover:border-orange-300 hover:bg-orange-50 transition-colors text-center block"
           >
             <div className="text-2xl mb-2">⚠️</div>
-            <p className="font-medium text-slate-900">View Exceptions</p>
-            <p className="text-xs text-slate-500 mt-1">REQ-PY-5</p>
+            <p className="font-medium text-slate-900">Irregularities</p>
+            <p className="text-xs text-slate-500 mt-1">Resolve escalated issues</p>
           </Link>
           <Link 
             href="/dashboard/payroll-manager/runs"
@@ -124,20 +134,28 @@ export default function PayrollManagerPage() {
           >
             <div className="text-2xl mb-2">📋</div>
             <p className="font-medium text-slate-900">All Runs</p>
-            <p className="text-xs text-slate-500 mt-1">Review & Manage</p>
+            <p className="text-xs text-slate-500 mt-1">View history</p>
+          </Link>
+          <Link 
+            href="/dashboard/payroll-manager/irregularities"
+            className="p-4 border border-slate-200 rounded-lg hover:border-red-300 hover:bg-red-50 transition-colors text-center block"
+          >
+            <div className="text-2xl mb-2">🔴</div>
+            <p className="font-medium text-slate-900">Critical Issues</p>
+            <p className="text-xs text-slate-500 mt-1">Negative pay & spikes</p>
           </Link>
         </div>
       </div>
 
-      {/* Requirements Info */}
+      {/* Responsibilities Info */}
       <div className="bg-blue-50 rounded-lg border border-blue-200 p-6">
-        <h2 className="text-lg font-semibold text-blue-900 mb-3">Manager Responsibilities</h2>
+        <h2 className="text-lg font-semibold text-blue-900 mb-3">Your Responsibilities</h2>
         <ul className="text-sm text-blue-800 space-y-2">
-          <li><strong>REQ-PY-20:</strong> Review payroll drafts and employee-by-employee calculations</li>
-          <li><strong>REQ-PY-22:</strong> Approve payroll after resolving any exceptions</li>
-          <li><strong>REQ-PY-7:</strong> Freeze finalized payroll to prevent changes</li>
-          <li><strong>REQ-PY-19:</strong> Unfreeze payroll with documented reason when necessary</li>
-          <li><strong>BR 30:</strong> Multi-step approval: Specialist → Manager → Finance</li>
+          <li>• Review payroll drafts and verify employee-by-employee calculations</li>
+          <li>• Approve payroll runs after resolving any exceptions or discrepancies</li>
+          <li>• Freeze finalized payroll to prevent unauthorized changes</li>
+          <li>• Unfreeze payroll with documented reason when corrections are needed</li>
+          <li>• Ensure multi-step approval workflow: Specialist → Manager → Finance</li>
         </ul>
       </div>
     </div>

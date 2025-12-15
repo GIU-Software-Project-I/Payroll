@@ -125,5 +125,31 @@ export const payrollExecutionService = {
   getPayslip: async (payslipId: string) => {
     return apiService.get(`/payroll-execution/payslips/${payslipId}`);
   },
+
+  // REQ-PY-5/REQ-PY-20: Irregularity management
+  listIrregularities: async (params?: { status?: string; payrollRunId?: string; severity?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.status) q.set('status', params.status);
+    if (params?.payrollRunId) q.set('payrollRunId', params.payrollRunId);
+    if (params?.severity) q.set('severity', params.severity);
+    const suffix = q.toString() ? `?${q.toString()}` : '';
+    return apiService.get(`/payroll-execution/irregularities/list${suffix}`);
+  },
+
+  getIrregularity: async (id: string) => {
+    return apiService.get(`/payroll-execution/irregularities/${id}`);
+  },
+
+  getPayrollRunIrregularities: async (runId: string) => {
+    return apiService.get(`/payroll-execution/${runId}/irregularities`);
+  },
+
+  escalateIrregularity: async (id: string, reason: string) => {
+    return apiService.post(`/payroll-execution/irregularities/${id}/escalate`, { reason });
+  },
+
+  resolveIrregularity: async (id: string, data: { action: string; notes: string; adjustedValue?: number }) => {
+    return apiService.post(`/payroll-execution/irregularities/${id}/resolve`, data);
+  },
 };
 

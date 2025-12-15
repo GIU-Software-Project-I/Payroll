@@ -116,8 +116,9 @@ export class PayrollExecutionService {
             throw new BadRequestException('Approver employee not found');
         }
 
-        // 3. Validate approver is ACTIVE
-        if (approver.status !== 'ACTIVE') {
+        // 3. Validate approver is ACTIVE (case-insensitive check)
+        const approverStatus = (approver.status || '').toLowerCase();
+        if (approverStatus !== 'active') {
             throw new BadRequestException('Approver must be an active employee');
         }
 
@@ -240,6 +241,32 @@ export class PayrollExecutionService {
             .lean()
             .exec();
 
+        // Enrich items with department names from entityId
+        const db = this.db;
+        if (db && items.length > 0) {
+            // Get unique entityIds that need resolution
+            const entityIds = items
+                .filter((item: any) => item.entityId && !item.entity)
+                .map((item: any) => item.entityId);
+            
+            if (entityIds.length > 0) {
+                // Fetch department names
+                const departments = await db.collection('departments').find(
+                    { _id: { $in: entityIds } },
+                    { projection: { _id: 1, name: 1 } }
+                ).toArray();
+                
+                const deptMap = new Map(departments.map((d: any) => [d._id.toString(), d.name]));
+                
+                // Populate entity field for items missing it
+                for (const item of items as any[]) {
+                    if (item.entityId && !item.entity) {
+                        item.entity = deptMap.get(item.entityId.toString()) || 'Unknown Department';
+                    }
+                }
+            }
+        }
+
         return {
             data: items,
             total,
@@ -311,8 +338,8 @@ export class PayrollExecutionService {
         return employee;
     }
 
-    // Helper to check for duplicate payroll period
-    private async validateNoDuplicatePayrollPeriod(payrollPeriod: Date, excludeRunId?: string): Promise<void> {
+    // Helper to check for duplicate payroll period for the same department
+    private async validateNoDuplicatePayrollPeriod(payrollPeriod: Date, entityId?: string, excludeRunId?: string): Promise<void> {
         const periodStart = new Date(payrollPeriod);
         periodStart.setDate(1);
         periodStart.setHours(0, 0, 0, 0);
@@ -327,13 +354,18 @@ export class PayrollExecutionService {
             status: { $nin: [PayRollStatus.REJECTED] } // Allow creating new run if previous was rejected
         };
 
+        // Only check within the same department if entityId is provided
+        if (entityId) {
+            query.entityId = new mongoose.Types.ObjectId(entityId);
+        }
+
         if (excludeRunId) {
             query._id = { $ne: new mongoose.Types.ObjectId(excludeRunId) };
         }
 
         const existing = await this.payrollRunsModel.findOne(query).lean().exec();
         if (existing) {
-            throw new ConflictException(`Payroll run already exists for period ${payrollPeriod.toISOString().substring(0, 7)}`);
+            throw new ConflictException(`Payroll run already exists for this department for period ${payrollPeriod.toISOString().substring(0, 7)}`);
         }
     }
 
@@ -377,7 +409,8 @@ export class PayrollExecutionService {
             [PayRollStatus.PENDING_FINANCE_APPROVAL]: [PayRollStatus.APPROVED, PayRollStatus.REJECTED],
             [PayRollStatus.APPROVED]: [PayRollStatus.LOCKED],
             [PayRollStatus.LOCKED]: [PayRollStatus.UNLOCKED],
-            [PayRollStatus.UNLOCKED]: [PayRollStatus.LOCKED],
+            // UNLOCKED can: go back to UNDER_REVIEW for full re-approval cycle, or direct re-lock if no changes needed
+            [PayRollStatus.UNLOCKED]: [PayRollStatus.UNDER_REVIEW, PayRollStatus.LOCKED],
             [PayRollStatus.REJECTED]: [PayRollStatus.DRAFT] // Can re-edit after rejection
         };
 
@@ -396,14 +429,51 @@ export class PayrollExecutionService {
         
         const bonuses = await this.employeeSigningBonusModel.find(filter).lean().exec();
         
-        // Populate employee names from employee_profiles collection
+        // Populate employee names - employeeId might reference employee_system_roles or employee_profiles
         const db = this.db;
         if (db && bonuses.length > 0) {
             const employeeIds = bonuses.map(b => b.employeeId);
-            const employees = await db.collection('employee_profiles').find(
+            
+            // First try to find in employee_profiles directly
+            let employees = await db.collection('employee_profiles').find(
                 { _id: { $in: employeeIds } },
                 { projection: { _id: 1, firstName: 1, lastName: 1, fullName: 1 } }
             ).toArray();
+            
+            // If not found, employeeId might be from employee_system_roles
+            if (employees.length < bonuses.length) {
+                const systemRoles = await db.collection('employee_system_roles').find(
+                    { _id: { $in: employeeIds } },
+                    { projection: { _id: 1, employeeProfileId: 1, workEmail: 1 } }
+                ).toArray();
+                
+                // Get linked profile IDs
+                const profileIds = systemRoles.filter(sr => sr.employeeProfileId).map(sr => sr.employeeProfileId);
+                
+                if (profileIds.length > 0) {
+                    const linkedProfiles = await db.collection('employee_profiles').find(
+                        { _id: { $in: profileIds } },
+                        { projection: { _id: 1, firstName: 1, lastName: 1, fullName: 1 } }
+                    ).toArray();
+                    
+                    // Map system role ID to profile name
+                    const roleToProfile = new Map(systemRoles.map(sr => [sr._id.toString(), sr.employeeProfileId?.toString()]));
+                    const profileMap = new Map(linkedProfiles.map(p => [p._id.toString(), p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim()]));
+                    
+                    // Add mapped names for system role IDs
+                    systemRoles.forEach(sr => {
+                        const profileId = roleToProfile.get(sr._id.toString());
+                        const name = profileId ? profileMap.get(profileId) : null;
+                        if (name) {
+                            employees.push({ _id: sr._id, fullName: name });
+                        } else if (sr.workEmail) {
+                            // Fallback to email name
+                            const emailName = sr.workEmail.split('@')[0].replace(/[._]/g, ' ');
+                            employees.push({ _id: sr._id, fullName: emailName.split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') });
+                        }
+                    });
+                }
+            }
             
             const employeeMap = new Map(employees.map(e => [
                 e._id.toString(), 
@@ -587,14 +657,51 @@ export class PayrollExecutionService {
         
         const benefits = await this.employeeTerminationResignationModel.find(filter).lean().exec();
         
-        // Populate employee names from employee_profiles collection
+        // Populate employee names - employeeId might reference employee_system_roles or employee_profiles
         const db = this.db;
         if (db && benefits.length > 0) {
             const employeeIds = benefits.map(b => b.employeeId);
-            const employees = await db.collection('employee_profiles').find(
+            
+            // First try to find in employee_profiles directly
+            let employees = await db.collection('employee_profiles').find(
                 { _id: { $in: employeeIds } },
                 { projection: { _id: 1, firstName: 1, lastName: 1, fullName: 1 } }
             ).toArray();
+            
+            // If not found, employeeId might be from employee_system_roles
+            if (employees.length < benefits.length) {
+                const systemRoles = await db.collection('employee_system_roles').find(
+                    { _id: { $in: employeeIds } },
+                    { projection: { _id: 1, employeeProfileId: 1, workEmail: 1 } }
+                ).toArray();
+                
+                // Get linked profile IDs
+                const profileIds = systemRoles.filter(sr => sr.employeeProfileId).map(sr => sr.employeeProfileId);
+                
+                if (profileIds.length > 0) {
+                    const linkedProfiles = await db.collection('employee_profiles').find(
+                        { _id: { $in: profileIds } },
+                        { projection: { _id: 1, firstName: 1, lastName: 1, fullName: 1 } }
+                    ).toArray();
+                    
+                    // Map system role ID to profile name
+                    const roleToProfile = new Map(systemRoles.map(sr => [sr._id.toString(), sr.employeeProfileId?.toString()]));
+                    const profileMap = new Map(linkedProfiles.map(p => [p._id.toString(), p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim()]));
+                    
+                    // Add mapped names for system role IDs
+                    systemRoles.forEach(sr => {
+                        const profileId = roleToProfile.get(sr._id.toString());
+                        const name = profileId ? profileMap.get(profileId) : null;
+                        if (name) {
+                            employees.push({ _id: sr._id, fullName: name });
+                        } else if (sr.workEmail) {
+                            // Fallback to email name
+                            const emailName = sr.workEmail.split('@')[0].replace(/[._]/g, ' ');
+                            employees.push({ _id: sr._id, fullName: emailName.split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') });
+                        }
+                    });
+                }
+            }
             
             const employeeMap = new Map(employees.map(e => [
                 e._id.toString(), 
@@ -800,8 +907,8 @@ export class PayrollExecutionService {
             throw new BadRequestException('Cannot create payroll for future period');
         }
 
-        // Check for duplicate payroll period (BR 63)
-        await this.validateNoDuplicatePayrollPeriod(payrollPeriod);
+        // Check for duplicate payroll period (BR 63) - per department
+        await this.validateNoDuplicatePayrollPeriod(payrollPeriod, dto.entityId);
 
         // Generate unique run ID
         const runId = dto.runId || `PR-${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${Date.now()}`;
@@ -845,10 +952,12 @@ export class PayrollExecutionService {
             throw new NotFoundException(`Payroll run ${id} not found`);
         }
 
-        // Validate can only edit DRAFT or REJECTED runs
-        if (existing.status !== PayRollStatus.DRAFT && existing.status !== PayRollStatus.REJECTED) {
+        // Validate can only edit DRAFT, REJECTED, or UNLOCKED runs
+        if (existing.status !== PayRollStatus.DRAFT && 
+            existing.status !== PayRollStatus.REJECTED && 
+            existing.status !== PayRollStatus.UNLOCKED) {
             throw new BadRequestException(
-                `Cannot edit payroll in status ${existing.status}. Only DRAFT or REJECTED runs can be edited.`
+                `Cannot edit payroll in status ${existing.status}. Only DRAFT, REJECTED, or UNLOCKED runs can be edited.`
             );
         }
 
@@ -861,8 +970,9 @@ export class PayrollExecutionService {
                 throw new BadRequestException('Invalid payrollPeriod; expected a valid date');
             }
             
-            // Check for duplicate period (excluding current run)
-            await this.validateNoDuplicatePayrollPeriod(newPeriod, id);
+            // Check for duplicate period (excluding current run) - per department
+            const entityId = dto.entityId || existing.entityId?.toString();
+            await this.validateNoDuplicatePayrollPeriod(newPeriod, entityId, id);
             update.payrollPeriod = newPeriod;
         }
         
@@ -871,8 +981,8 @@ export class PayrollExecutionService {
         if (dto.exceptions !== undefined) update.exceptions = dto.exceptions;
         if (dto.totalnetpay !== undefined) update.totalnetpay = dto.totalnetpay;
         
-        // If previously rejected, reset to draft and clear rejection reason
-        if (existing.status === PayRollStatus.REJECTED) {
+        // If previously rejected or unlocked, reset to draft and clear rejection reason
+        if (existing.status === PayRollStatus.REJECTED || existing.status === PayRollStatus.UNLOCKED) {
             update.status = PayRollStatus.DRAFT;
             update.rejectionReason = null;
         }
@@ -2065,6 +2175,12 @@ export class PayrollExecutionService {
         }
 
         // BR 17: Create payslip with detailed breakdown
+        // Prepare insurance data with calculated amount (required by schema)
+        const insuranceData = matchingBracket ? [{
+            ...matchingBracket,
+            amount: insuranceAmount, // Add the calculated amount (required field)
+        }] : [];
+
         await this.paySlipModel.create({
             employeeId: employeeId,
             payrollRunId: runDoc._id,
@@ -2077,7 +2193,7 @@ export class PayrollExecutionService {
             },
             deductionsDetails: {
                 taxes: taxRules,
-                insurances: matchingBracket ? [matchingBracket] : [],
+                insurances: insuranceData,
                 penalties: penaltiesList.length > 0 ? {
                     employeeId: employeeId,
                     penalties: penaltiesList
@@ -2184,5 +2300,315 @@ export class PayrollExecutionService {
             console.error('Error auto-processing termination benefits:', err);
             // Don't fail the whole payroll for this
         }
+    }
+
+    // ============ IRREGULARITY MANAGEMENT (REQ-PY-5, REQ-PY-20) ============
+
+    /**
+     * REQ-PY-5/REQ-PY-20: List irregularities with optional filters
+     */
+    async listIrregularities(
+        filters: { status?: string; payrollRunId?: string; severity?: string },
+        userId?: string
+    ) {
+        const db = this.db;
+        if (!db) throw new BadRequestException('Database connection not available');
+
+        const query: any = {};
+        
+        if (filters.status) {
+            query.status = filters.status;
+        }
+        if (filters.payrollRunId) {
+            query.payrollRunId = new mongoose.Types.ObjectId(filters.payrollRunId);
+        }
+        if (filters.severity) {
+            query.severity = filters.severity;
+        }
+
+        const irregularities = await db.collection('irregularities')
+            .find(query)
+            .sort({ flaggedAt: -1 })
+            .toArray();
+
+        // Enrich with payroll run info
+        const enriched = await Promise.all(irregularities.map(async (irr: any) => {
+            let payrollRun: any = null;
+            if (irr.payrollRunId) {
+                payrollRun = await db.collection('payrollruns').findOne(
+                    { _id: irr.payrollRunId },
+                    { projection: { entity: 1, payrollPeriod: 1, status: 1, runId: 1 } }
+                );
+            }
+            return {
+                ...irr,
+                payrollRun: payrollRun ? {
+                    entity: payrollRun.entity,
+                    period: payrollRun.payrollPeriod,
+                    status: payrollRun.status,
+                    runId: payrollRun.runId,
+                } : null,
+            };
+        }));
+
+        return {
+            data: enriched,
+            total: enriched.length,
+            pending: enriched.filter((i: any) => i.status === 'pending').length,
+            escalated: enriched.filter((i: any) => i.status === 'escalated').length,
+            resolved: enriched.filter((i: any) => i.status === 'resolved').length,
+        };
+    }
+
+    /**
+     * Get a single irregularity by ID
+     */
+    async getIrregularity(id: string, userId?: string) {
+        const db = this.db;
+        if (!db) throw new BadRequestException('Database connection not available');
+
+        const irregularity = await db.collection('irregularities').findOne({
+            _id: new mongoose.Types.ObjectId(id)
+        });
+
+        if (!irregularity) {
+            throw new NotFoundException('Irregularity not found');
+        }
+
+        // Get related payroll run
+        let payrollRun = null;
+        if (irregularity.payrollRunId) {
+            payrollRun = await db.collection('payrollruns').findOne({
+                _id: irregularity.payrollRunId
+            });
+        }
+
+        // Get employee details
+        let employee = null;
+        if (irregularity.employeeId) {
+            employee = await db.collection('employees').findOne(
+                { _id: irregularity.employeeId },
+                { projection: { firstName: 1, lastName: 1, employeeId: 1, department: 1, position: 1 } }
+            );
+        }
+
+        return {
+            ...irregularity,
+            payrollRun,
+            employee,
+        };
+    }
+
+    /**
+     * REQ-PY-20: Escalate an irregularity to manager
+     */
+    async escalateIrregularity(id: string, reason: string, userId?: string) {
+        const db = this.db;
+        if (!db) throw new BadRequestException('Database connection not available');
+
+        const irregularity = await db.collection('irregularities').findOne({
+            _id: new mongoose.Types.ObjectId(id)
+        });
+
+        if (!irregularity) {
+            throw new NotFoundException('Irregularity not found');
+        }
+
+        if (irregularity.status === 'resolved') {
+            throw new BadRequestException('Cannot escalate a resolved irregularity');
+        }
+
+        // Find a payroll manager to escalate to
+        let managerId: any = null;
+        if (this.employeeSystemRoleModel) {
+            const manager: any = await this.employeeSystemRoleModel.findOne({
+                role: { $in: [SystemRole.PAYROLL_MANAGER, SystemRole.HR_MANAGER] },
+                isActive: true
+            }).lean().exec();
+            if (manager) {
+                managerId = manager.userId || manager._id;
+            }
+        }
+
+        const result = await db.collection('irregularities').updateOne(
+            { _id: new mongoose.Types.ObjectId(id) },
+            {
+                $set: {
+                    status: 'escalated',
+                    escalatedAt: new Date(),
+                    escalatedBy: userId ? new mongoose.Types.ObjectId(userId) : null,
+                    escalatedTo: managerId,
+                    escalationReason: reason,
+                    updatedAt: new Date(),
+                }
+            }
+        );
+
+        return {
+            success: result.modifiedCount > 0,
+            message: 'Irregularity escalated to manager',
+            irregularityId: id,
+            escalatedTo: managerId,
+        };
+    }
+
+    /**
+     * REQ-PY-20: Resolve an escalated irregularity (Manager only)
+     */
+    async resolveIrregularity(
+        id: string, 
+        resolution: { action: string; notes: string; adjustedValue?: number },
+        userId?: string
+    ) {
+        const db = this.db;
+        if (!db) throw new BadRequestException('Database connection not available');
+
+        const irregularity = await db.collection('irregularities').findOne({
+            _id: new mongoose.Types.ObjectId(id)
+        });
+
+        if (!irregularity) {
+            throw new NotFoundException('Irregularity not found');
+        }
+
+        if (irregularity.status === 'resolved') {
+            throw new BadRequestException('Irregularity is already resolved');
+        }
+
+        const validActions = ['approved', 'rejected', 'excluded', 'adjusted'];
+        if (!validActions.includes(resolution.action)) {
+            throw new BadRequestException(`Invalid action. Must be one of: ${validActions.join(', ')}`);
+        }
+
+        // Update irregularity status
+        const updateResult = await db.collection('irregularities').updateOne(
+            { _id: new mongoose.Types.ObjectId(id) },
+            {
+                $set: {
+                    status: 'resolved',
+                    resolution: {
+                        action: resolution.action,
+                        notes: resolution.notes,
+                        adjustedValue: resolution.adjustedValue,
+                        resolvedBy: userId ? new mongoose.Types.ObjectId(userId) : null,
+                        resolvedAt: new Date(),
+                    },
+                    updatedAt: new Date(),
+                }
+            }
+        );
+
+        // If the irregularity was for a specific payroll run, update the run's irregularity count
+        if (irregularity.payrollRunId) {
+            // Count remaining unresolved irregularities for this run
+            const unresolvedCount = await db.collection('irregularities').countDocuments({
+                payrollRunId: irregularity.payrollRunId,
+                status: { $ne: 'resolved' }
+            });
+
+            // Update payroll run irregularities count
+            await db.collection('payrollruns').updateOne(
+                { _id: irregularity.payrollRunId },
+                {
+                    $set: {
+                        unresolvedIrregularities: unresolvedCount,
+                        updatedAt: new Date(),
+                    }
+                }
+            );
+
+            // If action is 'adjusted', update the payroll item value
+            if (resolution.action === 'adjusted' && resolution.adjustedValue !== undefined && irregularity.employeeId) {
+                // Update the specific field based on irregularity type
+                const updateField = this.getAdjustmentField(irregularity.type);
+                if (updateField) {
+                    await db.collection('payrollitems').updateOne(
+                        { 
+                            payrollRunId: irregularity.payrollRunId,
+                            employeeId: irregularity.employeeId
+                        },
+                        {
+                            $set: {
+                                [updateField]: resolution.adjustedValue,
+                                updatedAt: new Date(),
+                            }
+                        }
+                    );
+                }
+            }
+
+            // If action is 'excluded', mark the employee's payroll item as excluded
+            if (resolution.action === 'excluded' && irregularity.employeeId) {
+                await db.collection('payrollitems').updateOne(
+                    { 
+                        payrollRunId: irregularity.payrollRunId,
+                        employeeId: irregularity.employeeId
+                    },
+                    {
+                        $set: {
+                            excluded: true,
+                            excludedReason: resolution.notes,
+                            excludedAt: new Date(),
+                            excludedBy: userId ? new mongoose.Types.ObjectId(userId) : null,
+                            updatedAt: new Date(),
+                        }
+                    }
+                );
+
+                // Recalculate payroll run totals
+                await this.recalculatePayrollRunTotals(irregularity.payrollRunId);
+            }
+        }
+
+        return {
+            success: updateResult.modifiedCount > 0,
+            message: `Irregularity ${resolution.action}`,
+            irregularityId: id,
+            action: resolution.action,
+        };
+    }
+
+    /**
+     * Get the field name to adjust based on irregularity type
+     */
+    private getAdjustmentField(irregularityType: string): string | null {
+        const fieldMap: Record<string, string> = {
+            'overtime_spike': 'overtime',
+            'commission_spike': 'commission',
+            'salary_spike': 'baseSalary',
+            'penalty_deduction': 'deductions.penalties',
+            'loan_deduction': 'deductions.loan',
+            'absence_deduction': 'deductions.absence',
+        };
+        return fieldMap[irregularityType] || null;
+    }
+
+    /**
+     * Recalculate payroll run totals after exclusion
+     */
+    private async recalculatePayrollRunTotals(payrollRunId: mongoose.Types.ObjectId) {
+        const db = this.db;
+        if (!db) return;
+
+        // Get all non-excluded items for this run
+        const items = await db.collection('payrollitems').find({
+            payrollRunId: payrollRunId,
+            excluded: { $ne: true }
+        }).toArray();
+
+        const totals = {
+            employees: items.length,
+            totalBaseSalary: items.reduce((sum: number, i: any) => sum + (i.baseSalary || 0), 0),
+            totalAllowances: items.reduce((sum: number, i: any) => sum + (i.allowances || 0), 0),
+            totalOvertime: items.reduce((sum: number, i: any) => sum + (i.overtime || 0), 0),
+            totalGrossPay: items.reduce((sum: number, i: any) => sum + (i.grossPay || 0), 0),
+            totalDeductions: items.reduce((sum: number, i: any) => sum + (i.totalDeductions || 0), 0),
+            totalnetpay: items.reduce((sum: number, i: any) => sum + (i.netPay || 0), 0),
+        };
+
+        await db.collection('payrollruns').updateOne(
+            { _id: payrollRunId },
+            { $set: { ...totals, updatedAt: new Date() } }
+        );
     }
 }

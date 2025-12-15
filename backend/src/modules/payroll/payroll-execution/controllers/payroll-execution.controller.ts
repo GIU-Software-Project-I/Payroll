@@ -358,4 +358,86 @@ export class PayrollExecutionController {
 		const result = await this.payrollService.listPayslipsByRun(id, user?.sub);
 		return result;
 	}
+
+	// ============ IRREGULARITY MANAGEMENT ENDPOINTS (REQ-PY-20) ============
+
+	@UseGuards(AuthenticationGuard, AuthorizationGuard)
+	@Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.HR_MANAGER, SystemRole.FINANCE_STAFF, SystemRole.PAYROLL_MANAGER)
+	@Get('irregularities/list')
+	@ApiOperation({ summary: 'REQ-PY-5/REQ-PY-20: List all irregularities with optional filters' })
+	@ApiQuery({ name: 'status', required: false, enum: ['pending', 'escalated', 'resolved', 'rejected'] })
+	@ApiQuery({ name: 'payrollRunId', required: false, description: 'Filter by payroll run ID' })
+	@ApiQuery({ name: 'severity', required: false, enum: ['info', 'low', 'medium', 'high', 'critical'] })
+	@ApiResponse({ status: 200, description: 'List of irregularities' })
+	async listIrregularities(
+		@Query('status') status?: string,
+		@Query('payrollRunId') payrollRunId?: string,
+		@Query('severity') severity?: string,
+		@CurrentUser() user?: JwtPayload
+	) {
+		const result = await this.payrollService.listIrregularities({ status, payrollRunId, severity }, user?.sub);
+		return result;
+	}
+
+	@UseGuards(AuthenticationGuard, AuthorizationGuard)
+	@Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.HR_MANAGER, SystemRole.FINANCE_STAFF, SystemRole.PAYROLL_MANAGER)
+	@Get('irregularities/:id')
+	@ApiOperation({ summary: 'Get a single irregularity by ID' })
+	@ApiParam({ name: 'id', description: 'Irregularity ID', type: 'string' })
+	@ApiResponse({ status: 200, description: 'Irregularity details' })
+	async getIrregularity(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+		const result = await this.payrollService.getIrregularity(id, user?.sub);
+		return result;
+	}
+
+	@UseGuards(AuthenticationGuard, AuthorizationGuard)
+	@Roles(SystemRole.PAYROLL_SPECIALIST)
+	@Post('irregularities/:id/escalate')
+	@ApiOperation({ summary: 'REQ-PY-20: Escalate an irregularity to manager for resolution' })
+	@ApiParam({ name: 'id', description: 'Irregularity ID', type: 'string' })
+	@ApiBody({ schema: { type: 'object', properties: { reason: { type: 'string' } }, required: ['reason'] } })
+	@ApiResponse({ status: 200, description: 'Irregularity escalated to manager' })
+	async escalateIrregularity(
+		@Param('id') id: string,
+		@Body() body: { reason: string },
+		@CurrentUser() user: JwtPayload
+	) {
+		const result = await this.payrollService.escalateIrregularity(id, body.reason, user?.sub);
+		return result;
+	}
+
+	@UseGuards(AuthenticationGuard, AuthorizationGuard)
+	@Roles(SystemRole.HR_MANAGER, SystemRole.PAYROLL_MANAGER)
+	@Post('irregularities/:id/resolve')
+	@ApiOperation({ summary: 'REQ-PY-20: Resolve an escalated irregularity (Manager only)' })
+	@ApiParam({ name: 'id', description: 'Irregularity ID', type: 'string' })
+	@ApiBody({ schema: { 
+		type: 'object', 
+		properties: { 
+			action: { type: 'string', enum: ['approved', 'rejected', 'excluded', 'adjusted'] },
+			notes: { type: 'string' },
+			adjustedValue: { type: 'number' }
+		}, 
+		required: ['action', 'notes'] 
+	}})
+	@ApiResponse({ status: 200, description: 'Irregularity resolved' })
+	async resolveIrregularity(
+		@Param('id') id: string,
+		@Body() body: { action: string; notes: string; adjustedValue?: number },
+		@CurrentUser() user: JwtPayload
+	) {
+		const result = await this.payrollService.resolveIrregularity(id, body, user?.sub);
+		return result;
+	}
+
+	@UseGuards(AuthenticationGuard, AuthorizationGuard)
+	@Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.HR_MANAGER, SystemRole.FINANCE_STAFF, SystemRole.PAYROLL_MANAGER)
+	@Get(':id/irregularities')
+	@ApiOperation({ summary: 'Get all irregularities for a specific payroll run' })
+	@ApiParam({ name: 'id', description: 'Payroll run ID', type: 'string' })
+	@ApiResponse({ status: 200, description: 'List of irregularities for the payroll run' })
+	async getPayrollRunIrregularities(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+		const result = await this.payrollService.listIrregularities({ payrollRunId: id }, user?.sub);
+		return result;
+	}
 }
