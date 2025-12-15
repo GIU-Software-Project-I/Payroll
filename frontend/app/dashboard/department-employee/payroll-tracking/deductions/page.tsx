@@ -70,6 +70,7 @@ export default function DeductionsPage() {
   const [misconductDeductions, setMisconductDeductions] = useState<MisconductDeduction[]>([]);
   const [unpaidLeaveDeductions, setUnpaidLeaveDeductions] = useState<UnpaidLeaveDeduction[]>([]);
   const [attendanceDeductions, setAttendanceDeductions] = useState<AttendanceDeduction[]>([]);
+  const [unpaidLeaveTotal, setUnpaidLeaveTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'tax' | 'insurance' | 'misconduct' | 'unpaid' | 'attendance'>('tax');
@@ -89,15 +90,131 @@ export default function DeductionsPage() {
           payrollTrackingService.getTaxDeductions(user.id).catch(() => ({ data: [] })),
           payrollTrackingService.getInsuranceDeductions(user.id).catch(() => ({ data: [] })),
           payrollTrackingService.getMisconductDeductions(user.id).catch(() => ({ data: [] })),
-          payrollTrackingService.getUnpaidLeaveDeductions(user.id).catch(() => ({ data: [] })),
-          payrollTrackingService.getAttendanceBasedDeductions(user.id).catch(() => ({ data: [] })),
+          payrollTrackingService.getUnpaidLeaveDeductions(user.id).catch(() => ({ data: null })),
+          payrollTrackingService.getAttendanceBasedDeductions(user.id).catch(() => ({ data: null })),
         ]);
 
-        setTaxDeductions(taxRes?.data || []);
-        setInsuranceDeductions(insuranceRes?.data || []);
-        setMisconductDeductions(misconductRes?.data || []);
-        setUnpaidLeaveDeductions(unpaidRes?.data || []);
-        setAttendanceDeductions(attendanceRes?.data || []);
+        // Process tax deductions - response is array of payslip tax data
+        const taxData = taxRes?.data || [];
+        const taxList: TaxDeduction[] = [];
+        if (Array.isArray(taxData)) {
+          taxData.forEach((payslipTax: any) => {
+            if (payslipTax.taxDetails && Array.isArray(payslipTax.taxDetails)) {
+              payslipTax.taxDetails.forEach((tax: any, idx: number) => {
+                taxList.push({
+                  id: `${payslipTax.payslipId}-tax-${idx}`,
+                  type: tax.ruleName || 'Tax',
+                  amount: tax.calculatedAmount || 0,
+                  percentage: tax.effectiveRatePct || tax.configuredRatePct,
+                  taxBracket: tax.taxBracket,
+                  lawReference: tax.lawReference,
+                  description: tax.description,
+                });
+              });
+            }
+          });
+        }
+        setTaxDeductions(taxList);
+
+        // Process insurance deductions - response is array of payslip insurance data
+        const insuranceData = insuranceRes?.data || [];
+        const insuranceList: InsuranceDeduction[] = [];
+        if (Array.isArray(insuranceData)) {
+          insuranceData.forEach((payslipInsurance: any) => {
+            if (payslipInsurance.insuranceDeductions && Array.isArray(payslipInsurance.insuranceDeductions)) {
+              payslipInsurance.insuranceDeductions.forEach((insurance: any, idx: number) => {
+                insuranceList.push({
+                  id: `${payslipInsurance.payslipId}-insurance-${idx}`,
+                  type: insurance.name || insurance.type || 'Insurance',
+                  amount: insurance.amount || 0,
+                  percentage: insurance.rate,
+                  provider: insurance.provider,
+                  description: insurance.description,
+                });
+              });
+            }
+          });
+        }
+        setInsuranceDeductions(insuranceList);
+
+        // Process misconduct deductions - response is array of payslip misconduct data
+        const misconductData = misconductRes?.data || [];
+        const misconductList: MisconductDeduction[] = [];
+        if (Array.isArray(misconductData)) {
+          misconductData.forEach((payslipMisconduct: any, idx: number) => {
+            if (payslipMisconduct.totalPenalties > 0) {
+              misconductList.push({
+                id: `${payslipMisconduct.payslipId}-misconduct-${idx}`,
+                type: 'Misconduct/Absenteeism',
+                amount: payslipMisconduct.totalPenalties || 0,
+                date: payslipMisconduct.payslipPeriod || new Date().toISOString(),
+                reason: 'Deduction from payslip',
+                description: `Misconduct deduction from ${payslipMisconduct.payslipPeriod || 'payslip'}`,
+              });
+            }
+          });
+        }
+        setMisconductDeductions(misconductList);
+
+        // Process unpaid leave deductions - response is an object with unpaidLeaveRequests and payslipDeductions
+        const unpaidData = unpaidRes?.data;
+        const unpaidList: UnpaidLeaveDeduction[] = [];
+        let unpaidTotal = 0;
+        if (unpaidData && typeof unpaidData === 'object') {
+          unpaidTotal = unpaidData.totalDeductionAmount || 0;
+          
+          // Process unpaid leave requests
+          if (unpaidData.unpaidLeaveRequests && Array.isArray(unpaidData.unpaidLeaveRequests)) {
+            unpaidData.unpaidLeaveRequests.forEach((request: any, idx: number) => {
+              const deductionAmount = (request.days || 0) * (unpaidData.dailyRate || 0);
+              unpaidList.push({
+                id: `${request.leaveRequestId}-request-${idx}`,
+                leaveType: request.leaveTypeName || 'Unpaid Leave',
+                days: request.days || 0,
+                dailyRate: unpaidData.dailyRate || 0,
+                totalAmount: deductionAmount,
+                startDate: request.startDate,
+                endDate: request.endDate,
+              });
+            });
+          }
+          
+          // Process payslip deductions
+          if (unpaidData.payslipDeductions && Array.isArray(unpaidData.payslipDeductions)) {
+            unpaidData.payslipDeductions.forEach((deduction: any, idx: number) => {
+              unpaidList.push({
+                id: `${deduction.payslipId}-payslip-${idx}`,
+                leaveType: deduction.leaveTypeName || 'Unpaid Leave',
+                days: deduction.daysDeducted || 0,
+                dailyRate: deduction.dailyRate || 0,
+                totalAmount: deduction.deductionAmount || 0,
+                startDate: deduction.period?.from || '',
+                endDate: deduction.period?.to || '',
+              });
+            });
+          }
+        }
+        setUnpaidLeaveDeductions(unpaidList);
+        setUnpaidLeaveTotal(unpaidTotal);
+
+        // Process attendance-based deductions - response is an object with deductions array
+        const attendanceData = attendanceRes?.data;
+        const attendanceList: AttendanceDeduction[] = [];
+        if (attendanceData && typeof attendanceData === 'object') {
+          if (attendanceData.deductions && Array.isArray(attendanceData.deductions)) {
+            attendanceData.deductions.forEach((deduction: any, idx: number) => {
+              attendanceList.push({
+                id: `attendance-${idx}`,
+                type: deduction.type || 'Attendance Deduction',
+                date: deduction.date,
+                amount: deduction.amount || 0,
+                hours: deduction.hoursDeducted,
+                reason: deduction.reason || deduction.description,
+              });
+            });
+          }
+        }
+        setAttendanceDeductions(attendanceList);
       } catch (err: any) {
         setError(err.message || 'Failed to load deductions');
       } finally {
@@ -124,11 +241,11 @@ export default function DeductionsPage() {
   };
 
   const getTotalDeductions = () => {
-    const taxTotal = taxDeductions.reduce((sum, d) => sum + d.amount, 0);
-    const insuranceTotal = insuranceDeductions.reduce((sum, d) => sum + d.amount, 0);
-    const misconductTotal = misconductDeductions.reduce((sum, d) => sum + d.amount, 0);
-    const unpaidTotal = unpaidLeaveDeductions.reduce((sum, d) => sum + d.totalAmount, 0);
-    const attendanceTotal = attendanceDeductions.reduce((sum, d) => sum + d.amount, 0);
+    const taxTotal = Array.isArray(taxDeductions) ? taxDeductions.reduce((sum, d) => sum + (d.amount || 0), 0) : 0;
+    const insuranceTotal = Array.isArray(insuranceDeductions) ? insuranceDeductions.reduce((sum, d) => sum + (d.amount || 0), 0) : 0;
+    const misconductTotal = Array.isArray(misconductDeductions) ? misconductDeductions.reduce((sum, d) => sum + (d.amount || 0), 0) : 0;
+    const unpaidTotal = Array.isArray(unpaidLeaveDeductions) ? unpaidLeaveDeductions.reduce((sum, d) => sum + (d.totalAmount || 0), 0) : unpaidLeaveTotal;
+    const attendanceTotal = Array.isArray(attendanceDeductions) ? attendanceDeductions.reduce((sum, d) => sum + (d.amount || 0), 0) : 0;
     return taxTotal + insuranceTotal + misconductTotal + unpaidTotal + attendanceTotal;
   };
 
@@ -206,7 +323,9 @@ export default function DeductionsPage() {
           </div>
           <div className="bg-white/20 rounded-lg p-3 text-center">
             <p className="text-red-100 text-xs">Unpaid Leave</p>
-            <p className="text-lg font-bold mt-1">{formatCurrency(unpaidLeaveDeductions.reduce((s, d) => s + d.totalAmount, 0))}</p>
+            <p className="text-lg font-bold mt-1">
+              {formatCurrency(Array.isArray(unpaidLeaveDeductions) ? unpaidLeaveDeductions.reduce((s, d) => s + (d.totalAmount || 0), 0) : unpaidLeaveTotal)}
+            </p>
           </div>
           <div className="bg-white/20 rounded-lg p-3 text-center">
             <p className="text-red-100 text-xs">Attendance</p>
@@ -425,7 +544,7 @@ export default function DeductionsPage() {
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-slate-900">Total Unpaid Leave Deductions</span>
                   <span className="text-xl font-bold text-red-600">
-                    -{formatCurrency(unpaidLeaveDeductions.reduce((s, d) => s + d.totalAmount, 0))}
+                    -{formatCurrency(Array.isArray(unpaidLeaveDeductions) ? unpaidLeaveDeductions.reduce((s, d) => s + (d.totalAmount || 0), 0) : unpaidLeaveTotal)}
                   </span>
                 </div>
               </div>

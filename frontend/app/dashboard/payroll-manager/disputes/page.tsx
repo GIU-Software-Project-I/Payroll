@@ -12,7 +12,7 @@ export default function PayrollManagerDisputesPage() {
   const [selectedDispute, setSelectedDispute] = useState<DisputeConfirmation | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmationNotes, setConfirmationNotes] = useState('');
-  const [filter, setFilter] = useState<'pending_confirmation' | 'confirmed' | 'all'>('pending_confirmation');
+  const [filter, setFilter] = useState<'pending_confirmation' | 'confirmed' | 'under review' | 'all'>('pending_confirmation');
 
   useEffect(() => {
     if (!hasRole([SystemRole.PAYROLL_MANAGER, SystemRole.HR_ADMIN])) return;
@@ -22,18 +22,84 @@ export default function PayrollManagerDisputesPage() {
   const loadDisputes = async () => {
     setLoading(true);
     try {
-      const response = filter === 'all' 
-        ? await payrollManagerService.getPendingDisputeConfirmations()
-        : await payrollManagerService.getConfirmedDisputes();
+      // Fetch pending, confirmed, and under review disputes
+      const [pendingResponse, confirmedResponse, underReviewResponse] = await Promise.all([
+        payrollManagerService.getPendingDisputeConfirmations(),
+        payrollManagerService.getConfirmedDisputes(),
+        payrollManagerService.getUnderReviewDisputes(),
+      ]);
       
-      if (response.data) {
-        const filtered = filter === 'all' 
-          ? response.data 
-          : response.data.filter((d: DisputeConfirmation) => d.status === filter);
-        setDisputes(filtered);
+      // Check for errors in responses
+      if (pendingResponse.error) {
+        console.error('Error fetching pending disputes:', pendingResponse.error);
       }
+      if (confirmedResponse.error) {
+        console.error('Error fetching confirmed disputes:', confirmedResponse.error);
+      }
+      if (underReviewResponse.error) {
+        console.error('Error fetching under review disputes:', underReviewResponse.error);
+      }
+      
+      console.log('Disputes responses:', {
+        pending: pendingResponse.data?.length || 0,
+        confirmed: confirmedResponse.data?.length || 0,
+        underReview: underReviewResponse.data?.length || 0,
+        errors: {
+          pending: pendingResponse.error,
+          confirmed: confirmedResponse.error,
+          underReview: underReviewResponse.error,
+        },
+      });
+      
+      // Use a Map to avoid duplicates by ID
+      const disputesMap = new Map<string, DisputeConfirmation>();
+      
+      // Add pending disputes
+      if (pendingResponse.data && Array.isArray(pendingResponse.data)) {
+        pendingResponse.data.forEach((d: DisputeConfirmation) => {
+          disputesMap.set(d.id, d);
+        });
+      }
+      
+      // Add confirmed disputes (will overwrite pending if same ID, which is correct)
+      if (confirmedResponse.data && Array.isArray(confirmedResponse.data)) {
+        confirmedResponse.data.forEach((d: DisputeConfirmation) => {
+          disputesMap.set(d.id, d);
+        });
+      }
+      
+      // Add under review disputes
+      if (underReviewResponse.data && Array.isArray(underReviewResponse.data)) {
+        underReviewResponse.data.forEach((d: DisputeConfirmation) => {
+          disputesMap.set(d.id, d);
+        });
+      }
+      
+      const allDisputes = Array.from(disputesMap.values());
+      
+      // Filter based on selected filter
+      let filtered: DisputeConfirmation[] = [];
+      if (filter === 'all') {
+        filtered = allDisputes;
+      } else if (filter === 'pending_confirmation') {
+        filtered = allDisputes.filter((d: DisputeConfirmation) => 
+          d.status === 'pending_confirmation'
+        );
+      } else if (filter === 'confirmed') {
+        filtered = allDisputes.filter((d: DisputeConfirmation) => 
+          d.status === 'confirmed'
+        );
+      } else if (filter === 'under review') {
+        filtered = allDisputes.filter((d: DisputeConfirmation) => 
+          d.status === 'under review'
+        );
+      }
+      
+      console.log(`Filtered disputes for "${filter}":`, filtered.length);
+      setDisputes(filtered);
     } catch (error) {
       console.error('Failed to load dispute confirmations:', error);
+      setDisputes([]);
     } finally {
       setLoading(false);
     }
@@ -49,16 +115,22 @@ export default function PayrollManagerDisputesPage() {
         notes: confirmationNotes,
       });
 
+      if (response.error) {
+        console.error('Failed to confirm dispute:', response.error);
+        alert(`Error: ${response.error}`);
+        return;
+      }
+
       if (response.data) {
-        setDisputes(prev => prev.map(d => 
-          d.id === selectedDispute.id ? response.data! : d
-        ));
         setShowConfirmModal(false);
         setSelectedDispute(null);
         setConfirmationNotes('');
+        // Reload disputes to get updated list
+        await loadDisputes();
       }
     } catch (error) {
       console.error('Failed to confirm dispute:', error);
+      alert('Failed to confirm dispute. Please try again.');
     }
   };
 
@@ -72,16 +144,22 @@ export default function PayrollManagerDisputesPage() {
         notes: confirmationNotes,
       });
 
+      if (response.error) {
+        console.error('Failed to reject dispute:', response.error);
+        alert(`Error: ${response.error}`);
+        return;
+      }
+
       if (response.data) {
-        setDisputes(prev => prev.map(d => 
-          d.id === selectedDispute.id ? response.data! : d
-        ));
         setShowConfirmModal(false);
         setSelectedDispute(null);
         setConfirmationNotes('');
+        // Reload disputes to get updated list
+        await loadDisputes();
       }
     } catch (error) {
       console.error('Failed to reject dispute:', error);
+      alert('Failed to reject dispute. Please try again.');
     }
   };
 
@@ -99,6 +177,7 @@ export default function PayrollManagerDisputesPage() {
     switch (status) {
       case 'pending_confirmation': return 'bg-blue-100 text-blue-800';
       case 'confirmed': return 'bg-green-100 text-green-800';
+      case 'under review': return 'bg-yellow-100 text-yellow-800';
       case 'rejected_by_manager': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -126,7 +205,7 @@ export default function PayrollManagerDisputesPage() {
         <div className="flex items-center space-x-4">
           <label className="text-sm font-medium text-slate-700">Status:</label>
           <div className="flex space-x-2">
-            {['all', 'pending_confirmation', 'confirmed'].map((status) => (
+            {['all', 'pending_confirmation', 'under review', 'confirmed'].map((status) => (
               <button
                 key={status}
                 onClick={() => setFilter(status as any)}
@@ -136,7 +215,13 @@ export default function PayrollManagerDisputesPage() {
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
-                {status === 'all' ? 'All' : status.replace('_', ' ').charAt(0).toUpperCase() + status.slice(1).replace('_', ' ')}
+                {status === 'all' 
+                  ? 'All' 
+                  : status === 'pending_confirmation'
+                  ? 'Pending'
+                  : status === 'under review'
+                  ? 'Under Review'
+                  : status.charAt(0).toUpperCase() + status.slice(1)}
               </button>
             ))}
           </div>

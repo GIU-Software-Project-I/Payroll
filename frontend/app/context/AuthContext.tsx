@@ -46,11 +46,12 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<{ success: boolean; dashboardRoute?: string }>;
   register: (data: RegisterData) => Promise<boolean>;
   logout: () => Promise<void>;
   clearError: () => void;
   getDashboardRoute: () => string;
+  hasRole: (roles: SystemRole[]) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -98,13 +99,31 @@ function getDashboardRouteForRole(role: SystemRole): string {
 
 // Transform backend user to frontend user
 function transformUser(backendUser: BackendUser): User {
+  // Debug: Log the received roles
+  console.log('[Auth] Received user from backend:', {
+    email: backendUser.email,
+    roles: backendUser.roles,
+    rolesLength: backendUser.roles?.length,
+  });
+
+  // Get the primary role - use the first role in the array, or default
   const primaryRole = backendUser.roles?.[0] || 'department employee';
+  
+  // Map the role string to SystemRole enum
+  const mappedRole = mapRole(primaryRole);
+  
+  console.log('[Auth] Mapped role:', {
+    primaryRole,
+    mappedRole,
+    dashboardRoute: getDashboardRouteForRole(mappedRole),
+  });
+
   return {
     id: backendUser._id,
     firstName: backendUser.firstName,
     lastName: backendUser.lastName,
     email: backendUser.email,
-    role: mapRole(primaryRole),
+    role: mappedRole,
     roles: backendUser.roles || [],
     employeeNumber: backendUser.employeeNumber,
   };
@@ -132,7 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const login = useCallback(async (email: string, password: string): Promise<boolean> => {
+  const login = useCallback(async (email: string, password: string): Promise<{ success: boolean; dashboardRoute?: string }> => {
     setIsLoading(true);
     setError(null);
 
@@ -142,27 +161,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (response.error) {
         setError(response.error);
         setIsLoading(false);
-        return false;
+        return { success: false };
       }
 
       if (response.data?.user) {
+        console.log('[Auth] Login response data:', response.data);
         const transformedUser = transformUser(response.data.user);
+        console.log('[Auth] Transformed user:', transformedUser);
+        
+        // Get dashboard route from the transformed user (not from state)
+        const dashboardRoute = getDashboardRouteForRole(transformedUser.role);
+        console.log('[Auth] Dashboard route:', dashboardRoute);
+        
         setUser(transformedUser);
 
         // Store user in localStorage
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(transformedUser));
 
         setIsLoading(false);
-        return true;
+        return { success: true, dashboardRoute };
       }
 
       setError('Invalid response from server');
       setIsLoading(false);
-      return false;
+      return { success: false };
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
       setIsLoading(false);
-      return false;
+      return { success: false };
     }
   }, []);
 
@@ -220,6 +246,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return getDashboardRouteForRole(user.role);
   }, [user]);
 
+  const hasRole = useCallback((roles: SystemRole[]): boolean => {
+    if (!user) {
+      return false;
+    }
+    // Check if user has any of the required roles
+    // Convert SystemRole enum values to strings for comparison
+    const userRoles = user.roles || [];
+    const requiredRoleStrings = roles.map(role => role as string);
+    return requiredRoleStrings.some(roleStr => userRoles.includes(roleStr));
+  }, [user]);
+
   return (
     <AuthContext.Provider
       value={{
@@ -232,6 +269,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         clearError,
         getDashboardRoute,
+        hasRole,
       }}
     >
       {children}
