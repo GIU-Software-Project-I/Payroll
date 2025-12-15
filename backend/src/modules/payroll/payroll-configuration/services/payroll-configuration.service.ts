@@ -635,12 +635,6 @@ export class PayrollConfigurationService {
     async remove(id: string): Promise<{ message: string }> {
         const policy = await this.findOne(id);
 
-        if (policy.status !== ConfigStatus.DRAFT) {
-            throw new ForbiddenException(
-                `Cannot delete policy with status '${policy.status}'. Only DRAFT policies can be deleted.`
-            );
-        }
-
         await this.payrollPolicyModel.findByIdAndDelete(id).exec();
         return { message: `Payroll policy '${policy.policyName}' has been successfully deleted` };
     }
@@ -782,12 +776,6 @@ export class PayrollConfigurationService {
     async removePayType(id: string): Promise<{ message: string }> {
         const payType = await this.findOnePayType(id);
 
-        if (payType.status !== ConfigStatus.DRAFT) {
-            throw new ForbiddenException(
-                `Cannot delete pay type with status '${payType.status}'. Only DRAFT pay types can be deleted.`
-            );
-        }
-
         await this.payTypeModel.findByIdAndDelete(id).exec();
         return { message: `Pay type '${payType.type}' has been successfully deleted` };
     }
@@ -919,12 +907,6 @@ export class PayrollConfigurationService {
 
     async removeAllowance(id: string): Promise<{ message: string }> {
         const allowance = await this.findOneAllowance(id);
-
-        if (allowance.status !== ConfigStatus.DRAFT) {
-            throw new ForbiddenException(
-                `Cannot delete allowance with status '${allowance.status}'. Only DRAFT allowances can be deleted.`
-            );
-        }
 
         await this.allowanceModel.findByIdAndDelete(id).exec();
         return { message: `Allowance '${allowance.name}' has been successfully deleted` };
@@ -1066,12 +1048,6 @@ export class PayrollConfigurationService {
 
     async removeSigningBonus(id: string): Promise<{ message: string }> {
         const signingBonus = await this.findOneSigningBonus(id);
-
-        if (signingBonus.status !== ConfigStatus.DRAFT) {
-            throw new ForbiddenException(
-                `Cannot delete signing bonus with status '${signingBonus.status}'. Only DRAFT signing bonuses can be deleted.`
-            );
-        }
 
         await this.signingBonusModel.findByIdAndDelete(id).exec();
         return { message: `Signing bonus for position '${signingBonus.positionName}' has been successfully deleted` };
@@ -1222,12 +1198,6 @@ export class PayrollConfigurationService {
     async removeTerminationBenefit(id: string): Promise<{ message: string }> {
         const benefit = await this.findOneTerminationBenefit(id);
 
-        if (benefit.status !== ConfigStatus.DRAFT) {
-            throw new ForbiddenException(
-                `Cannot delete termination benefit with status '${benefit.status}'. Only DRAFT benefits can be deleted.`
-            );
-        }
-
         await this.terminationBenefitsModel.findByIdAndDelete(id).exec();
         return { message: `Termination benefit '${benefit.name}' has been successfully deleted` };
     }
@@ -1332,15 +1302,9 @@ export class PayrollConfigurationService {
     async updatePayGrade(id: string, updateDto: UpdatePayGradeDto) {
         const payGrade = await this.findOnePayGrade(id);
 
-        if (payGrade.status === ConfigStatus.APPROVED) {
+        if (payGrade.status !== ConfigStatus.DRAFT) {
             throw new BadRequestException(
-                'Cannot edit approved configurations. Delete and create a new one.',
-            );
-        }
-
-        if (payGrade.status !== ConfigStatus.DRAFT && payGrade.status !== ConfigStatus.REJECTED) {
-            throw new BadRequestException(
-                'Only DRAFT or REJECTED configurations can be edited',
+                'Only DRAFT configurations can be edited',
             );
         }
 

@@ -97,7 +97,10 @@ export default function PayGradesPage() {
         grossSalary: Number(form.grossSalary),
         createdByEmployeeId: user.id,
       };
-      await payrollConfigurationService.createPayGrade(payload as any);
+      const res = await payrollConfigurationService.createPayGrade(payload as any);
+      if ((res as any)?.error) {
+        throw new Error((res as any).error);
+      }
       setForm({ grade: "", baseSalary: "", grossSalary: "" });
       await load();
     } catch (e: any) {
@@ -120,7 +123,10 @@ export default function PayGradesPage() {
         baseSalary: Number(edit.baseSalary),
         grossSalary: Number(edit.grossSalary),
       };
-      await payrollConfigurationService.updatePayGrade(edit.id as any, payload as any);
+      const res = await payrollConfigurationService.updatePayGrade(edit.id as any, payload as any);
+      if ((res as any)?.error) {
+        throw new Error((res as any).error);
+      }
       setEdit(null);
       await load();
     } catch (e: any) {
@@ -135,7 +141,10 @@ export default function PayGradesPage() {
   async function remove(id: string) {
     setError(null);
     try {
-      await payrollConfigurationService.deletePayGrade(id as any);
+      const res = await payrollConfigurationService.deletePayGrade(id as any);
+      if ((res as any)?.error) {
+        throw new Error((res as any).error);
+      }
       await load();
     } catch (e: any) {
       setError(e?.message ?? "Failed to delete pay grade");

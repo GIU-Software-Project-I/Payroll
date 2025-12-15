@@ -94,7 +94,7 @@ export class PayrollConfigurationController {
     }
 
     @Delete('tax-rules/:id')
-    @Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.LEGAL_POLICY_ADMIN)
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     deleteTaxRule(@Param('id') id: string) {
         return this.payrollConfigService.deleteTaxRule(id);
@@ -225,7 +225,7 @@ export class PayrollConfigurationController {
     }
 
     @Delete('policies/:id')
-    @Roles(SystemRole.PAYROLL_SPECIALIST)
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     async remove(@Param('id') id: string) {
         const result = await this.payrollConfigService.remove(id);
@@ -316,7 +316,7 @@ export class PayrollConfigurationController {
     }
 
     @Delete('pay-types/:id')
-    @Roles(SystemRole.PAYROLL_SPECIALIST)
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     async removePayType(@Param('id') id: string) {
         const result = await this.payrollConfigService.removePayType(id);
@@ -407,7 +407,7 @@ export class PayrollConfigurationController {
     }
 
     @Delete('allowances/:id')
-    @Roles(SystemRole.PAYROLL_SPECIALIST)
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     async removeAllowance(@Param('id') id: string) {
         const result = await this.payrollConfigService.removeAllowance(id);
@@ -498,7 +498,7 @@ export class PayrollConfigurationController {
     }
 
     @Delete('signing-bonuses/:id')
-    @Roles(SystemRole.PAYROLL_SPECIALIST)
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     async removeSigningBonus(@Param('id') id: string) {
         const result = await this.payrollConfigService.removeSigningBonus(id);
@@ -589,7 +589,7 @@ export class PayrollConfigurationController {
     }
 
     @Delete('termination-benefits/:id')
-    @Roles(SystemRole.PAYROLL_SPECIALIST)
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     async removeTerminationBenefit(@Param('id') id: string) {
         const result = await this.payrollConfigService.removeTerminationBenefit(id);
@@ -674,7 +674,7 @@ export class PayrollConfigurationController {
     }
 
     @Delete('pay-grades/:id')
-    @Roles(SystemRole.PAYROLL_SPECIALIST)
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     async deletePayGrade(@Param('id') id: string) {
         const result = await this.payrollConfigService.deletePayGrade(id);
