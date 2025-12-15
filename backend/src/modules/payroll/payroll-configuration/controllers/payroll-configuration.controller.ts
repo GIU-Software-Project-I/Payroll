@@ -50,6 +50,8 @@ import { UpdateCompanyWideSettingsDto } from '../dto/update-company-settings.dto
 import { ApproveConfigDto } from '../dto/approve-config.dto';
 import { CreatePayGradeDto } from '../dto/create-paygrade.dto';
 import { UpdatePayGradeDto } from '../dto/update-paygrade.dto';
+import { CreateTaxBracketDto } from '../dto/create-tax-bracket.dto';
+import { UpdateTaxBracketDto } from '../dto/update-tax-bracket.dto';
 
 @Controller('payroll-configuration-requirements')
 @UseGuards(AuthenticationGuard, AuthorizationGuard)
@@ -155,24 +157,59 @@ export class PayrollConfigurationController {
         return this.payrollConfigService.rejectInsuranceBracket(id, dto);
     }
 
-    @Get('insurance-brackets/:id/calculate-contributions')
-    @HttpCode(HttpStatus.OK)
-    calculateContributions(
-        @Param('id') id: string,
-        @Query('salary') salary: string,
-    ) {
-        const numericSalary = Number(salary);
-        if (isNaN(numericSalary) || numericSalary < 0) {
-            throw new BadRequestException('Salary must be a positive number');
-        }
-        return this.payrollConfigService.getInsuranceBracketById(id).then((bracket) => {
-            const result = this.payrollConfigService.calculateContributions(bracket, numericSalary);
-            if (!result) {
-                throw new BadRequestException('Salary does not fall within this insurance bracket');
-            }
-            return result;
-        });
+  @Get('insurance-brackets/:id/calculate-contributions')
+@HttpCode(HttpStatus.OK)
+async calculateContributions(
+    @Param('id') id: string,
+    @Query('salary') salary: string,
+) {
+    const numericSalary = Number(salary);
+    if (isNaN(numericSalary) || numericSalary < 0) {
+        throw new BadRequestException('Salary must be a positive number');
     }
+
+    const bracket = await this.payrollConfigService.getInsuranceBracketById(id);
+    const result = this.payrollConfigService.calculateContributions(bracket, numericSalary);
+
+    // Always return result even if invalid
+    return result;
+}
+
+
+  // ========== TAX BRACKETS ENDPOINTS ==========
+  
+  @Get('tax-brackets')
+  @Roles(SystemRole.LEGAL_POLICY_ADMIN, SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER)
+  getTaxBrackets() {
+    return this.payrollConfigService.getTaxBrackets();
+  }
+
+  @Get('tax-brackets/:id')
+  @Roles(SystemRole.LEGAL_POLICY_ADMIN, SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER)
+  getTaxBracket(@Param('id') id: string) {
+    return this.payrollConfigService.getTaxBracket(id);
+  }
+
+  @Post('tax-brackets')
+  @Roles(SystemRole.LEGAL_POLICY_ADMIN)
+  @HttpCode(HttpStatus.CREATED)
+  createTaxBracket(@Body() dto: CreateTaxBracketDto) {
+    return this.payrollConfigService.createTaxBracket(dto);
+  }
+
+  @Patch('tax-brackets/:id')
+  @Roles(SystemRole.LEGAL_POLICY_ADMIN)
+  @HttpCode(HttpStatus.OK)
+  updateTaxBracket(@Param('id') id: string, @Body() dto: UpdateTaxBracketDto) {
+    return this.payrollConfigService.updateTaxBracket(id, dto);
+  }
+
+  @Delete('tax-brackets/:id')
+  @Roles(SystemRole.LEGAL_POLICY_ADMIN)
+  @HttpCode(HttpStatus.OK)
+  deleteTaxBracket(@Param('id') id: string) {
+    return this.payrollConfigService.deleteTaxBracket(id);
+  }
 
     // ========== DAREEN'S PAYROLL POLICIES ENDPOINTS ==========
     @Post('policies')

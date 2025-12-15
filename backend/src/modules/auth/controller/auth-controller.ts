@@ -1,4 +1,4 @@
-import {Controller, Post, Body, HttpCode, HttpStatus, Req, Res, UseGuards, InternalServerErrorException, BadRequestException, Patch, Param,} from '@nestjs/common';
+import {Controller, Post, Body, HttpCode, HttpStatus, Req, Res, UseGuards, InternalServerErrorException, BadRequestException, Patch, Param, Get} from '@nestjs/common';
 import type { Response } from 'express';
 import { Public } from '../decorators/public-decorator';
 import { Roles } from '../decorators/roles-decorator';
@@ -17,6 +17,17 @@ import { ApiTags, ApiBody, ApiOperation, ApiConsumes } from '@nestjs/swagger';
 @ApiTags('Auth')
 export class AuthController {
     constructor(private readonly auth: AuthService) {}
+
+    @Public()
+    @Get('health')
+    @HttpCode(HttpStatus.OK)
+    health() {
+        return { 
+            status: 'ok', 
+            message: 'Auth service is running',
+            timestamp: new Date().toISOString()
+        };
+    }
 
     @UseGuards(AuthenticationGuard, AuthorizationGuard)
     @Roles(SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)

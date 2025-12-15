@@ -50,20 +50,41 @@ export default function IrregularitiesPage() {
     fetchIrregularities();
   }, [filter]);
 
+  interface IrregularityDataResponse {
+    data: Irregularity[];
+    pending?: number;
+    escalated?: number;
+    resolved?: number;
+    [key: string]: any;
+  }
+
   const fetchIrregularities = async () => {
     setLoading(true);
     try {
       const params: any = {};
       if (filter !== 'all') params.status = filter;
-      
       const res = await payrollExecutionService.listIrregularities(params);
-      const data = res?.data || res;
-      
-      setIrregularities(data?.data || []);
+      const isIrregularityArray = (data: any): data is Irregularity[] =>
+        Array.isArray(data) && data.every(
+          (item) => typeof item === 'object' && item !== null && '_id' in item
+        );
+
+      let irregularityData: IrregularityDataResponse;
+      if (
+        res?.data &&
+        typeof res.data === 'object' &&
+        'data' in res.data &&
+        isIrregularityArray(res.data.data)
+      ) {
+        irregularityData = res.data as IrregularityDataResponse;
+      } else {
+        irregularityData = { data: [], pending: 0, escalated: 0, resolved: 0 };
+      }
+      setIrregularities(Array.isArray(irregularityData.data) ? irregularityData.data : []);
       setStats({
-        pending: data?.pending || 0,
-        escalated: data?.escalated || 0,
-        resolved: data?.resolved || 0,
+        pending: irregularityData.pending || 0,
+        escalated: irregularityData.escalated || 0,
+        resolved: irregularityData.resolved || 0,
       });
     } catch (err) {
       console.error('Failed to fetch irregularities:', err);

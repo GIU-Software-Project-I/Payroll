@@ -22,7 +22,7 @@ async function seedPayroll() {
         const db = client.db();
         
         // Get existing data
-        const employees = await db.collection('employeeprofiles').find({}).toArray();
+        const employees = await db.collection('employee_profiles').find({}).toArray();
         const payslips = await db.collection('payslips').find({}).toArray();
         const payrollRuns = await db.collection('payrollruns').find({}).toArray();
         

@@ -442,7 +442,7 @@ async getLeaveCompensation(employeeId: string) {
     };
   }
 
-  // REQ-PY-8: View tax deductions
+  // REQ-PY-8: View tax deductions (BR 5: Identify tax brackets through Local Tax Law, BR 6: Support multiple tax components)
   async getTaxDeductions(employeeId: string, payslipId?: string) {
     let query: any = { employeeId: new Types.ObjectId(employeeId) };
     
@@ -454,6 +454,18 @@ async getLeaveCompensation(employeeId: string) {
       .sort({ createdAt: -1 })
       .exec();
     
+    // Get all active tax rules to fetch law references and brackets
+    let activeTaxRules: any[] = [];
+    try {
+      const taxRulesResponse = await this.payrollConfigService.getTaxRules();
+      activeTaxRules = Array.isArray(taxRulesResponse) 
+        ? taxRulesResponse.filter((rule: any) => rule.status === 'approved')
+        : [];
+    } catch (error) {
+      // Continue without tax rules if service unavailable
+      console.warn('Could not fetch tax rules:', error);
+    }
+    
     return payslips.map(payslip => {
       const taxes = (payslip.deductionsDetails?.taxes || []) as any[];
 
@@ -464,17 +476,51 @@ async getLeaveCompensation(employeeId: string) {
 
       const taxDetails = taxes.map((tax: any) => {
         const amount = tax.amount ?? 0;
-        const configuredRatePct = tax.rate ?? null; // from taxRules
+        const configuredRatePct = tax.rate ?? null;
         const effectiveRatePct =
           taxableBase > 0 ? (amount / taxableBase) * 100 : null;
 
+        // Find matching tax rule for law reference and bracket info
+        const matchingRule = activeTaxRules.find((rule: any) => 
+          rule.name === tax.name || rule._id.toString() === tax._id?.toString()
+        );
+
+        // Determine tax bracket based on taxable base (BR 5)
+        let taxBracket = 'Standard';
+        if (taxableBase > 0 && matchingRule) {
+          // Simple bracket logic - can be enhanced
+          if (taxableBase >= 100000) taxBracket = 'High Income';
+          else if (taxableBase >= 50000) taxBracket = 'Medium Income';
+          else taxBracket = 'Low Income';
+        }
+
+        // Extract tax components if available (BR 6: multiple tax components)
+        const taxComponents = matchingRule?.taxComponents || [];
+        const componentBreakdown = taxComponents.map((component: any) => ({
+          type: component.type,
+          name: component.name,
+          description: component.description,
+          rate: component.rate,
+          amount: taxableBase > 0 ? (taxableBase * component.rate / 100) : 0,
+          minAmount: component.minAmount,
+          maxAmount: component.maxAmount,
+        }));
+
         return {
-          ruleName: tax.name,
-          description: tax.description,
+          ruleName: tax.name || matchingRule?.name || 'Tax Rule',
+          description: tax.description || matchingRule?.description || '',
           configuredRatePct,
           calculatedAmount: amount,
           taxableBase,
           effectiveRatePct,
+          // BR 5: Tax bracket identification
+          taxBracket,
+          // Law reference (from tax rule name/description)
+          lawReference: matchingRule?.name || tax.name || 'Local Tax Law',
+          // BR 6: Multiple tax components breakdown
+          taxComponents: componentBreakdown,
+          taxRuleId: matchingRule?._id?.toString() || tax._id?.toString(),
+          approvedAt: matchingRule?.approvedAt || null,
         };
       });
 
@@ -485,8 +531,15 @@ async getLeaveCompensation(employeeId: string) {
 
       return {
         payslipId: payslip._id,
+        payslipPeriod: (payslip as any).payrollPeriod || null,
         totalTax,
+        taxableBase,
         taxDetails,
+        // Summary
+        summary: {
+          totalTaxComponents: taxDetails.reduce((sum, t) => sum + (t.taxComponents?.length || 0), 0),
+          averageTaxRate: taxableBase > 0 ? (totalTax / taxableBase) * 100 : 0,
+        }
       };
     });
   }

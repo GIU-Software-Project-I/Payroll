@@ -21,7 +21,7 @@ async function seedLeaves() {
         const db = client.db();
         
         // Get existing data
-        const employees = await db.collection('employeeprofiles').find({}).toArray();
+        const employees = await db.collection('employee_profiles').find({}).toArray();
         const leaveTypes = await db.collection('leavetypes').find({}).toArray();
         const leaveRequests = await db.collection('leaverequests').find({}).toArray();
         

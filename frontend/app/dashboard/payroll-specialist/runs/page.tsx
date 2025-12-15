@@ -1,12 +1,42 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { payrollExecutionService } from '@/app/services/payroll-execution';
 
 type Tab = 'runs' | 'create' | 'bonuses' | 'termination' | 'payslips' | 'diagnostics';
 
+// Helper function to format payrollPeriod object to string
+const formatPayrollPeriod = (period: any): string => {
+  if (!period) return 'No Period';
+  if (typeof period === 'string') return period;
+  if (typeof period === 'object') {
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = period.month !== undefined ? monthNames[period.month] || `Month ${period.month}` : '';
+    const year = period.year || '';
+    if (month && year) return `${month} ${year}`;
+    if (period.startDate && period.endDate) {
+      return `${new Date(period.startDate).toLocaleDateString()} - ${new Date(period.endDate).toLocaleDateString()}`;
+    }
+    // Graceful fallback for unknown period formats
+    if (period.name) return period.name;
+    if (period.label) return period.label;
+    return 'Custom Period';
+  }
+  return String(period);
+};
+
 export default function PayrollSpecialistRunsPage() {
-  const [activeTab, setActiveTab] = useState<Tab>('runs');
+  const searchParams = useSearchParams();
+  const tabFromUrl = searchParams.get('tab') as Tab | null;
+  const [activeTab, setActiveTab] = useState<Tab>(tabFromUrl || 'runs');
+
+  // Sync tab with URL changes
+  useEffect(() => {
+    if (tabFromUrl && ['runs', 'create', 'bonuses', 'termination', 'payslips', 'diagnostics'].includes(tabFromUrl)) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
   
   // Runs
   const [runs, setRuns] = useState<any[]>([]);
@@ -249,7 +279,7 @@ export default function PayrollSpecialistRunsPage() {
   // REQ-PY-26: Edit payroll initiation (for rejected or draft status)
   const handleStartEdit = (run: any) => {
     setEditForm({
-      payrollPeriod: run.period || run.payrollPeriod || '',
+      payrollPeriod: formatPayrollPeriod(run.period || run.payrollPeriod),
       entityId: run.entityId || '',
       entity: run.entity || '',
     });
@@ -316,7 +346,7 @@ export default function PayrollSpecialistRunsPage() {
           { key: 'create', label: 'Create Initiation' },
           { key: 'bonuses', label: 'Signing Bonuses' },
           { key: 'termination', label: 'Termination Benefits' },
-          { key: 'payslips', label: 'Payslips (REQ-PY-8)' },
+          { key: 'payslips', label: 'Payslips' },
           { key: 'diagnostics', label: '🔧 Diagnostics' },
         ].map((tab) => (
           <button
@@ -398,7 +428,7 @@ export default function PayrollSpecialistRunsPage() {
                 >
                   <div className="flex justify-between items-start mb-3">
                     <h3 className="font-semibold text-black text-lg">
-                      {run.period || run.payrollPeriod || 'No Period'}
+                      {formatPayrollPeriod(run.period || run.payrollPeriod)}
                     </h3>
                     <span className={`px-2 py-1 rounded text-xs font-medium border ${getStatusColor(run.status)}`}>
                       {run.status || 'Unknown'}
@@ -439,16 +469,19 @@ export default function PayrollSpecialistRunsPage() {
                 </div>
                 
                 <div className="space-y-3 mb-6">
-                  <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-gray-600">ID:</span>
-                    <span className="text-black font-mono text-sm">{selectedRun._id}</span>
-                  </div>
+                  {/* Run ID */}
+                  {selectedRun.runId && (
+                    <div className="flex justify-between py-2 border-b border-gray-100">
+                      <span className="text-gray-600">Run ID:</span>
+                      <span className="text-black font-mono text-xs">{selectedRun.runId}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between py-2 border-b border-gray-100">
                     <span className="text-gray-600">Period:</span>
-                    <span className="text-black">{selectedRun.period || selectedRun.payrollPeriod || '-'}</span>
+                    <span className="text-black">{formatPayrollPeriod(selectedRun.period || selectedRun.payrollPeriod)}</span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Entity:</span>
+                    <span className="text-gray-600">Department:</span>
                     <span className="text-black">{selectedRun.entity || '-'}</span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-gray-100">
@@ -459,7 +492,7 @@ export default function PayrollSpecialistRunsPage() {
                   </div>
                   <div className="flex justify-between py-2 border-b border-gray-100">
                     <span className="text-gray-600">Payment Status:</span>
-                    <span className="text-black">{selectedRun.paymentStatus || '-'}</span>
+                    <span className="text-black capitalize">{selectedRun.paymentStatus || '-'}</span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-gray-100">
                     <span className="text-gray-600">Employees:</span>
@@ -467,42 +500,78 @@ export default function PayrollSpecialistRunsPage() {
                   </div>
                   <div className="flex justify-between py-2 border-b border-gray-100">
                     <span className="text-gray-600">Exceptions:</span>
-                    <span className="text-black">{selectedRun.exceptions ?? '-'}</span>
+                    <span className={`${(selectedRun.exceptions || 0) > 0 ? 'text-red-600' : 'text-black'}`}>{selectedRun.exceptions ?? 0}</span>
                   </div>
-                  <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Total Net Pay:</span>
-                    <span className="text-black font-semibold">
-                      {selectedRun.totalnetpay ?? selectedRun.totalNetPay ? `$${(selectedRun.totalnetpay ?? selectedRun.totalNetPay).toLocaleString()}` : '-'}
-                    </span>
+                  
+                  {/* Financial Summary */}
+                  <div className="bg-gray-50 rounded-lg p-3 my-2">
+                    <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">Financial Summary</h4>
+                    {selectedRun.totalBaseSalary !== undefined && (
+                      <div className="flex justify-between py-1">
+                        <span className="text-gray-600 text-sm">Base Salaries:</span>
+                        <span className="text-black">EGP {selectedRun.totalBaseSalary?.toLocaleString() || '0'}</span>
+                      </div>
+                    )}
+                    {selectedRun.totalAllowances !== undefined && (
+                      <div className="flex justify-between py-1">
+                        <span className="text-gray-600 text-sm">Allowances:</span>
+                        <span className="text-green-600">+EGP {selectedRun.totalAllowances?.toLocaleString() || '0'}</span>
+                      </div>
+                    )}
+                    {selectedRun.totalOvertime !== undefined && selectedRun.totalOvertime > 0 && (
+                      <div className="flex justify-between py-1">
+                        <span className="text-gray-600 text-sm">Overtime:</span>
+                        <span className="text-blue-600">+EGP {selectedRun.totalOvertime?.toLocaleString() || '0'}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between py-1">
+                      <span className="text-gray-600 text-sm">Gross Pay:</span>
+                      <span className="text-black font-semibold">EGP {selectedRun.totalGrossPay?.toLocaleString() || '0'}</span>
+                    </div>
+                    <div className="flex justify-between py-1">
+                      <span className="text-gray-600 text-sm">Deductions:</span>
+                      <span className="text-red-600">-EGP {selectedRun.totalDeductions?.toLocaleString() || '0'}</span>
+                    </div>
+                    {selectedRun.totalPenalties !== undefined && selectedRun.totalPenalties > 0 && (
+                      <div className="flex justify-between py-1">
+                        <span className="text-gray-600 text-sm">Penalties:</span>
+                        <span className="text-red-600">-EGP {selectedRun.totalPenalties?.toLocaleString() || '0'}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between py-1 border-t border-gray-200 mt-1 pt-1">
+                      <span className="text-gray-800 font-medium">Net Pay:</span>
+                      <span className="text-green-700 font-bold">EGP {(selectedRun.totalnetpay ?? selectedRun.totalNetPay)?.toLocaleString() || '0'}</span>
+                    </div>
                   </div>
+                  
                   <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Total Gross Pay:</span>
-                    <span className="text-black font-semibold">
-                      {selectedRun.totalGrossPay ? `$${selectedRun.totalGrossPay.toLocaleString()}` : '-'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Total Deductions:</span>
-                    <span className="text-red-600 font-semibold">
-                      {selectedRun.totalDeductions ? `-$${selectedRun.totalDeductions.toLocaleString()}` : '-'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Irregularities (REQ-PY-5):</span>
+                    <span className="text-gray-600">Irregularities:</span>
                     <span className={`font-semibold ${(selectedRun.irregularitiesCount || 0) > 0 ? 'text-orange-600' : 'text-black'}`}>
                       {selectedRun.irregularitiesCount ?? 0}
                     </span>
                   </div>
-                  <div className="flex justify-between py-2">
+                  <div className="flex justify-between py-2 border-b border-gray-100">
                     <span className="text-gray-600">Created:</span>
-                    <span className="text-black">{selectedRun.createdAt ? new Date(selectedRun.createdAt).toLocaleString() : '-'}</span>
+                    <span className="text-black">{selectedRun.createdAt ? new Date(selectedRun.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}</span>
                   </div>
+                  {selectedRun.managerApprovalDate && (
+                    <div className="flex justify-between py-2 border-b border-gray-100">
+                      <span className="text-gray-600">Manager Approved:</span>
+                      <span className="text-green-700">{new Date(selectedRun.managerApprovalDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                    </div>
+                  )}
+                  {selectedRun.financeApprovalDate && (
+                    <div className="flex justify-between py-2">
+                      <span className="text-gray-600">Finance Approved:</span>
+                      <span className="text-green-700">{new Date(selectedRun.financeApprovalDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Irregularities Details Section */}
                 {(selectedRun.irregularities && selectedRun.irregularities.length > 0) && (
                   <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                    <h3 className="font-semibold text-orange-800 mb-2">⚠️ Flagged Irregularities (REQ-PY-5)</h3>
+                    <h3 className="font-semibold text-orange-800 mb-2">⚠️ Flagged Irregularities</h3>
                     <ul className="space-y-1 max-h-32 overflow-y-auto">
                       {selectedRun.irregularities.map((irr: string, idx: number) => (
                         <li key={idx} className="text-sm text-orange-700 flex items-start gap-2">
@@ -537,7 +606,7 @@ export default function PayrollSpecialistRunsPage() {
                       onClick={() => handleStartEdit(selectedRun)}
                       className="w-full bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700"
                     >
-                      ✏️ Edit (REQ-PY-26)
+                      ✏️ Edit Payroll
                     </button>
                   </div>
                 )}
@@ -559,7 +628,7 @@ export default function PayrollSpecialistRunsPage() {
                   </div>
                 )}
 
-                {/* REQ-PY-26: Edit rejected payroll initiation */}
+                {/* Edit rejected payroll initiation */}
                 {selectedRun.status === 'rejected' && !editMode && (
                   <div className="space-y-3">
                     {selectedRun.rejectionReason && (
@@ -571,15 +640,15 @@ export default function PayrollSpecialistRunsPage() {
                       onClick={() => handleStartEdit(selectedRun)}
                       className="w-full bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700"
                     >
-                      ✏️ Edit & Resubmit (REQ-PY-26)
+                      ✏️ Edit & Resubmit
                     </button>
                   </div>
                 )}
 
-                {/* Edit Form for REQ-PY-26 */}
+                {/* Edit Form */}
                 {(selectedRun.status === 'rejected' || selectedRun.status === 'draft') && editMode && (
                   <div className="space-y-4 border-t border-gray-200 pt-4 mt-4">
-                    <h3 className="font-semibold text-black">Edit Payroll Initiation (REQ-PY-26)</h3>
+                    <h3 className="font-semibold text-black">Edit Payroll Initiation</h3>
                     <div>
                       <label className="block text-sm font-medium text-black mb-1">Payroll Period *</label>
                       <input
@@ -704,7 +773,7 @@ export default function PayrollSpecialistRunsPage() {
       {activeTab === 'bonuses' && (
         <div>
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-black">Signing Bonuses (REQ-PY-28, REQ-PY-29)</h2>
+            <h2 className="text-lg font-semibold text-black">Signing Bonuses</h2>
             <button onClick={fetchBonuses} disabled={loading} className="text-blue-600 hover:text-blue-800">
               Refresh
             </button>
@@ -754,10 +823,10 @@ export default function PayrollSpecialistRunsPage() {
                         }}
                         className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm hover:bg-blue-700"
                       >
-                        ✏️ Edit Amount (REQ-PY-29)
+                        ✏️ Edit Amount
                       </button>
                       
-                      {/* Approve button - REQ-PY-28 */}
+                      {/* Approve button */}
                       <button
                         onClick={async () => {
                           try {
@@ -774,10 +843,10 @@ export default function PayrollSpecialistRunsPage() {
                         }}
                         className="w-full bg-green-600 text-white py-2 rounded-lg text-sm hover:bg-green-700"
                       >
-                        ✓ Approve (REQ-PY-28)
+                        ✓ Approve
                       </button>
                       
-                      {/* Reject button - REQ-PY-28 */}
+                      {/* Reject button */}
                       <button
                         onClick={async () => {
                           const reason = prompt('Enter rejection reason:');
@@ -818,7 +887,7 @@ export default function PayrollSpecialistRunsPage() {
       {activeTab === 'termination' && (
         <div>
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-black">Termination/Resignation Benefits (REQ-PY-31, REQ-PY-32)</h2>
+            <h2 className="text-lg font-semibold text-black">Termination/Resignation Benefits</h2>
             <button onClick={fetchTerminations} disabled={loading} className="text-blue-600 hover:text-blue-800">
               Refresh
             </button>
@@ -845,7 +914,7 @@ export default function PayrollSpecialistRunsPage() {
                   {/* Action buttons for pending benefits */}
                   {t.status === 'pending' && (
                     <div className="space-y-2">
-                      {/* Edit button - REQ-PY-32 */}
+                      {/* Edit button */}
                       <button
                         onClick={async () => {
                           const newAmount = prompt('Enter new amount (givenAmount):', String(t.givenAmount || t.amount || 0));
@@ -869,10 +938,10 @@ export default function PayrollSpecialistRunsPage() {
                         }}
                         className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm hover:bg-blue-700"
                       >
-                        ✏️ Edit Amount (REQ-PY-32)
+                        ✏️ Edit Amount
                       </button>
                       
-                      {/* Approve button - REQ-PY-31 */}
+                      {/* Approve button */}
                       <button
                         onClick={async () => {
                           try {
@@ -889,10 +958,10 @@ export default function PayrollSpecialistRunsPage() {
                         }}
                         className="w-full bg-green-600 text-white py-2 rounded-lg text-sm hover:bg-green-700"
                       >
-                        ✓ Approve (REQ-PY-31)
+                        ✓ Approve
                       </button>
                       
-                      {/* Reject button - REQ-PY-31 */}
+                      {/* Reject button */}
                       <button
                         onClick={async () => {
                           const reason = prompt('Enter rejection reason:');
@@ -929,11 +998,11 @@ export default function PayrollSpecialistRunsPage() {
         </div>
       )}
 
-      {/* Tab: Payslips (REQ-PY-8, BR 17) */}
+      {/* Tab: Payslips */}
       {activeTab === 'payslips' && (
         <div>
           <div className="mb-4">
-            <h2 className="text-lg font-semibold text-black mb-2">Payslips (REQ-PY-8, BR 17: Clear breakdown)</h2>
+            <h2 className="text-lg font-semibold text-black mb-2">Payslips</h2>
             <p className="text-gray-600 text-sm mb-4">
               View generated payslips for approved/locked payroll runs. Each payslip shows the full breakdown of earnings and deductions.
             </p>
@@ -955,7 +1024,7 @@ export default function PayrollSpecialistRunsPage() {
                   <option value="">-- Select a payroll run --</option>
                   {runs.filter(r => ['approved', 'locked', 'unlocked'].includes(r.status?.toLowerCase())).map((run) => (
                     <option key={run._id} value={run._id}>
-                      {run.period || run.payrollPeriod} - {run.entity} ({run.status})
+                      {formatPayrollPeriod(run.period || run.payrollPeriod)} - {run.entity} ({run.status})
                     </option>
                   ))}
                 </select>
@@ -1048,12 +1117,12 @@ export default function PayrollSpecialistRunsPage() {
             </>
           )}
 
-          {/* Payslip Detail Modal (BR 17: Clear breakdown) */}
+          {/* Payslip Detail Modal */}
           {selectedPayslip && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedPayslip(null)}>
               <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
                 <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex justify-between items-center">
-                  <h2 className="text-xl font-bold text-black">Payslip Details (BR 17)</h2>
+                  <h2 className="text-xl font-bold text-black">Payslip Details</h2>
                   <button onClick={() => setSelectedPayslip(null)} className="text-gray-500 hover:text-black text-2xl">&times;</button>
                 </div>
                 
@@ -1092,28 +1161,92 @@ export default function PayrollSpecialistRunsPage() {
                             <span className="text-gray-700">Base Salary</span>
                             <span className="text-black font-medium">${(selectedPayslip.earningsDetails.baseSalary || 0).toLocaleString()}</span>
                           </div>
-                          {(selectedPayslip.earningsDetails.allowances || 0) > 0 && (
-                            <div className="flex justify-between py-1 border-b border-green-100">
-                              <span className="text-gray-700">Allowances</span>
-                              <span className="text-black">${(selectedPayslip.earningsDetails.allowances || 0).toLocaleString()}</span>
+                          
+                          {/* Allowances - show detailed breakdown */}
+                          {Array.isArray(selectedPayslip.earningsDetails.allowances) && selectedPayslip.earningsDetails.allowances.length > 0 && (
+                            <div className="border-b border-green-100 pb-2">
+                              <div className="flex justify-between py-1">
+                                <span className="text-gray-700 font-medium">Allowances</span>
+                                <span className="text-black font-medium">
+                                  ${selectedPayslip.earningsDetails.allowances.reduce((sum: number, a: any) => sum + (a.amount || 0), 0).toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="ml-4 text-sm text-gray-500">
+                                {selectedPayslip.earningsDetails.allowances.map((allowance: any, idx: number) => (
+                                  <div key={idx} className="flex justify-between py-0.5">
+                                    <span>{allowance.name || 'Allowance'}</span>
+                                    <span>${(allowance.amount || 0).toLocaleString()}</span>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           )}
-                          {(selectedPayslip.earningsDetails.bonuses || 0) > 0 && (
-                            <div className="flex justify-between py-1 border-b border-green-100">
-                              <span className="text-gray-700">Bonuses</span>
-                              <span className="text-black">${(selectedPayslip.earningsDetails.bonuses || 0).toLocaleString()}</span>
+                          
+                          {/* Bonuses - show detailed breakdown */}
+                          {Array.isArray(selectedPayslip.earningsDetails.bonuses) && selectedPayslip.earningsDetails.bonuses.length > 0 && (
+                            <div className="border-b border-green-100 pb-2">
+                              <div className="flex justify-between py-1">
+                                <span className="text-gray-700 font-medium">Bonuses</span>
+                                <span className="text-black font-medium">
+                                  ${selectedPayslip.earningsDetails.bonuses.reduce((sum: number, b: any) => sum + (b.amount || 0), 0).toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="ml-4 text-sm text-gray-500">
+                                {selectedPayslip.earningsDetails.bonuses.map((bonus: any, idx: number) => (
+                                  <div key={idx} className="flex justify-between py-0.5">
+                                    <span>{bonus.name || bonus.type || 'Bonus'}</span>
+                                    <span>${(bonus.amount || 0).toLocaleString()}</span>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           )}
-                          {(selectedPayslip.earningsDetails.benefits || 0) > 0 && (
-                            <div className="flex justify-between py-1 border-b border-green-100">
-                              <span className="text-gray-700">Benefits</span>
-                              <span className="text-black">${(selectedPayslip.earningsDetails.benefits || 0).toLocaleString()}</span>
+                          
+                          {/* Benefits */}
+                          {Array.isArray(selectedPayslip.earningsDetails.benefits) && selectedPayslip.earningsDetails.benefits.length > 0 && (
+                            <div className="border-b border-green-100 pb-2">
+                              <div className="flex justify-between py-1">
+                                <span className="text-gray-700 font-medium">Benefits</span>
+                                <span className="text-black font-medium">
+                                  ${selectedPayslip.earningsDetails.benefits.reduce((sum: number, b: any) => sum + (b.amount || 0), 0).toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="ml-4 text-sm text-gray-500">
+                                {selectedPayslip.earningsDetails.benefits.map((benefit: any, idx: number) => (
+                                  <div key={idx} className="flex justify-between py-0.5">
+                                    <span>{benefit.name || benefit.type || 'Benefit'}</span>
+                                    <span>${(benefit.amount || 0).toLocaleString()}</span>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           )}
-                          {(selectedPayslip.earningsDetails.refunds || 0) > 0 && (
+                          
+                          {/* Refunds */}
+                          {Array.isArray(selectedPayslip.earningsDetails.refunds) && selectedPayslip.earningsDetails.refunds.length > 0 && (
+                            <div className="border-b border-green-100 pb-2">
+                              <div className="flex justify-between py-1">
+                                <span className="text-gray-700 font-medium">Refunds</span>
+                                <span className="text-black font-medium">
+                                  ${selectedPayslip.earningsDetails.refunds.reduce((sum: number, r: any) => sum + (r.amount || 0), 0).toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="ml-4 text-sm text-gray-500">
+                                {selectedPayslip.earningsDetails.refunds.map((refund: any, idx: number) => (
+                                  <div key={idx} className="flex justify-between py-0.5">
+                                    <span>{refund.reason || refund.description || 'Refund'}</span>
+                                    <span>${(refund.amount || 0).toLocaleString()}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Overtime */}
+                          {(selectedPayslip.earningsDetails.overtime || 0) > 0 && (
                             <div className="flex justify-between py-1 border-b border-green-100">
-                              <span className="text-gray-700">Refunds</span>
-                              <span className="text-black">${(selectedPayslip.earningsDetails.refunds || 0).toLocaleString()}</span>
+                              <span className="text-gray-700">Overtime</span>
+                              <span className="text-black">${(selectedPayslip.earningsDetails.overtime || 0).toLocaleString()}</span>
                             </div>
                           )}
                         </>
@@ -1134,22 +1267,93 @@ export default function PayrollSpecialistRunsPage() {
                     <div className="bg-red-50 rounded-lg p-4 space-y-2">
                       {selectedPayslip.deductionsDetails && (
                         <>
-                          {(selectedPayslip.deductionsDetails.taxes || 0) > 0 && (
-                            <div className="flex justify-between py-1 border-b border-red-100">
-                              <span className="text-gray-700">Taxes</span>
-                              <span className="text-red-600">${(selectedPayslip.deductionsDetails.taxes || 0).toLocaleString()}</span>
+                          {/* Tax Deductions */}
+                          {(selectedPayslip.deductionsDetails.taxAmount || 0) > 0 && (
+                            <div className="border-b border-red-100 pb-2">
+                              <div className="flex justify-between py-1">
+                                <span className="text-gray-700 font-medium">Taxes</span>
+                                <span className="text-red-600 font-medium">${(selectedPayslip.deductionsDetails.taxAmount || 0).toLocaleString()}</span>
+                              </div>
+                              {Array.isArray(selectedPayslip.deductionsDetails.taxes) && selectedPayslip.deductionsDetails.taxes.length > 0 && (
+                                <div className="ml-4 text-sm text-gray-500">
+                                  {selectedPayslip.deductionsDetails.taxes.map((tax: any, idx: number) => (
+                                    <div key={idx} className="flex justify-between py-0.5">
+                                      <span>{tax.name || 'Tax'}</span>
+                                      <span>{(tax.rate * 100).toFixed(1)}%</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           )}
-                          {(selectedPayslip.deductionsDetails.insurances || 0) > 0 && (
-                            <div className="flex justify-between py-1 border-b border-red-100">
-                              <span className="text-gray-700">Insurance</span>
-                              <span className="text-red-600">${(selectedPayslip.deductionsDetails.insurances || 0).toLocaleString()}</span>
+                          
+                          {/* Insurance Deductions */}
+                          {(selectedPayslip.deductionsDetails.insuranceAmount || 0) > 0 && (
+                            <div className="border-b border-red-100 pb-2">
+                              <div className="flex justify-between py-1">
+                                <span className="text-gray-700 font-medium">Social Insurance</span>
+                                <span className="text-red-600 font-medium">${(selectedPayslip.deductionsDetails.insuranceAmount || 0).toLocaleString()}</span>
+                              </div>
+                              {Array.isArray(selectedPayslip.deductionsDetails.insurances) && selectedPayslip.deductionsDetails.insurances.length > 0 && (
+                                <div className="ml-4 text-sm text-gray-500">
+                                  {selectedPayslip.deductionsDetails.insurances.map((ins: any, idx: number) => (
+                                    <div key={idx} className="flex justify-between py-0.5">
+                                      <span>{ins.name || 'Insurance'}</span>
+                                      <span>{((ins.employeeRate || 0) * 100).toFixed(2)}% (Employee)</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           )}
-                          {(selectedPayslip.deductionsDetails.penalties || 0) > 0 && (
-                            <div className="flex justify-between py-1 border-b border-red-100">
-                              <span className="text-gray-700">Penalties</span>
-                              <span className="text-red-600">${(selectedPayslip.deductionsDetails.penalties || 0).toLocaleString()}</span>
+                          
+                          {/* Penalties */}
+                          {(selectedPayslip.deductionsDetails.penaltiesAmount || 0) > 0 && (
+                            <div className="border-b border-red-100 pb-2">
+                              <div className="flex justify-between py-1">
+                                <span className="text-gray-700 font-medium">Penalties</span>
+                                <span className="text-red-600 font-medium">${(selectedPayslip.deductionsDetails.penaltiesAmount || 0).toLocaleString()}</span>
+                              </div>
+                              {Array.isArray(selectedPayslip.deductionsDetails.penalties) && selectedPayslip.deductionsDetails.penalties.length > 0 && (
+                                <div className="ml-4 text-sm text-gray-500">
+                                  {selectedPayslip.deductionsDetails.penalties.map((penalty: any, idx: number) => (
+                                    <div key={idx} className="flex justify-between py-0.5">
+                                      <span>{penalty.reason || penalty.type || 'Penalty'}</span>
+                                      <span>${(penalty.amount || 0).toLocaleString()}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          
+                          {/* Unpaid Leave Deductions */}
+                          {(selectedPayslip.deductionsDetails.unpaidLeaveAmount || 0) > 0 && (
+                            <div className="border-b border-red-100 pb-2">
+                              <div className="flex justify-between py-1">
+                                <span className="text-gray-700 font-medium">Unpaid Leave</span>
+                                <span className="text-red-600 font-medium">${(selectedPayslip.deductionsDetails.unpaidLeaveAmount || 0).toLocaleString()}</span>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Late Arrival / Early Leave Deductions */}
+                          {(selectedPayslip.deductionsDetails.lateDeductionAmount || 0) > 0 && (
+                            <div className="border-b border-red-100 pb-2">
+                              <div className="flex justify-between py-1">
+                                <span className="text-gray-700 font-medium">Late Arrival / Early Leave</span>
+                                <span className="text-red-600 font-medium">${(selectedPayslip.deductionsDetails.lateDeductionAmount || 0).toLocaleString()}</span>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Other Deductions */}
+                          {(selectedPayslip.deductionsDetails.otherDeductions || 0) > 0 && (
+                            <div className="border-b border-red-100 pb-2">
+                              <div className="flex justify-between py-1">
+                                <span className="text-gray-700 font-medium">Other Deductions</span>
+                                <span className="text-red-600 font-medium">${(selectedPayslip.deductionsDetails.otherDeductions || 0).toLocaleString()}</span>
+                              </div>
                             </div>
                           )}
                         </>

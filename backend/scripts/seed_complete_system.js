@@ -6,9 +6,11 @@
  * Run with: node scripts/seed_complete_system.js
  */
 
+
 const { MongoClient, ObjectId } = require('mongodb');
 const bcrypt = require('bcrypt');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
 
@@ -234,6 +236,8 @@ async function seedDatabase() {
             const deptId = user.department ? deptMap[user.department] : null;
             
             employeeProfiles.push({
+                employeeNumber: `EN${100000 + USERS.indexOf(user)}`,
+                nationalId: `NID${100000 + USERS.indexOf(user)}`,
                 _id: user._id,
                 firstName: user.firstName,
                 lastName: user.lastName,
@@ -280,7 +284,7 @@ async function seedDatabase() {
             });
         }
         
-        await db.collection('employeeprofiles').insertMany(employeeProfiles);
+        await db.collection('employee_profiles').insertMany(employeeProfiles);
         console.log(`Created ${employeeProfiles.length} employee profiles`);
         
         // ============================================
