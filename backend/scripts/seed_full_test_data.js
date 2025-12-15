@@ -2,7 +2,7 @@
  * Comprehensive Database Seed Script
  * 
  * This script:
- * 1. Clears all collections except employeeprofiles and employeesystemroles for the specified users
+ * 1. Clears all collections except employee_profiles and employeesystemroles for the specified users
  * 2. Seeds all necessary data for testing the payroll module
  * 
  * Run with: node scripts/seed_full_test_data.js
@@ -46,7 +46,7 @@ const EMPLOYEES = [
 ];
 
 // Collections to preserve (won't be cleared)
-const PRESERVE_COLLECTIONS = ['employeeprofiles', 'employeesystemroles', 'users'];
+const PRESERVE_COLLECTIONS = ['employee_profiles', 'employeesystemroles', 'users'];
 
 // Helper functions
 function generateObjectId() {
@@ -105,7 +105,7 @@ async function seedDatabase() {
         
         for (let i = 0; i < EMPLOYEES.length; i++) {
             const emp = EMPLOYEES[i];
-            await db.collection('employeeprofiles').updateOne(
+            await db.collection('employee_profiles').updateOne(
                 { _id: new ObjectId(emp._id) },
                 {
                     $set: {

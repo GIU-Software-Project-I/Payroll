@@ -23,7 +23,7 @@ async function seedPerformance() {
         // Get existing data for references
         const departments = await db.collection('departments').find({}).toArray();
         const positions = await db.collection('positions').find({}).toArray();
-        const employees = await db.collection('employeeprofiles').find({}).toArray();
+        const employees = await db.collection('employee_profiles').find({}).toArray();
         
         if (employees.length === 0) {
             console.error('Please run seed_complete_system.js first');

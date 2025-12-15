@@ -21,7 +21,7 @@ async function seedTimeAndOffboarding() {
         const db = client.db();
         
         // Get existing data
-        const employees = await db.collection('employeeprofiles').find({}).toArray();
+        const employees = await db.collection('employee_profiles').find({}).toArray();
         const attendanceRecords = await db.collection('attendancerecords').find({}).toArray();
         const contracts = await db.collection('contracts').find({}).toArray();
         
