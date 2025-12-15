@@ -16,6 +16,7 @@ import { CurrentUser } from '../../../auth/decorators/current-user';
 import { SystemRole } from '../../../employee/enums/employee-profile.enums';
 import type { JwtPayload } from '../../../auth/token/jwt-payload';
 import { TerminationBenefitEditDto } from '../dto/termination-benefit-edit.dto';
+import { Query as NestQuery } from '@nestjs/common';
 
 @Controller('payroll-execution')
 @ApiTags('Payroll Execution')
@@ -26,7 +27,7 @@ export class PayrollExecutionController {
 	// ============ SIGNING BONUS ENDPOINTS ============
 
 	@UseGuards(AuthenticationGuard, AuthorizationGuard)
-	@Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.HR_MANAGER, SystemRole.FINANCE_STAFF)
+	@Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.HR_MANAGER, SystemRole.FINANCE_STAFF, SystemRole.PAYROLL_MANAGER)
 	@Post('approve-signing-bonuses')
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({ summary: 'REQ-PY-28: Approve all pending signing bonuses' })
@@ -37,7 +38,7 @@ export class PayrollExecutionController {
 	}
 
 	@UseGuards(AuthenticationGuard, AuthorizationGuard)
-	@Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.HR_MANAGER, SystemRole.FINANCE_STAFF)
+	@Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.HR_MANAGER, SystemRole.FINANCE_STAFF, SystemRole.PAYROLL_MANAGER)
 	@Get('signing-bonuses')
 	@ApiOperation({ summary: 'List signing bonuses (optional status filter)' })
 	@ApiResponse({ status: 200, description: 'List of signing bonuses' })
@@ -49,7 +50,7 @@ export class PayrollExecutionController {
 	}
 
 	@UseGuards(AuthenticationGuard, AuthorizationGuard)
-	@Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.HR_MANAGER, SystemRole.FINANCE_STAFF)
+	@Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.HR_MANAGER, SystemRole.FINANCE_STAFF, SystemRole.PAYROLL_MANAGER)
 	@Get('signing-bonuses/:id')
 	@ApiOperation({ summary: 'Get a single signing bonus by id' })
 	@ApiParam({ name: 'id', description: 'Signing bonus id', type: 'string' })
@@ -80,6 +81,18 @@ export class PayrollExecutionController {
 	@ApiResponse({ status: 200, description: 'Approved signing bonus' })
 	async approveSingleSigningBonus(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
 		const updated = await this.payrollService.approveSigningBonus(id, user?.sub);
+		return updated;
+	}
+
+	@UseGuards(AuthenticationGuard, AuthorizationGuard)
+	@Roles(SystemRole.PAYROLL_SPECIALIST)
+	@Post('signing-bonuses/:id/reject')
+	@ApiOperation({ summary: 'REQ-PY-28: Reject a signing bonus' })
+	@ApiParam({ name: 'id', description: 'Signing bonus id', type: 'string' })
+	@ApiBody({ schema: { type: 'object', properties: { reason: { type: 'string' } }, required: ['reason'] } })
+	@ApiResponse({ status: 200, description: 'Rejected signing bonus' })
+	async rejectSigningBonus(@Param('id') id: string, @Body() body: { reason: string }, @CurrentUser() user: JwtPayload) {
+		const updated = await this.payrollService.rejectSigningBonus(id, user?.sub, body?.reason);
 		return updated;
 	}
 
@@ -129,6 +142,18 @@ export class PayrollExecutionController {
 	@ApiResponse({ status: 200, description: 'Approved termination benefit' })
 	async approveTerminationBenefit(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
 		const updated = await this.payrollService.approveTerminationBenefit(id, user?.sub);
+		return updated;
+	}
+
+	@UseGuards(AuthenticationGuard, AuthorizationGuard)
+	@Roles(SystemRole.PAYROLL_SPECIALIST)
+	@Post('termination-benefits/:id/reject')
+	@ApiOperation({ summary: 'REQ-PY-31: Reject a termination/resignation benefit' })
+	@ApiParam({ name: 'id', description: 'Termination benefit id', type: 'string' })
+	@ApiBody({ schema: { type: 'object', properties: { reason: { type: 'string' } }, required: ['reason'] } })
+	@ApiResponse({ status: 200, description: 'Rejected termination benefit' })
+	async rejectTerminationBenefit(@Param('id') id: string, @Body() body: { reason: string }, @CurrentUser() user: JwtPayload) {
+		const updated = await this.payrollService.rejectTerminationBenefit(id, user?.sub, body?.reason);
 		return updated;
 	}
 
@@ -197,7 +222,7 @@ export class PayrollExecutionController {
 	// ============ PAYROLL APPROVAL WORKFLOW ENDPOINTS ============
 
 	@UseGuards(AuthenticationGuard, AuthorizationGuard)
-	@Roles(SystemRole.HR_MANAGER)
+	@Roles(SystemRole.HR_MANAGER, SystemRole.PAYROLL_MANAGER)
 	@Post(':id/approve')
 	@ApiOperation({ summary: 'REQ-PY-22: Manager approval of payroll run (BR 30: multi-step approval)' })
 	@ApiParam({ name: 'id', description: 'Payroll run id', type: 'string' })
@@ -219,7 +244,7 @@ export class PayrollExecutionController {
 	}
 
 	@UseGuards(AuthenticationGuard, AuthorizationGuard)
-	@Roles(SystemRole.HR_MANAGER)
+	@Roles(SystemRole.HR_MANAGER, SystemRole.PAYROLL_MANAGER)
 	@Post(':id/freeze')
 	@ApiOperation({ summary: 'REQ-PY-7: Lock/freeze finalized payroll (prevents unauthorized changes)' })
 	@ApiParam({ name: 'id', description: 'Payroll run id', type: 'string' })
@@ -230,7 +255,7 @@ export class PayrollExecutionController {
 	}
 
 	@UseGuards(AuthenticationGuard, AuthorizationGuard)
-	@Roles(SystemRole.HR_MANAGER)
+	@Roles(SystemRole.HR_MANAGER, SystemRole.PAYROLL_MANAGER)
 	@Post(':id/unfreeze')
 	@ApiOperation({ summary: 'REQ-PY-19: Unfreeze payroll under exceptional circumstances (requires reason)' })
 	@ApiParam({ name: 'id', description: 'Payroll run id', type: 'string' })
@@ -258,13 +283,79 @@ export class PayrollExecutionController {
 	// ============ VIEWING AND REPORTING ENDPOINTS ============
 
 	@UseGuards(AuthenticationGuard, AuthorizationGuard)
-	@Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.HR_MANAGER, SystemRole.FINANCE_STAFF)
+	@Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.HR_MANAGER, SystemRole.FINANCE_STAFF, SystemRole.PAYROLL_MANAGER)
 	@Get('draft/:id')
 	@ApiOperation({ summary: 'REQ-PY-6: Fetch payroll draft/run details for review' })
 	@ApiResponse({ status: 200, description: 'Payroll draft details' })
 	@ApiParam({ name: 'id', description: 'Draft/Run id', type: 'string' })
 	async getDraft(@Req() req: any, @Param('id') id: string, @CurrentUser() user: JwtPayload) {
 		const result = await this.payrollService.getDraft(id, user?.sub);
+		return result;
+	}
+
+	@UseGuards(AuthenticationGuard, AuthorizationGuard)
+	@Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.HR_MANAGER, SystemRole.FINANCE_STAFF, SystemRole.PAYROLL_MANAGER)
+	@Get('runs')
+	@ApiOperation({ summary: 'List payroll runs with optional filters' })
+	@ApiQuery({ name: 'status', required: false })
+	@ApiQuery({ name: 'period', required: false, description: 'YYYY-MM or exact period string' })
+	@ApiQuery({ name: 'page', required: false, description: 'Page number', type: Number })
+	@ApiQuery({ name: 'limit', required: false, description: 'Items per page', type: Number })
+	@ApiResponse({ status: 200, description: 'List of payroll runs' })
+	async listRuns(
+		@NestQuery('status') status?: string,
+		@NestQuery('period') period?: string,
+		@NestQuery('page') page?: string,
+		@NestQuery('limit') limit?: string,
+		@CurrentUser() user?: JwtPayload,
+	) {
+		const pg = page ? Number(page) : 1;
+		const lm = limit ? Number(limit) : 10;
+		const result = await this.payrollService.listPayrollRuns({ status, period, page: pg, limit: lm }, user?.sub);
+		return result;
+	}
+
+	// ============ PAYSLIP ENDPOINTS (REQ-PY-8, BR 17) ============
+
+	@UseGuards(AuthenticationGuard, AuthorizationGuard)
+	@Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.HR_MANAGER, SystemRole.FINANCE_STAFF, SystemRole.PAYROLL_MANAGER)
+	@Get('payslips/:payslipId')
+	@ApiOperation({ summary: 'REQ-PY-8 BR 17: Get single payslip with full breakdown of components' })
+	@ApiParam({ name: 'payslipId', description: 'Payslip id', type: 'string' })
+	@ApiResponse({ status: 200, description: 'Payslip details with complete earnings and deductions breakdown' })
+	async getPayslip(@Param('payslipId') payslipId: string, @CurrentUser() user: JwtPayload) {
+		const result = await this.payrollService.getPayslip(payslipId, user?.sub);
+		return result;
+	}
+
+	@UseGuards(AuthenticationGuard, AuthorizationGuard)
+	@Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.HR_MANAGER, SystemRole.FINANCE_STAFF, SystemRole.PAYROLL_MANAGER)
+	@Get('diagnostics/employee-status')
+	@ApiOperation({ summary: 'Diagnostic: Check employee status distribution for payroll processing' })
+	@ApiResponse({ status: 200, description: 'Employee status breakdown' })
+	async getEmployeeStatusDiagnostics(@CurrentUser() user: JwtPayload) {
+		const result = await this.payrollService.getEmployeeStatusDiagnostics(user?.sub);
+		return result;
+	}
+
+	@UseGuards(AuthenticationGuard, AuthorizationGuard)
+	@Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.HR_MANAGER, SystemRole.FINANCE_STAFF, SystemRole.PAYROLL_MANAGER)
+	@Get('departments')
+	@ApiOperation({ summary: 'List all active departments for payroll entity dropdown' })
+	@ApiResponse({ status: 200, description: 'List of departments' })
+	async listDepartments(@CurrentUser() user: JwtPayload) {
+		const result = await this.payrollService.listDepartments(user?.sub);
+		return result;
+	}
+
+	@UseGuards(AuthenticationGuard, AuthorizationGuard)
+	@Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.HR_MANAGER, SystemRole.FINANCE_STAFF, SystemRole.PAYROLL_MANAGER)
+	@Get(':id/payslips')
+	@ApiOperation({ summary: 'REQ-PY-8 BR 17: List all payslips for a payroll run with clear breakdown' })
+	@ApiParam({ name: 'id', description: 'Payroll run id', type: 'string' })
+	@ApiResponse({ status: 200, description: 'List of payslips with earnings and deductions breakdown' })
+	async listPayslipsByRun(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+		const result = await this.payrollService.listPayslipsByRun(id, user?.sub);
 		return result;
 	}
 }

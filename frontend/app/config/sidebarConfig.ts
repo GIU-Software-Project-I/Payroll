@@ -456,6 +456,11 @@ const FINANCE_STAFF_NAV: NavItem[] = [
     icon: 'home',
   },
   {
+    label: 'Payroll Runs',
+    href: '/dashboard/finance-staff/runs',
+    icon: 'play-circle',
+  },
+  {
     label: 'Payroll Reports',
     href: '/dashboard/finance-staff/payroll-reports',
     icon: 'dollar-sign',

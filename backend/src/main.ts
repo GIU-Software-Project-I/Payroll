@@ -23,18 +23,18 @@ async function bootstrap() {
     app.useGlobalPipes(new ValidationPipe({ whitelist: false, transform: true }));
 
     app.enableCors({
-        origin: (origin, callback) => {
-            // Allow requests with no origin (like mobile apps or curl requests)
-            if (!origin) return callback(null, true);
-            // Allow any localhost origin during development
-            if (origin.startsWith('http://localhost:4000')) {
-                return callback(null, true);
-            }
-            callback(new Error('Not allowed by CORS'));
-        },
+        // Explicitly allow common dev origins
+        origin: [
+            'http://localhost:3000',
+            'http://127.0.0.1:3000',
+            'http://localhost:4000',
+            'http://localhost:500',
+            'http://192.168.100.4:4000',
+        ],
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+        exposedHeaders: ['Set-Cookie'],
     });
 
     const config = new DocumentBuilder()
@@ -47,7 +47,7 @@ async function bootstrap() {
 
     SwaggerModule.setup('api', app, document);
 
-    const port = Number(process.env.PORT) || 8000;
+    const port = Number(process.env.PORT) || 9000;
 
     await app.listen(port);
 

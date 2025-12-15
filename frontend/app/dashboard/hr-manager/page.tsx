@@ -1,415 +1,156 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { payrollConfigurationService } from "@/app/services/payroll-configuration";
-import { ConfigStatus } from "@/app/types/enums";
-import { useAuth } from "@/app/context/AuthContext";
-
-interface InsuranceBracket {
-  id: string;
-  name: string;
-  amount: number;
-  minSalary: number;
-  maxSalary: number;
-  employeeRate: number;
-  employerRate: number;
-  status: ConfigStatus;
-  createdBy?: string;
-  approvedBy?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-type EditState = {
-  id: string;
-  name: string;
-  amount: string;
-  minSalary: string;
-  maxSalary: string;
-  employeeRate: string;
-  employerRate: string;
-} | null;
+import Link from 'next/link';
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/app/context/AuthContext';
+import { employeeProfileService } from '@/app/services/employee-profile';
+import { performanceService } from '@/app/services/performance';
 
 export default function HRManagerPage() {
   const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
+  const [employeeCount, setEmployeeCount] = useState<number | null>(null);
+  const [cycleCount, setCycleCount] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [brackets, setBrackets] = useState<InsuranceBracket[]>([]);
-  const [filter, setFilter] = useState<ConfigStatus | "all">("all");
-  const [edit, setEdit] = useState<EditState>(null);
-
-  const filtered = useMemo(() => {
-    if (filter === "all") return brackets;
-    return brackets.filter((b) => b.status === filter);
-  }, [brackets, filter]);
-
-  const normalize = (raw: any): InsuranceBracket => {
-    return {
-      id: raw.id || raw._id,
-      name: raw.name || raw.insuranceName || "",
-      amount: Number(raw.amount || 0),
-      minSalary: Number(raw.minSalary || raw.min_salary || 0),
-      maxSalary: Number(raw.maxSalary || raw.max_salary || 0),
-      employeeRate: Number(raw.employeeRate || raw.employee_rate || 0),
-      employerRate: Number(raw.employerRate || raw.employer_rate || 0),
-      status: raw.status || raw.configStatus || ConfigStatus.DRAFT,
-      createdBy: raw.createdBy || raw.creator,
-      approvedBy: raw.approvedBy || raw.approver,
-      createdAt: raw.createdAt || raw.created_at,
-      updatedAt: raw.updatedAt || raw.updated_at,
-    };
-  };
-
-  const load = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await payrollConfigurationService.getInsuranceBrackets();
-      const rawData = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-      setBrackets(Array.isArray(rawData) ? rawData.map(normalize) : []);
-    } catch (e: any) {
-      setError(e?.message || "Failed to load insurance brackets");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
-    load();
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const [employeesRes, cyclesRes] = await Promise.all([
+          employeeProfileService.getAllEmployees(1, 1),
+          performanceService.getCycles(),
+        ]);
+
+        if (employeesRes.error) {
+          setError(employeesRes.error);
+          return;
+        }
+
+        let total = 0;
+        if (typeof employeesRes.data === 'object' && employeesRes.data !== null && 'total' in employeesRes.data) {
+          total = (employeesRes.data as any).total;
+        } else if (Array.isArray(employeesRes.data)) {
+          total = employeesRes.data.length;
+        }
+        setEmployeeCount(total);
+
+        const cycles = Array.isArray(cyclesRes.data) ? cyclesRes.data : [];
+        setCycleCount(cycles.filter((c: any) => c.status === 'ACTIVE').length);
+      } catch (err: any) {
+        setError(err.message || 'Failed to fetch data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
-  const beginEdit = (bracket: InsuranceBracket) => {
-    setEdit({
-      id: bracket.id,
-      name: bracket.name,
-      amount: String(bracket.amount),
-      minSalary: String(bracket.minSalary),
-      maxSalary: String(bracket.maxSalary),
-      employeeRate: String(bracket.employeeRate),
-      employerRate: String(bracket.employerRate),
-    });
-  };
-
-  const cancelEdit = () => {
-    setEdit(null);
-  };
-
-  const saveEdit = async () => {
-    if (!edit) return;
-
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const payload = {
-        name: edit.name.trim(),
-        amount: Number(edit.amount),
-        minSalary: Number(edit.minSalary),
-        maxSalary: Number(edit.maxSalary),
-        employeeRate: Number(edit.employeeRate),
-        employerRate: Number(edit.employerRate),
-      };
-
-      await payrollConfigurationService.updateInsuranceBracket(edit.id, payload);
-      setSuccess("Insurance bracket updated successfully");
-      setEdit(null);
-      await load();
-    } catch (e: any) {
-      setError(e?.message || "Failed to update insurance bracket");
-    }
-  };
-
-  const approve = async (id: string) => {
-    if (!user?.id) {
-      setError("User not authenticated");
-      return;
-    }
-
-    setError(null);
-    setSuccess(null);
-
-    try {
-      await payrollConfigurationService.approveInsuranceBracket(id, { approvedBy: user.id });
-      setSuccess("Insurance bracket approved successfully");
-      await load();
-    } catch (e: any) {
-      setError(e?.message || "Failed to approve");
-    }
-  };
-
-  const reject = async (id: string) => {
-    if (!user?.id) {
-      setError("User not authenticated");
-      return;
-    }
-
-    setError(null);
-    setSuccess(null);
-
-    try {
-      await payrollConfigurationService.rejectInsuranceBracket(id, { approvedBy: user.id });
-      setSuccess("Insurance bracket rejected");
-      await load();
-    } catch (e: any) {
-      setError(e?.message || "Failed to reject");
-    }
-  };
-
-  const deleteItem = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this insurance bracket? This action cannot be undone.")) return;
-
-    setError(null);
-    setSuccess(null);
-
-    try {
-      await payrollConfigurationService.deleteInsuranceBracket(id);
-      setSuccess("Insurance bracket deleted successfully");
-      await load();
-    } catch (e: any) {
-      setError(e?.message || "Failed to delete");
-    }
-  };
+  const modules = [
+    {
+      title: 'Employee Management',
+      description: 'View and manage employee profiles, search directory',
+      href: '/dashboard/hr-manager/employee-management',
+    },
+    {
+      title: 'Organization',
+      description: 'View departments and organizational structure',
+      href: '/dashboard/hr-manager/organization',
+    },
+    {
+      title: 'Performance Templates',
+      description: 'Configure appraisal templates and rating scales',
+      href: '/dashboard/hr-manager/performance-templates',
+    },
+    {
+      title: 'Performance Cycles',
+      description: 'Manage appraisal cycles and schedules',
+      href: '/dashboard/hr-manager/performance-cycles',
+    },
+    {
+      title: 'Dispute Resolution',
+      description: 'Review and resolve performance rating disputes',
+      href: '/dashboard/hr-manager/disputes',
+    },
+    {
+      title: 'Recruitment',
+      description: 'Manage job postings and candidates',
+      href: '/dashboard/hr-manager/recruitment',
+    },
+  ];
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Insurance Brackets Management</h1>
-        <p className="text-slate-600 mt-2">Review, update, and approve insurance bracket configurations</p>
-      </div>
-
-      {/* Info Banner */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
-        <p className="font-medium">📋 REQ-PY-22: HR Manager - Insurance Bracket Authority</p>
-        <ul className="list-disc ml-5 mt-2 space-y-1">
-          <li><strong>Exclusive approval authority</strong> for all insurance bracket configurations</li>
-          <li>Review and approve/reject insurance brackets created by specialists</li>
-          <li>Edit brackets to update when policies or regulations change</li>
-          <li>Delete brackets when necessary to maintain compliance</li>
-          <li>Ensure payroll calculations remain accurate and compliant</li>
-        </ul>
-      </div>
-
-      {/* Messages */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800">
-          ❌ {error}
-        </div>
-      )}
-      {success && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-sm text-green-800">
-          ✓ {success}
-        </div>
-      )}
-
-      {/* List Card */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-        <div className="p-6 flex items-center justify-between border-b border-slate-100">
+      <div className="border-b border-slate-200 pb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Insurance Brackets</h2>
-            <p className="text-xs text-slate-600">Manage and approve all insurance configurations</p>
+            <h1 className="text-2xl font-semibold text-slate-900">HR Management Dashboard</h1>
+            <p className="text-sm text-slate-500 mt-1">Welcome back, {user?.firstName || 'Manager'}</p>
           </div>
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-600">Filter</label>
-            <select
-              className="border border-slate-300 rounded-lg px-2 py-1 text-sm"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value as any)}
-            >
-              <option value="all">All</option>
-              <option value={ConfigStatus.DRAFT}>Draft</option>
-              <option value={ConfigStatus.APPROVED}>Approved</option>
-              <option value={ConfigStatus.REJECTED}>Rejected</option>
-            </select>
+          <div className="flex gap-2">
+            <button className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">
+              Export Report
+            </button>
+            <Link href="/dashboard/hr-manager/employee-management">
+              <button className="px-4 py-2 text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors">
+                Manage Employees
+              </button>
+            </Link>
           </div>
         </div>
-
-        {loading ? (
-          <div className="p-6 text-slate-600">Loading...</div>
-        ) : filtered.length === 0 ? (
-          <div className="p-10 text-center">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-slate-100 text-slate-500 mb-3">
-              🏥
-            </div>
-            <p className="text-slate-700 font-medium">No insurance brackets to review</p>
-            <p className="text-slate-500 text-sm mt-1">Specialists will create insurance brackets for you to approve.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="text-left border-b bg-slate-50">
-                  <th className="py-2 px-3">Bracket Name</th>
-                  <th className="py-2 px-3">Amount</th>
-                  <th className="py-2 px-3">Salary Range</th>
-                  <th className="py-2 px-3">Employee%</th>
-                  <th className="py-2 px-3">Employer%</th>
-                  <th className="py-2 px-3">Status</th>
-                  <th className="py-2 px-3">Created</th>
-                  <th className="py-2 px-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((b) => (
-                  <tr key={b.id} className="border-b hover:bg-slate-50">
-                    <td className="py-2 px-3">
-                      {edit?.id === b.id ? (
-                        <input
-                          className="border rounded px-2 py-1 w-full"
-                          value={edit.name}
-                          onChange={(e) => setEdit((s) => (s ? { ...s, name: e.target.value } : s))}
-                        />
-                      ) : (
-                        <span className="font-medium text-slate-900">{b.name}</span>
-                      )}
-                    </td>
-                    <td className="py-2 px-3">
-                      {edit?.id === b.id ? (
-                        <input
-                          className="border rounded px-2 py-1 w-20"
-                          type="number"
-                          value={edit.amount}
-                          onChange={(e) => setEdit((s) => (s ? { ...s, amount: e.target.value } : s))}
-                        />
-                      ) : (
-                        <span className="tabular-nums">{b.amount}</span>
-                      )}
-                    </td>
-                    <td className="py-2 px-3">
-                      {edit?.id === b.id ? (
-                        <div className="flex gap-1">
-                          <input
-                            className="border rounded px-2 py-1 w-20"
-                            type="number"
-                            value={edit.minSalary}
-                            onChange={(e) => setEdit((s) => (s ? { ...s, minSalary: e.target.value } : s))}
-                          />
-                          <span>-</span>
-                          <input
-                            className="border rounded px-2 py-1 w-20"
-                            type="number"
-                            value={edit.maxSalary}
-                            onChange={(e) => setEdit((s) => (s ? { ...s, maxSalary: e.target.value } : s))}
-                          />
-                        </div>
-                      ) : (
-                        <span className="tabular-nums">{b.minSalary} - {b.maxSalary}</span>
-                      )}
-                    </td>
-                    <td className="py-2 px-3">
-                      {edit?.id === b.id ? (
-                        <input
-                          className="border rounded px-2 py-1 w-16"
-                          type="number"
-                          min="0"
-                          max="100"
-                          step="0.01"
-                          value={edit.employeeRate}
-                          onChange={(e) => setEdit((s) => (s ? { ...s, employeeRate: e.target.value } : s))}
-                        />
-                      ) : (
-                        <span className="tabular-nums">{b.employeeRate}%</span>
-                      )}
-                    </td>
-                    <td className="py-2 px-3">
-                      {edit?.id === b.id ? (
-                        <input
-                          className="border rounded px-2 py-1 w-16"
-                          type="number"
-                          min="0"
-                          max="100"
-                          step="0.01"
-                          value={edit.employerRate}
-                          onChange={(e) => setEdit((s) => (s ? { ...s, employerRate: e.target.value } : s))}
-                        />
-                      ) : (
-                        <span className="tabular-nums">{b.employerRate}%</span>
-                      )}
-                    </td>
-                    <td className="py-2 px-3">
-                      <span
-                        className={`px-2 py-1 rounded text-xs border ${
-                          b.status === ConfigStatus.APPROVED
-                            ? "bg-green-50 border-green-200 text-green-700"
-                            : b.status === ConfigStatus.REJECTED
-                            ? "bg-red-50 border-red-200 text-red-700"
-                            : "bg-slate-50 border-slate-200 text-slate-700"
-                        }`}
-                      >
-                        {b.status}
-                      </span>
-                    </td>
-                    <td className="py-2 px-3 text-xs text-slate-600">
-                      {b.createdAt ? new Date(b.createdAt).toLocaleDateString() : "-"}
-                    </td>
-                    <td className="py-2 px-3">
-                      {edit?.id === b.id ? (
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            className="px-3 py-1 border rounded hover:bg-green-50 text-xs"
-                            onClick={saveEdit}
-                          >
-                            Save
-                          </button>
-                          <button
-                            className="px-3 py-1 border rounded hover:bg-slate-50 text-xs"
-                            onClick={cancelEdit}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex flex-wrap gap-2">
-                          {b.status === ConfigStatus.DRAFT && (
-                            <>
-                              <button
-                                className="px-3 py-1 border rounded hover:bg-green-50 text-xs"
-                                onClick={() => approve(b.id)}
-                              >
-                                ✓ Approve
-                              </button>
-                              <button
-                                className="px-3 py-1 border rounded hover:bg-red-50 text-xs"
-                                onClick={() => reject(b.id)}
-                              >
-                                ✗ Reject
-                              </button>
-                            </>
-                          )}
-                          <button
-                            className="px-3 py-1 border rounded hover:bg-blue-50 text-xs"
-                            onClick={() => beginEdit(b)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="px-3 py-1 border rounded hover:bg-red-50 text-xs"
-                            onClick={() => deleteItem(b.id)}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
 
-      {/* Info Footer */}
-      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-700">
-        <p className="font-medium">ℹ️ Insurance Bracket Guidelines</p>
-        <ul className="list-disc ml-5 space-y-1 mt-2">
-          <li>Insurance brackets define contribution rates based on salary ranges</li>
-          <li>Employee & employer rates are percentages (0-100%) applied to the base amount</li>
-          <li>Ensure salary ranges don't overlap to avoid calculation conflicts</li>
-          <li>Update brackets when labor laws or company policies change</li>
-          <li>Approved brackets are immediately applied to payroll calculations</li>
-        </ul>
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-sm font-medium text-red-800">Unable to load data</p>
+          <p className="text-sm text-red-600 mt-1">{error}</p>
+        </div>
+      )}
+
+      {/* Key Metrics */}
+      <div>
+        <h2 className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-4">Overview</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white border border-slate-200 rounded-lg p-5">
+            <p className="text-sm font-medium text-slate-500">Total Employees</p>
+            <p className="text-2xl font-semibold text-slate-900 mt-2">
+              {loading ? '-' : employeeCount ?? '-'}
+            </p>
+          </div>
+          <div className="bg-white border border-slate-200 rounded-lg p-5">
+            <p className="text-sm font-medium text-slate-500">Active Cycles</p>
+            <p className="text-2xl font-semibold text-slate-900 mt-2">
+              {loading ? '-' : cycleCount ?? '-'}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Modules Grid */}
+      <div>
+        <h2 className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-4">HR Modules</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {modules.map((module, index) => (
+            <Link key={index} href={module.href}>
+              <div className="bg-white border border-slate-200 rounded-lg p-5 hover:border-slate-300 hover:shadow-sm transition-all cursor-pointer h-full">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className="text-sm font-semibold text-slate-900">{module.title}</h3>
+                    <p className="text-sm text-slate-500 mt-1">{module.description}</p>
+                  </div>
+                  <svg className="w-5 h-5 text-slate-400 flex-shrink-0 ml-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
       </div>
     </div>
   );
