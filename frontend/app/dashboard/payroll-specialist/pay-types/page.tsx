@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { payrollConfigurationService } from '@/app/services/payroll-configuration';
+import { useAuth } from '@/app/context/AuthContext';
 
 // Type definitions based on your API response
 interface PayType {
@@ -44,6 +45,7 @@ const statusLabels = {
 };
 
 export default function PayTypesPage() {
+  const { user } = useAuth();
   const [payTypes, setPayTypes] = useState<PayType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -102,92 +104,141 @@ export default function PayTypesPage() {
     }
   };
 
-  const handleCreatePayType = async () => {
-    try {
-      // Basic frontend validation - just check for empty fields
-      if (!formData.type || !formData.amount) {
-        setError('Please fill all required fields');
-        return;
-      }
-
-      // Convert amount to number - backend will validate the minimum value
-      const amountNum = parseFloat(formData.amount);
-      
-      if (isNaN(amountNum)) {
-        setError('Amount must be a valid number');
-        return;
-      }
-
-      setActionLoading(true);
-      
-      // Note: The backend will handle:
-      // 1. createdByEmployeeId (should be set from auth middleware)
-      // 2. Minimum amount validation (6000)
-      // 3. Duplicate type validation
-      // 4. ObjectId validation
-      
-      const apiData = {
-        type: formData.type,
-        amount: amountNum,
-      };
-      
-      console.log('Creating pay type with data:', apiData);
-      
-      const response = await payrollConfigurationService.createPayType(apiData);
-      
-      if (response.error) {
-        throw new Error(response.error);
-      }
-      
-      // Check for backend validation errors
-      if (response.data) {
-        const responseData = response.data as any;
-        
-        // Handle various error response formats
-        if (responseData.message && responseData.message.includes('already exists')) {
-          throw new Error(responseData.message);
-        }
-        else if (responseData.error) {
-          throw new Error(responseData.error);
-        }
-        else if (responseData.statusCode && responseData.statusCode >= 400) {
-          // Extract validation messages if available
-          const errorMessage = responseData.message || 
-                              responseData.error?.message || 
-                              'Failed to create pay type';
-          throw new Error(errorMessage);
-        }
-      }
-      
-      setSuccess('Pay type created successfully as DRAFT');
-      setShowModal(false);
-      resetForm();
-      fetchPayTypes();
-    } catch (err: any) {
-      console.error('Create error details:', err);
-      
-      // Extract error message from various possible formats
-      let errorMessage = 'Failed to create pay type';
-      
-      if (err.message) {
-        errorMessage = err.message;
-      } else if (err.response?.data?.message) {
-        errorMessage = err.response.data.message;
-      } else if (err.response?.data?.error?.message) {
-        errorMessage = err.response.data.error.message;
-      }
-      
-      // Format backend validation errors nicely
-      if (errorMessage.includes('minimum')) {
-        errorMessage = errorMessage.replace('amount must not be less than 6000', 'Amount must be at least $6,000 (backed by industry minimum wage standards)');
-      }
-      
-      setError(errorMessage);
-    } finally {
-      setActionLoading(false);
+const handleCreatePayType = async () => {
+  try {
+    // Basic frontend validation - just check for empty fields
+    if (!formData.type || !formData.amount) {
+      setError('Please fill all required fields');
+      return;
     }
-  };
 
+    // Convert amount to number - backend will validate the minimum value
+    const amountNum = parseFloat(formData.amount);
+    
+    if (isNaN(amountNum)) {
+      setError('Amount must be a valid number');
+      return;
+    }
+
+    setActionLoading(true);
+    
+    // Get the employee ID - this is REQUIRED by the backend DTO
+    let createdByEmployeeId = '';
+    
+    // First, try to get it from localStorage
+    const storedUser = localStorage.getItem('hr_system_user');
+    if (storedUser) {
+      try {
+        const userData = JSON.parse(storedUser);
+        console.log('User data from localStorage:', userData);
+        
+        // The backend expects a string for createdByEmployeeId
+        // We should use the user's MongoDB _id as this is likely what the backend expects
+        // when it tries to convert to ObjectId
+        if (userData.id) {
+          createdByEmployeeId = userData.id; // This should be the MongoDB ObjectId string
+        } else if (userData._id) {
+          createdByEmployeeId = userData._id; // Alternative field name
+        }
+        
+        console.log('Using employee ID:', createdByEmployeeId);
+      } catch (e) {
+        console.error('Failed to parse user data:', e);
+      }
+    }
+    
+    // If still empty, try from useAuth hook
+    if (!createdByEmployeeId && user) {
+      console.log('User from useAuth:', user);
+      
+      if (user.id) {
+        createdByEmployeeId = user.id;
+      }
+    }
+    
+    // If still empty, show error
+    if (!createdByEmployeeId) {
+      setError('Unable to identify user. Please make sure you are logged in.');
+      setActionLoading(false);
+      return;
+    }
+    
+    // Validate that createdByEmployeeId looks like a MongoDB ObjectId
+    // MongoDB ObjectIds are 24-character hex strings
+    const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+    if (!objectIdRegex.test(createdByEmployeeId)) {
+      console.warn('Employee ID does not look like a MongoDB ObjectId:', createdByEmployeeId);
+      // Continue anyway - the backend validation will catch it
+    }
+    
+    // Prepare the data exactly as the DTO expects
+    const apiData = {
+      type: formData.type,
+      amount: amountNum,
+      createdByEmployeeId: createdByEmployeeId,
+    };
+    
+    console.log('Creating pay type with data:', apiData);
+    
+    const response = await payrollConfigurationService.createPayType(apiData);
+    
+    if (response.error) {
+      throw new Error(response.error);
+    }
+    
+    // Check for backend validation errors
+    if (response.data) {
+      const responseData = response.data as any;
+      
+      // Handle various error response formats
+      if (responseData.message && responseData.message.includes('already exists')) {
+        throw new Error(responseData.message);
+      }
+      else if (responseData.error) {
+        throw new Error(responseData.error);
+      }
+      else if (responseData.statusCode && responseData.statusCode >= 400) {
+        // Extract validation messages if available
+        const errorMessage = responseData.message || 
+                            responseData.error?.message || 
+                            'Failed to create pay type';
+        throw new Error(errorMessage);
+      }
+    }
+    
+    setSuccess('Pay type created successfully as DRAFT');
+    setShowModal(false);
+    resetForm();
+    fetchPayTypes();
+  } catch (err: any) {
+    console.error('Create error details:', err);
+    
+    // Extract error message from various possible formats
+    let errorMessage = 'Failed to create pay type';
+    
+    if (err.message) {
+      errorMessage = err.message;
+    } else if (err.response?.data?.message) {
+      errorMessage = err.response.data.message;
+    } else if (err.response?.data?.error?.message) {
+      errorMessage = err.response.data.error.message;
+    }
+    
+    // Format backend validation errors nicely
+    if (errorMessage.includes('minimum')) {
+      errorMessage = errorMessage.replace('amount must not be less than 6000', 'Amount must be at least $6,000 (backed by industry minimum wage standards)');
+    }
+    
+    // Special handling for ObjectId conversion errors
+    if (errorMessage.includes('ObjectId') || errorMessage.includes('Cast to ObjectId')) {
+      errorMessage = 'User identification issue. Please try logging out and back in.';
+    }
+    
+    setError(errorMessage);
+  } finally {
+    setActionLoading(false);
+  }
+};
   const handleUpdatePayType = async () => {
     if (!selectedPayType) return;
     
