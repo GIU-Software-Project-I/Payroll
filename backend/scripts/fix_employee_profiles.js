@@ -2,7 +2,7 @@ const { MongoClient, ObjectId } = require('mongodb');
 const bcrypt = require('bcrypt');
 require('dotenv').config();
 
-async function fixEmployeeProfiles() {
+// ...existing code...
     const client = new MongoClient(process.env.MONGODB_URI);
     
     try {
@@ -116,6 +116,6 @@ async function fixEmployeeProfiles() {
     } finally {
         await client.close();
     }
-}
+
 
 fixEmployeeProfiles().catch(console.error);

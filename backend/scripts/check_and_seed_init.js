@@ -56,7 +56,7 @@ async function ensurePayrollSpecialist(db) {
   }
 
   // If none, create a minimal employee profile and role record
-  const profiles = db.collection('employeeprofiles');
+  const profiles = db.collection('employee_profiles');
   const email = 'payroll.spec@example.com';
   let profile = await profiles.findOne({ workEmail: email });
   if (!profile) {
