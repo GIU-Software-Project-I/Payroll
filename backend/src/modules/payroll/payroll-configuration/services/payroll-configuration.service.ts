@@ -3,6 +3,8 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { EmployeeProfile } from '../../../employee/models/employee/employee-profile.schema';
 import { taxRules, taxRulesDocument } from '../models/taxRules.schema';
+import { taxBrackets, taxBracketsDocument } from '../models/taxBrackets.schema';
+import { TaxComponentType } from '../models/taxRules.schema';
 import { insuranceBrackets, insuranceBracketsDocument } from '../models/insuranceBrackets.schema';
 import { ConfigStatus } from '../enums/payroll-configuration-enums';
 import { ApproveInsuranceDto } from '../dto/approve-insurance.dto';
@@ -42,6 +44,7 @@ import {UpdatePayGradeDto} from "../dto/update-paygrade.dto";
 export class PayrollConfigurationService {
     constructor(
         @InjectModel(taxRules.name) private taxRulesModel: Model<taxRulesDocument>,
+        @InjectModel(taxBrackets.name) private taxBracketsModel: Model<taxBracketsDocument>,
         @InjectModel(insuranceBrackets.name) private insuranceModel: Model<insuranceBracketsDocument>,
         @InjectModel(allowance.name) private allowanceModel: Model<allowanceDocument>,
         @InjectModel(payType.name) private payTypeModel: Model<payTypeDocument>,
@@ -86,6 +89,7 @@ export class PayrollConfigurationService {
     }
 
     // ========== LAMA'S TAX RULES METHODS ==========
+    
     async createTaxRule(dto: CreateTaxRuleDto) {
         const exists = await this.taxRulesModel.findOne({ 
             name: { $regex: new RegExp(`^${dto.name}$`, 'i') } 
@@ -166,6 +170,254 @@ export class PayrollConfigurationService {
         taxRule.approvedAt = new Date();
 
         return await taxRule.save();
+    }
+
+    // ========== TAX BRACKETS METHODS (BR 5) ==========
+    
+    async createTaxBracket(dto: {
+        name: string;
+        description?: string;
+        localTaxLawReference: string;
+        minIncome: number;
+        maxIncome: number;
+        taxRate: number;
+        baseAmount: number;
+        effectiveDate?: Date;
+        expiryDate?: Date;
+        createdBy: string;
+    }) {
+        // Check for duplicate name
+        const exists = await this.taxBracketsModel.findOne({ 
+            name: { $regex: new RegExp(`^${dto.name}$`, 'i') } 
+        }).exec();
+        if (exists) throw new BadRequestException(`Tax bracket '${dto.name}' already exists`);
+
+        // Check for overlapping income ranges
+        const overlapping = await this.taxBracketsModel.findOne({
+            $and: [
+                { status: { $in: [ConfigStatus.DRAFT, ConfigStatus.APPROVED] } },
+                {
+                    $or: [
+                        { minIncome: { $lte: dto.minIncome }, maxIncome: { $gte: dto.minIncome } },
+                        { minIncome: { $lte: dto.maxIncome }, maxIncome: { $gte: dto.maxIncome } },
+                        { minIncome: { $gte: dto.minIncome }, maxIncome: { $lte: dto.maxIncome } }
+                    ]
+                }
+            ]
+        }).exec();
+
+        if (overlapping) {
+            throw new BadRequestException(
+                `Tax bracket overlaps with existing bracket '${overlapping.name}' ` +
+                `(${overlapping.minIncome} - ${overlapping.maxIncome})`
+            );
+        }
+
+        const taxBracket = new this.taxBracketsModel({ 
+            ...dto, 
+            status: ConfigStatus.DRAFT,
+            createdBy: new Types.ObjectId(dto.createdBy)
+        });
+        return await taxBracket.save();
+    }
+
+    async getTaxBrackets() {
+        return await this.taxBracketsModel.find().sort({ minIncome: 1 }).exec();
+    }
+
+    async getTaxBracketById(id: string) {
+        const taxBracket = await this.taxBracketsModel.findById(id).exec();
+        if (!taxBracket) throw new NotFoundException(`Tax bracket with ID ${id} not found`);
+        return taxBracket;
+    }
+
+    async approveTaxBracket(id: string, approvedBy: string) {
+        const taxBracket = await this.taxBracketsModel.findById(id).exec();
+        if (!taxBracket) throw new NotFoundException('Tax bracket not found');
+        if (taxBracket.status !== ConfigStatus.DRAFT) {
+            throw new BadRequestException('Only DRAFT tax brackets can be approved');
+        }
+
+        await this.validateApprover(approvedBy, taxBracket.createdBy);
+
+        taxBracket.approvedBy = new Types.ObjectId(approvedBy);
+        taxBracket.status = ConfigStatus.APPROVED;
+        taxBracket.approvedAt = new Date();
+
+        return await taxBracket.save();
+    }
+
+    async updateTaxBracket(id: string, dto: Partial<{
+        name: string;
+        description: string;
+        localTaxLawReference: string;
+        minIncome: number;
+        maxIncome: number;
+        taxRate: number;
+        baseAmount: number;
+        effectiveDate: Date;
+        expiryDate: Date;
+    }>) {
+        const taxBracket = await this.taxBracketsModel.findById(id).exec();
+        if (!taxBracket) throw new NotFoundException('Tax bracket not found');
+        if (taxBracket.status !== ConfigStatus.DRAFT) {
+            throw new ForbiddenException('Only DRAFT tax brackets can be edited');
+        }
+
+        // Check for overlaps if income range is being updated
+        if (dto.minIncome !== undefined || dto.maxIncome !== undefined) {
+            const newMinIncome = dto.minIncome ?? taxBracket.minIncome;
+            const newMaxIncome = dto.maxIncome ?? taxBracket.maxIncome;
+
+            const overlapping = await this.taxBracketsModel.findOne({
+                _id: { $ne: id },
+                $and: [
+                    { status: { $in: [ConfigStatus.DRAFT, ConfigStatus.APPROVED] } },
+                    {
+                        $or: [
+                            { minIncome: { $lte: newMinIncome }, maxIncome: { $gte: newMinIncome } },
+                            { minIncome: { $lte: newMaxIncome }, maxIncome: { $gte: newMaxIncome } },
+                            { minIncome: { $gte: newMinIncome }, maxIncome: { $lte: newMaxIncome } }
+                        ]
+                    }
+                ]
+            }).exec();
+
+            if (overlapping) {
+                throw new BadRequestException(
+                    `Updated income range overlaps with bracket '${overlapping.name}'`
+                );
+            }
+        }
+
+        return await this.taxBracketsModel.findByIdAndUpdate(
+            id,
+            { $set: dto },
+            { new: true, runValidators: false }
+        );
+    }
+
+    async deleteTaxBracket(id: string) {
+        const taxBracket = await this.taxBracketsModel.findById(id).exec();
+        if (!taxBracket) throw new NotFoundException(`Tax bracket with ID ${id} not found`);
+        if (taxBracket.status !== ConfigStatus.DRAFT) {
+            throw new ForbiddenException('Only DRAFT tax brackets can be deleted');
+        }
+
+        await this.taxBracketsModel.findByIdAndDelete(id).exec();
+        return { message: `Tax bracket '${taxBracket.name}' successfully deleted` };
+    }
+
+    async rejectTaxBracket(id: string, approvedBy: string) {
+        const taxBracket = await this.taxBracketsModel.findById(id).exec();
+        if (!taxBracket) throw new NotFoundException('Tax bracket not found');
+        if (taxBracket.status !== ConfigStatus.DRAFT) {
+            throw new BadRequestException('Only DRAFT tax brackets can be rejected');
+        }
+
+        await this.validateApprover(approvedBy, taxBracket.createdBy);
+
+        taxBracket.approvedBy = new Types.ObjectId(approvedBy);
+        taxBracket.status = ConfigStatus.REJECTED;
+        taxBracket.approvedAt = new Date();
+
+        return await taxBracket.save();
+    }
+
+    // ========== TAX RULES WITH MULTIPLE COMPONENTS (BR 6) ==========
+    
+    async createTaxRuleWithComponents(dto: {
+        name: string;
+        description?: string;
+        taxComponents: Array<{
+            type: TaxComponentType;
+            name: string;
+            description: string;
+            rate: number;
+            maxAmount?: number;
+            minAmount?: number;
+            formula?: string;
+        }>;
+        createdBy: string;
+    }) {
+        const exists = await this.taxRulesModel.findOne({ 
+            name: { $regex: new RegExp(`^${dto.name}$`, 'i') } 
+        }).exec();
+        if (exists) throw new BadRequestException(`Tax rule '${dto.name}' already exists`);
+
+        const taxRule = new this.taxRulesModel({ 
+            ...dto, 
+            status: ConfigStatus.DRAFT,
+            createdBy: new Types.ObjectId(dto.createdBy)
+        });
+        return await taxRule.save();
+    }
+
+    async calculateTaxComponents(income: number): Promise<{
+        totalTax: number;
+        components: Array<{
+            type: TaxComponentType;
+            name: string;
+            amount: number;
+        }>;
+    }> {
+        // Get approved tax rules
+        const taxRules = await this.taxRulesModel.find({ 
+            status: ConfigStatus.APPROVED 
+        }).exec();
+
+        if (taxRules.length === 0) {
+            return { totalTax: 0, components: [] };
+        }
+
+        // Use the most recent approved tax rule
+        const activeTaxRule = taxRules.sort((a, b) => 
+            new Date(b.approvedAt || 0).getTime() - new Date(a.approvedAt || 0).getTime()
+        )[0];
+
+        let totalTax = 0;
+        const components: Array<{ type: TaxComponentType; name: string; amount: number }> = [];
+
+        for (const component of activeTaxRule.taxComponents) {
+            if (!component.isActive) continue;
+
+            let componentAmount = 0;
+            
+            switch (component.type) {
+                case TaxComponentType.INCOME_TAX:
+                    componentAmount = income * (component.rate / 100);
+                    break;
+                case TaxComponentType.EXEMPTION:
+                    componentAmount = -income * (component.rate / 100); // Negative for exemption
+                    break;
+                case TaxComponentType.SURCHARGE:
+                    componentAmount = income * (component.rate / 100);
+                    break;
+                case TaxComponentType.CESS:
+                    componentAmount = income * (component.rate / 100);
+                    break;
+                case TaxComponentType.OTHER_DEDUCTION:
+                    componentAmount = income * (component.rate / 100);
+                    break;
+            }
+
+            // Apply min/max limits
+            if (component.minAmount && componentAmount < component.minAmount) {
+                componentAmount = component.minAmount;
+            }
+            if (component.maxAmount && componentAmount > component.maxAmount) {
+                componentAmount = component.maxAmount;
+            }
+
+            totalTax += componentAmount;
+            components.push({
+                type: component.type,
+                name: component.name,
+                amount: componentAmount
+            });
+        }
+
+        return { totalTax, components };
     }
 
     // ========== LAMA'S INSURANCE BRACKETS METHODS ==========

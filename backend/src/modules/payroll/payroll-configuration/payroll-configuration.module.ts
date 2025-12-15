@@ -15,6 +15,7 @@ import { payrollPolicies, payrollPoliciesSchema } from './models/payrollPolicies
 import { payType, payTypeSchema } from './models/payType.schema';
 import { signingBonus, signingBonusSchema } from './models/signingBonus.schema';
 import { taxRules, taxRulesSchema } from './models/taxRules.schema';
+import { taxBrackets, taxBracketsSchema } from './models/taxBrackets.schema';
 import { terminationAndResignationBenefits, terminationAndResignationBenefitsSchema } from './models/terminationAndResignationBenefits';
 import { payGrade, payGradeSchema } from './models/payGrades.schema';
 import {RecruitmentModule} from "../../recruitment/recruitment.module";
@@ -35,6 +36,7 @@ import { AuthModule } from '../../auth/auth-module';
       { name: allowance.name, schema: allowanceSchema },
       { name: signingBonus.name, schema: signingBonusSchema },
       { name: taxRules.name, schema: taxRulesSchema },
+      { name: taxBrackets.name, schema: taxBracketsSchema },
       { name: insuranceBrackets.name, schema: insuranceBracketsSchema },
       { name: payType.name, schema: payTypeSchema },
       { name: payrollPolicies.name, schema: payrollPoliciesSchema },

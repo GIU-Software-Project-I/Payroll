@@ -12,6 +12,7 @@ import { AuthService } from "./services/authentication-service";
 import { JwtStrategy } from "./token/jwt-strategies";
 
 import { AuthController } from "./controller/auth-controller";
+import { DebugController } from "./controller/debug-controller";
 import { AuthorizationGuard } from "./guards/authorization-guard";
 import { EmployeeAuthService } from "./services/employee-auth.service";
 import {AuthenticationGuard} from "./guards/authentication-guard";
@@ -36,7 +37,7 @@ import {AuthenticationGuard} from "./guards/authentication-guard";
         ]),
         forwardRef(() => EmployeeModule),
     ],
-    controllers: [AuthController],
+    controllers: [AuthController, DebugController],
     providers: [AuthService, EmployeeAuthService, JwtStrategy, AuthorizationGuard, AuthenticationGuard],
     exports: [AuthService, EmployeeAuthService, JwtModule, AuthenticationGuard, AuthorizationGuard],
 })
