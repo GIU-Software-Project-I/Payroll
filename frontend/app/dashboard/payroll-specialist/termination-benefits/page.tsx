@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { payrollConfigurationService } from '@/app/services/payroll-configuration';
-
+import { useAuth } from '@/app/context/AuthContext';
 // Type definitions based on your API response
 interface TerminationBenefit {
   _id: string;
@@ -55,6 +55,7 @@ const statusLabels = {
 };
 
 export default function TerminationBenefitsPage() {
+  const { user } = useAuth();
   const [terminationBenefits, setTerminationBenefits] = useState<TerminationBenefit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -166,99 +167,145 @@ export default function TerminationBenefitsPage() {
   };
 
   const handleCreateTerminationBenefit = async () => {
-    try {
-      // Basic frontend validation - terms is optional
-      if (!formData.name || !formData.amount) {
-        setError('Please fill all required fields (Name and Amount)');
-        return;
-      }
-
-      // Convert amount to number
-      const amountNum = parseFloat(formData.amount);
-      
-      if (isNaN(amountNum) || amountNum < 0) {
-        setError('Amount must be a valid number 0 or greater');
-        return;
-      }
-
-      setActionLoading(true);
-      
-      // Get current user ID
-      let createdByEmployeeId = '';
-      if (typeof window !== 'undefined') {
-        const userData = localStorage.getItem('user');
-        if (userData) {
-          try {
-            const user = JSON.parse(userData);
-            createdByEmployeeId = user.id || user._id || '';
-          } catch (e) {
-            console.error('Error parsing user data:', e);
-          }
-        }
-      }
-      
-      if (!createdByEmployeeId || !createdByEmployeeId.match(/^[0-9a-fA-F]{24}$/)) {
-        setError('Authentication error: Please login again to create termination benefit');
-        setActionLoading(false);
-        return;
-      }
-      
-      // Prepare data for backend - terms is optional
-      const apiData: any = {
-        name: formData.name,
-        amount: amountNum,
-        createdByEmployeeId: createdByEmployeeId,
-      };
-      
-      // Only add terms if it's not empty
-      if (formData.terms.trim() !== '') {
-        apiData.terms = formData.terms;
-      }
-      
-      console.log('Creating termination benefit with data:', apiData);
-      
-      const response = await payrollConfigurationService.createTerminationBenefit(apiData);
-      
-      // Handle response
-      if (response.error) {
-        throw new Error(response.error);
-      }
-      
-      // Check for backend validation errors
-      if (response.data) {
-        const responseData = response.data as any;
-        
-        if (responseData.statusCode && responseData.statusCode >= 400) {
-          const errorMessage = responseData.message || 
-                              responseData.error?.message || 
-                              'Failed to create termination benefit';
-          throw new Error(errorMessage);
-        }
-      }
-      
-      setSuccess('Termination benefit created successfully as DRAFT');
-      setShowCreateModal(false);
-      resetForm();
-      fetchTerminationBenefits();
-    } catch (err: any) {
-      console.error('Create error details:', err);
-      
-      let errorMessage = 'Failed to create termination benefit';
-      if (err.message) {
-        errorMessage = err.message;
-      }
-      
-      // Format specific error messages
-      if (errorMessage.includes('already exists')) {
-        errorMessage = `Termination benefit "${formData.name}" already exists. Please use a different name.`;
-      }
-      
-      setError(errorMessage);
-    } finally {
-      setActionLoading(false);
+  try {
+    // Basic frontend validation - terms is optional
+    if (!formData.name || !formData.amount) {
+      setError('Please fill all required fields (Name and Amount)');
+      return;
     }
-  };
 
+    // Convert amount to number
+    const amountNum = parseFloat(formData.amount);
+    
+    if (isNaN(amountNum) || amountNum < 0) {
+      setError('Amount must be a valid number 0 or greater');
+      return;
+    }
+
+    setActionLoading(true);
+    
+    // Get the employee ID - this is REQUIRED by the backend DTO
+    let createdByEmployeeId = '';
+    
+    // First, try to get it from localStorage
+    const storedUser = localStorage.getItem('hr_system_user');
+    if (storedUser) {
+      try {
+        const userData = JSON.parse(storedUser);
+        console.log('User data from localStorage:', userData);
+        
+        // The backend expects a string for createdByEmployeeId
+        // We should use the user's MongoDB _id as this is likely what the backend expects
+        if (userData.id) {
+          createdByEmployeeId = userData.id; // This should be the MongoDB ObjectId string
+        } else if (userData._id) {
+          createdByEmployeeId = userData._id; // Alternative field name
+        }
+        
+        console.log('Using employee ID for termination benefit:', createdByEmployeeId);
+      } catch (e) {
+        console.error('Failed to parse user data:', e);
+      }
+    }
+    
+    // If still empty, try from useAuth hook
+    if (!createdByEmployeeId && user) {
+      console.log('User from useAuth:', user);
+      
+      if (user.id) {
+        createdByEmployeeId = user.id;
+      }
+    }
+    
+    // If still empty, show error
+    if (!createdByEmployeeId) {
+      setError('Unable to identify user. Please make sure you are logged in.');
+      setActionLoading(false);
+      return;
+    }
+    
+    // Validate that createdByEmployeeId looks like a MongoDB ObjectId
+    // MongoDB ObjectIds are 24-character hex strings
+    const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+    if (!objectIdRegex.test(createdByEmployeeId)) {
+      console.warn('Employee ID does not look like a MongoDB ObjectId:', createdByEmployeeId);
+      // Continue anyway - the backend validation will catch it
+    }
+    
+    // Prepare data for backend - terms is optional
+    const apiData: any = {
+      name: formData.name,
+      amount: amountNum,
+      createdByEmployeeId: createdByEmployeeId,
+    };
+    
+    // Only add terms if it's not empty
+    if (formData.terms.trim() !== '') {
+      apiData.terms = formData.terms;
+    }
+    
+    console.log('Creating termination benefit with data:', apiData);
+    
+    const response = await payrollConfigurationService.createTerminationBenefit(apiData);
+    
+    // Handle response
+    if (response.error) {
+      throw new Error(response.error);
+    }
+    
+    // Check for backend validation errors
+    if (response.data) {
+      const responseData = response.data as any;
+      
+      // Handle various error response formats
+      if (responseData.message && responseData.message.includes('already exists')) {
+        throw new Error(responseData.message);
+      }
+      else if (responseData.error) {
+        throw new Error(responseData.error);
+      }
+      else if (responseData.statusCode && responseData.statusCode >= 400) {
+        // Extract validation messages if available
+        const errorMessage = responseData.message || 
+                            responseData.error?.message || 
+                            'Failed to create termination benefit';
+        throw new Error(errorMessage);
+      }
+    }
+    
+    setSuccess('Termination benefit created successfully as DRAFT');
+    setShowCreateModal(false);
+    resetForm();
+    fetchTerminationBenefits();
+  } catch (err: any) {
+    console.error('Create error details:', err);
+    
+    // Extract error message from various possible formats
+    let errorMessage = 'Failed to create termination benefit';
+    
+    if (err.message) {
+      errorMessage = err.message;
+    } else if (err.response?.data?.message) {
+      errorMessage = err.response.data.message;
+    } else if (err.response?.data?.error?.message) {
+      errorMessage = err.response.data.error.message;
+    }
+    
+    // Format specific error messages
+    if (errorMessage.includes('already exists')) {
+      errorMessage = `Termination benefit "${formData.name}" already exists. Please use a different name.`;
+    }
+    
+    // Special handling for ObjectId conversion errors
+    if (errorMessage.includes('ObjectId') || errorMessage.includes('Cast to ObjectId')) {
+      errorMessage = 'User identification issue. Please try logging out and back in.';
+    }
+    
+    setError(errorMessage);
+  } finally {
+    setActionLoading(false);
+  }
+};
   const handleUpdateTerminationBenefit = async () => {
     if (!selectedTerminationBenefit) return;
     
