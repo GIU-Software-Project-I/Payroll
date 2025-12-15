@@ -30,7 +30,13 @@ export class EmployeeAuthService {
   }
 
   async findEmployeeByWorkEmail(workEmail: string): Promise<EmployeeProfileDocument | null> {
-    return this.employeeModel.findOne({ workEmail }).select('+password').exec();
+    // Normalize email: trim whitespace
+    const normalizedEmail = workEmail.trim();
+    // Escape special regex characters and use case-insensitive match
+    const escapedEmail = normalizedEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return this.employeeModel.findOne({ 
+      workEmail: { $regex: new RegExp(`^${escapedEmail}$`, 'i') }
+    }).select('+password').exec();
   }
 
   async findEmployeeById(id: string): Promise<EmployeeProfileDocument | null> {
@@ -38,7 +44,13 @@ export class EmployeeAuthService {
   }
 
   async findCandidateByPersonalEmail(personalEmail: string): Promise<CandidateDocument | null> {
-    return this.candidateModel.findOne({ personalEmail }).select('+password').exec();
+    // Normalize email: trim whitespace
+    const normalizedEmail = personalEmail.trim();
+    // Escape special regex characters and use case-insensitive match
+    const escapedEmail = normalizedEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return this.candidateModel.findOne({ 
+      personalEmail: { $regex: new RegExp(`^${escapedEmail}$`, 'i') }
+    }).select('+password').exec();
   }
 
   async findCandidateById(id: string): Promise<CandidateDocument | null> {
@@ -135,16 +147,33 @@ export class EmployeeAuthService {
   }
 
   async validateEmployeeCredentials(workEmail: string, plainPassword: string): Promise<{ employee: EmployeeProfileDocument; roles: SystemRole[] }> {
-    const employee = await this.findEmployeeByWorkEmail(workEmail);
+    // Normalize email input (trim whitespace)
+    const normalizedEmail = workEmail.trim();
+    const employee = await this.findEmployeeByWorkEmail(normalizedEmail);
 
-    if (!employee || !employee.password) {
+    if (!employee) {
+      console.log(`[Auth] Employee not found for email: ${normalizedEmail}`);
       throw new BadRequestException('Invalid credentials');
+    }
+
+    if (!employee.password) {
+      console.log(`[Auth] Employee found but no password set for: ${normalizedEmail}`);
+      throw new BadRequestException('Invalid credentials');
+    }
+
+    // Check if password is a bcrypt hash (starts with $2)
+    if (!employee.password.startsWith('$2')) {
+      console.log(`[Auth] Password for ${normalizedEmail} is not a bcrypt hash! Password value: ${employee.password.substring(0, 20)}...`);
+      throw new BadRequestException('Invalid credentials - Password not properly hashed');
     }
 
     const isPasswordValid = await bcrypt.compare(plainPassword, employee.password);
     if (!isPasswordValid) {
+      console.log(`[Auth] Password mismatch for: ${normalizedEmail}`);
       throw new BadRequestException('Invalid credentials');
     }
+
+    console.log(`[Auth] Successful login for: ${normalizedEmail}`);
 
     // Get employee roles
     const systemRole = await this.employeeSystemRoleModel.findOne({ employeeProfileId: employee._id, isActive: true }).exec();
@@ -154,9 +183,15 @@ export class EmployeeAuthService {
   }
 
   async validateCandidateCredentials(personalEmail: string, plainPassword: string): Promise<CandidateDocument> {
-    const candidate = await this.findCandidateByPersonalEmail(personalEmail);
+    // Normalize email input (trim whitespace)
+    const normalizedEmail = personalEmail.trim();
+    const candidate = await this.findCandidateByPersonalEmail(normalizedEmail);
 
-    if (!candidate || !candidate.password) {
+    if (!candidate) {
+      throw new BadRequestException('Invalid credentials');
+    }
+
+    if (!candidate.password) {
       throw new BadRequestException('Invalid credentials');
     }
 
