@@ -13,7 +13,7 @@ import { ProcessChangeRequestDto } from '../dto/employee-profile/process-change-
 import { ProfileChangeStatus } from '../enums/employee-profile.enums';
 import { EmployeeProfileService } from '../services/employee-profile.service';
 import { EmployeeDocumentService } from '../services/employee-document.service';
-import { UploadDocumentDto } from '../dto/employee-profile/upload-document.dto';
+import { EmployeeProfileUploadDocumentDto } from '../dto/employee-profile/upload-document.dto';
 
 @Controller('employee-profile')
 export class EmployeeProfileNoAuthController {
@@ -68,7 +68,7 @@ export class EmployeeProfileNoAuthController {
 
     // Upload a document
     @Post('me/:userId/documents')
-    async uploadDocument(@Param('userId') userId: string, @Body() dto: UploadDocumentDto) {
+    async uploadDocument(@Param('userId') userId: string, @Body() dto: EmployeeProfileUploadDocumentDto) {
         return this.employeeDocumentService.uploadDocument(userId, dto);
     }
 
