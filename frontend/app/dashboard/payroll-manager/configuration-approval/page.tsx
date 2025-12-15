@@ -89,10 +89,70 @@ export default function PayrollSystemConfigurationApprovalPage() {
           res = { data: [] };
       }
 
-      const rawData = (res.data as any)?.data || (res.data as any) || [];
+      // Check for errors in response
+      if (res?.error) {
+        setError(res.error);
+        setItems([]);
+        return;
+      }
+
+      // Handle different response structures
+      let rawData: any[] = [];
+      
+      // First check if res.data exists
+      if (res?.data) {
+        // Case 1: Direct array
+        if (Array.isArray(res.data)) {
+          rawData = res.data;
+        }
+        // Case 2: Wrapped in { data: [...] }
+        else if (res.data.data && Array.isArray(res.data.data)) {
+          rawData = res.data.data;
+        }
+        // Case 3: Wrapped in { statusCode, message, data: [...] }
+        else if (res.data.statusCode && res.data.data && Array.isArray(res.data.data)) {
+          rawData = res.data.data;
+        }
+        // Case 4: Specific property names
+        else if (res.data.payGrades && Array.isArray(res.data.payGrades)) {
+          rawData = res.data.payGrades;
+        } else if (res.data.payrollPolicies && Array.isArray(res.data.payrollPolicies)) {
+          rawData = res.data.payrollPolicies;
+        } else if (res.data.policies && Array.isArray(res.data.policies)) {
+          rawData = res.data.policies;
+        } else if (res.data.payTypes && Array.isArray(res.data.payTypes)) {
+          rawData = res.data.payTypes;
+        } else if (res.data.allowances && Array.isArray(res.data.allowances)) {
+          rawData = res.data.allowances;
+        } else if (res.data.signingBonuses && Array.isArray(res.data.signingBonuses)) {
+          rawData = res.data.signingBonuses;
+        } else if (res.data.terminationBenefits && Array.isArray(res.data.terminationBenefits)) {
+          rawData = res.data.terminationBenefits;
+        } else if (res.data.taxRules && Array.isArray(res.data.taxRules)) {
+          rawData = res.data.taxRules;
+        }
+        // Case 5: Try to find any array property
+        else if (typeof res.data === 'object') {
+          const keys = Object.keys(res.data);
+          for (const key of keys) {
+            if (Array.isArray((res.data as any)[key])) {
+              rawData = (res.data as any)[key];
+              break;
+            }
+          }
+        }
+      }
+      // If res itself is an array
+      else if (Array.isArray(res)) {
+        rawData = res;
+      }
+      
+      console.log(`[ConfigApproval] Loaded ${rawData.length} items for ${activeTab}`, { rawData: rawData.slice(0, 2) });
       setItems(Array.isArray(rawData) ? rawData.map(normalize) : []);
     } catch (e: any) {
-      setError(e?.message || `Failed to load ${activeTab}`);
+      console.error(`Failed to load ${activeTab}:`, e);
+      setError(e?.message || `Failed to load ${activeTab}. Please check if the backend is running.`);
+      setItems([]);
     } finally {
       setLoading(false);
     }

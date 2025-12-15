@@ -86,13 +86,40 @@ export default function PayrollTrackingPage() {
       requirement: 'REQ-PY-3, REQ-PY-13'
     },
     {
-      title: 'Deductions',
-      description: 'View detailed breakdown of all deductions including taxes, insurance, and other items.',
-      href: '/dashboard/department-employee/payroll-tracking/deductions',
-      icon: '💸',
+      title: 'Tax Deductions',
+      description: 'View detailed tax deductions with law references and tax brackets (BR 5, BR 6).',
+      href: '/dashboard/department-employee/payroll-tracking/tax-deductions',
+      icon: '🏛️',
+      color: 'blue',
+      features: ['Income tax breakdown', 'Law references', 'Tax brackets'],
+      requirement: 'REQ-PY-8'
+    },
+    {
+      title: 'Insurance Deductions',
+      description: 'View itemized insurance deductions (health, pension, unemployment, etc.).',
+      href: '/dashboard/department-employee/payroll-tracking/insurance-deductions',
+      icon: '🏥',
+      color: 'green',
+      features: ['Health insurance', 'Pension contributions', 'Unemployment'],
+      requirement: 'REQ-PY-9'
+    },
+    {
+      title: 'Misconduct & Absenteeism',
+      description: 'View salary deductions due to misconduct or unapproved absenteeism.',
+      href: '/dashboard/department-employee/payroll-tracking/misconduct-deductions',
+      icon: '⚠️',
       color: 'red',
-      features: ['Tax deductions', 'Insurance', 'Unpaid leave'],
-      requirement: 'REQ-PY-8, REQ-PY-9, REQ-PY-10, REQ-PY-11'
+      features: ['Absenteeism records', 'Policy violations', 'Time management integration'],
+      requirement: 'REQ-PY-10'
+    },
+    {
+      title: 'Unpaid Leave Deductions',
+      description: 'View deductions for unpaid leave days with daily/hourly calculations (BR 11).',
+      href: '/dashboard/department-employee/payroll-tracking/unpaid-leave-deductions',
+      icon: '📅',
+      color: 'orange',
+      features: ['Daily rate calculations', 'Leave integration', 'Period filtering'],
+      requirement: 'REQ-PY-11'
     },
     {
       title: 'Compensation & Benefits',
