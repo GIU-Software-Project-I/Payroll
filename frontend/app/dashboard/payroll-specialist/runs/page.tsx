@@ -48,6 +48,27 @@ export default function PayrollSpecialistRunsPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // Helper to format payroll period for display
+  const formatPayrollPeriod = (period: any): string => {
+    if (!period) return '';
+    if (typeof period === 'string') return period;
+    if (typeof period === 'object' && period.year && period.month) {
+      return `${period.year}-${String(period.month).padStart(2, '0')}`;
+    }
+    if (typeof period === 'object' && period.startDate) {
+      // Try to extract from date string
+      const date = new Date(period.startDate);
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    }
+    return '';
+  };
+
+  // Helper to safely display period in JSX
+  const displayPeriod = (period: any): string => {
+    const formatted = formatPayrollPeriod(period);
+    return formatted || '-';
+  };
+
   useEffect(() => {
     fetchRuns();
     fetchDepartments();
@@ -69,7 +90,14 @@ export default function PayrollSpecialistRunsPage() {
       
       const data = (res?.data || res) as any;
       const items = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
-      setRuns(items);
+      
+      // Format periods for display
+      const formattedItems = items.map((run: any) => ({
+        ...run,
+        displayPeriod: displayPeriod(run.period || run.payrollPeriod),
+      }));
+      
+      setRuns(formattedItems);
     } catch (e: any) {
       setError(e?.message || 'Failed to load runs');
     } finally {
@@ -249,7 +277,7 @@ export default function PayrollSpecialistRunsPage() {
   // REQ-PY-26: Edit payroll initiation (for rejected or draft status)
   const handleStartEdit = (run: any) => {
     setEditForm({
-      payrollPeriod: run.period || run.payrollPeriod || '',
+      payrollPeriod: formatPayrollPeriod(run.period || run.payrollPeriod),
       entityId: run.entityId || '',
       entity: run.entity || '',
     });
@@ -398,7 +426,7 @@ export default function PayrollSpecialistRunsPage() {
                 >
                   <div className="flex justify-between items-start mb-3">
                     <h3 className="font-semibold text-black text-lg">
-                      {run.period || run.payrollPeriod || 'No Period'}
+                      {run.displayPeriod || 'No Period'}
                     </h3>
                     <span className={`px-2 py-1 rounded text-xs font-medium border ${getStatusColor(run.status)}`}>
                       {run.status || 'Unknown'}
@@ -445,7 +473,7 @@ export default function PayrollSpecialistRunsPage() {
                   </div>
                   <div className="flex justify-between py-2 border-b border-gray-100">
                     <span className="text-gray-600">Period:</span>
-                    <span className="text-black">{selectedRun.period || selectedRun.payrollPeriod || '-'}</span>
+                    <span className="text-black">{displayPeriod(selectedRun.period || selectedRun.payrollPeriod)}</span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-gray-100">
                     <span className="text-gray-600">Entity:</span>
@@ -955,7 +983,7 @@ export default function PayrollSpecialistRunsPage() {
                   <option value="">-- Select a payroll run --</option>
                   {runs.filter(r => ['approved', 'locked', 'unlocked'].includes(r.status?.toLowerCase())).map((run) => (
                     <option key={run._id} value={run._id}>
-                      {run.period || run.payrollPeriod} - {run.entity} ({run.status})
+                      {run.displayPeriod} - {run.entity} ({run.status})
                     </option>
                   ))}
                 </select>
@@ -1072,7 +1100,7 @@ export default function PayrollSpecialistRunsPage() {
                       </span>
                     </div>
                     {selectedPayslip.payrollPeriod && (
-                      <div className="text-sm text-gray-600 mt-2">Period: {selectedPayslip.payrollPeriod}</div>
+                      <div className="text-sm text-gray-600 mt-2">Period: {displayPeriod(selectedPayslip.payrollPeriod)}</div>
                     )}
                     {selectedPayslip.entity && (
                       <div className="text-sm text-gray-600">Entity: {selectedPayslip.entity}</div>
@@ -1250,7 +1278,7 @@ export default function PayrollSpecialistRunsPage() {
                       <thead className="bg-gray-100">
                         <tr>
                           <th className="text-left px-4 py-2 text-sm font-medium text-gray-700">Status</th>
-                          <th className="text-right px-4 py-2 text-sm font-medium text-gray-700">Count</th>
+                          <th className="text-right px-4 py-2 text-sm font-medium text-gray-700">Counts</th>
                           <th className="text-left px-4 py-2 text-sm font-medium text-gray-700">Payroll Eligible?</th>
                         </tr>
                       </thead>
