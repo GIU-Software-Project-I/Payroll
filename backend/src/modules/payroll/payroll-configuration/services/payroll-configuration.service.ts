@@ -74,7 +74,9 @@ export class PayrollConfigurationService {
         if (!approver) {
             throw new BadRequestException('Approver employee not found');
         }
-        if (approver.status !== 'ACTIVE') {
+        // Case-insensitive status check (database may have 'active' or 'ACTIVE')
+        const approverStatus = (approver.status || '').toLowerCase();
+        if (approverStatus !== 'active') {
             throw new BadRequestException('Approver must be an active employee');
         }
 

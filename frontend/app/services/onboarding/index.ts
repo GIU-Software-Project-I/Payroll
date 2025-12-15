@@ -1,6 +1,41 @@
 import apiService from '../api';
 
+// Types
+export interface OnboardingTask {
+  _id?: string;
+  name: string;
+  description?: string;
+  status: OnboardingTaskStatus;
+  dueDate?: string;
+  completedAt?: string;
+  assignedTo?: string;
+}
+
+export interface Onboarding {
+  _id: string;
+  employeeId: string | { _id: string; firstName?: string; lastName?: string };
+  contractId?: string | { _id: string; contractNumber?: string };
+  tasks: OnboardingTask[];
+  completed: boolean;
+  startDate?: string;
+  completedDate?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export enum OnboardingTaskStatus {
+  PENDING = 'PENDING',
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
+  SKIPPED = 'SKIPPED',
+}
+
 export const onboardingService = {
+  getAllOnboardings: async () => {
+    const res = await apiService.get('/onboarding');
+    return res?.data || res || [];
+  },
+
   createChecklist: async (data: any) => {
     return apiService.post('/onboarding/checklist', data);
   },
