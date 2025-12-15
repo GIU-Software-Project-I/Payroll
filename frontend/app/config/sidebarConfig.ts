@@ -340,6 +340,7 @@ const PAYROLL_SPECIALIST_NAV: NavItem[] = [
       { label: 'Signing Bonuses', href: '/dashboard/payroll-specialist/signing-bonuses', icon: 'award' },
       { label: 'Termination Benefits', href: '/dashboard/payroll-specialist/termination-benefits', icon: 'package' },
       { label: 'Tax Rules', href: '/dashboard/payroll-specialist/tax-rules', icon: 'percent' },
+      { label: 'Insurance Brackets', href: '/dashboard/payroll-specialist/insurance-brackets', icon: 'shield' },
     ],
   },
   {
@@ -531,7 +532,12 @@ const LEGAL_POLICY_ADMIN_NAV: NavItem[] = [
     label: 'Documents',
     href: '/dashboard/legal-policy-admin/documents',
     icon: 'folder',
+  },{
+    label: 'Tax Rules',
+    href: '/dashboard/legal-policy-admin/tax-rule',
+    icon: 'document-text',
   },
+  
   {
     label: 'My Profile',
     href: '/dashboard/department-employee/employee-profile',
