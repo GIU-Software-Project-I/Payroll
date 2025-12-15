@@ -3,16 +3,17 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { EmployeeProfile } from '../../../employee/models/employee/employee-profile.schema';
 import { taxRules, taxRulesDocument } from '../models/taxRules.schema';
-import { taxBrackets, taxBracketsDocument } from '../models/taxBrackets.schema';
-import { TaxComponentType } from '../models/taxRules.schema';
 import { insuranceBrackets, insuranceBracketsDocument } from '../models/insuranceBrackets.schema';
+import { taxBrackets, taxBracketsDocument } from '../models/taxBrackets.schema';
 import { ConfigStatus } from '../enums/payroll-configuration-enums';
 import { ApproveInsuranceDto } from '../dto/approve-insurance.dto';
 import { ApproveTaxRuleDto } from '../dto/approve-tax-rule.dto';
 import { CreateInsuranceDto } from '../dto/create-insurance.dto';
-import { CreateTaxRuleDto } from '../dto/create-tax-rule.dto';
+import { CreateTaxBracketDto } from '../dto/create-tax-bracket.dto';
 import { UpdateInsuranceDto } from '../dto/update-insurance.dto';
 import { UpdateTaxRuleDto } from '../dto/update-tax-rule.dto';
+import { UpdateTaxBracketDto } from '../dto/update-tax-bracket.dto';
+import { CreateTaxRuleDto } from '../dto/create-tax-rule.dto';
 import { allowance, allowanceDocument } from '../models/allowance.schema';
 import { payType, payTypeDocument } from '../models/payType.schema';
 import { payGrade } from '../models/payGrades.schema';
@@ -44,7 +45,6 @@ import {UpdatePayGradeDto} from "../dto/update-paygrade.dto";
 export class PayrollConfigurationService {
     constructor(
         @InjectModel(taxRules.name) private taxRulesModel: Model<taxRulesDocument>,
-        @InjectModel(taxBrackets.name) private taxBracketsModel: Model<taxBracketsDocument>,
         @InjectModel(insuranceBrackets.name) private insuranceModel: Model<insuranceBracketsDocument>,
         @InjectModel(allowance.name) private allowanceModel: Model<allowanceDocument>,
         @InjectModel(payType.name) private payTypeModel: Model<payTypeDocument>,
@@ -54,6 +54,7 @@ export class PayrollConfigurationService {
         @InjectModel(terminationAndResignationBenefits.name) private terminationBenefitsModel: Model<terminationAndResignationBenefitsDocument>,
         @InjectModel(CompanyWideSettings.name) private companySettingsModel: Model<CompanyWideSettings>,
         @InjectModel(EmployeeProfile.name) private employeeModel: Model<EmployeeProfile>,
+        @InjectModel(taxBrackets.name) private taxBracketsModel: Model<taxBracketsDocument>,
         // private readonly orgStructureService: OrganizationStructureService,
         // private readonly contractService: OnBoardingService,
         // private readonly offboardingService: OffBoardingService,
@@ -74,9 +75,7 @@ export class PayrollConfigurationService {
         if (!approver) {
             throw new BadRequestException('Approver employee not found');
         }
-        // Case-insensitive status check (database may have 'active' or 'ACTIVE')
-        const approverStatus = (approver.status || '').toLowerCase();
-        if (approverStatus !== 'active') {
+        if (approver.status !== 'ACTIVE') {
             throw new BadRequestException('Approver must be an active employee');
         }
 
@@ -89,15 +88,23 @@ export class PayrollConfigurationService {
     }
 
     // ========== LAMA'S TAX RULES METHODS ==========
-    
-    async createTaxRule(dto: CreateTaxRuleDto) {
-        const exists = await this.taxRulesModel.findOne({ 
-            name: { $regex: new RegExp(`^${dto.name}$`, 'i') } 
-        }).exec();
-        if (exists) throw new BadRequestException(`Tax rule '${dto.name}' already exists`);
-        const taxRule = new this.taxRulesModel({ ...dto, status: ConfigStatus.DRAFT });
-        return await taxRule.save();
-    }
+async createTaxRule(dto: CreateTaxRuleDto) {
+    const exists = await this.taxRulesModel.findOne({ 
+        name: { $regex: new RegExp(`^${dto.name}$`, 'i') } 
+    }).exec();
+    if (exists) throw new BadRequestException(`Tax rule '${dto.name}' already exists`);
+
+    const taxRule = new this.taxRulesModel({
+        name: dto.name,
+        description: dto.description,
+        taxComponents: dto.taxComponents,
+        createdBy: dto.createdByEmployeeId,
+        status: ConfigStatus.DRAFT
+    });
+
+    return await taxRule.save();
+}
+
 
     async getTaxRules() {
         return await this.taxRulesModel.find().sort({ createdAt: -1 }).exec();
@@ -129,18 +136,21 @@ export class PayrollConfigurationService {
         return await taxRule.save();
     }
 
-    async updateLegalRule(id: string, dto: UpdateTaxRuleDto) {
-        const rule = await this.taxRulesModel.findById(id).exec();
-        if (!rule) throw new NotFoundException('Legal rule not found');
-        if (rule.status !== ConfigStatus.DRAFT)
-            throw new ForbiddenException('Only DRAFT rules can be edited');
+// Check this method in payroll-configuration.service.ts
+async updateLegalRule(id: string, dto: UpdateTaxRuleDto) {
+    const rule = await this.taxRulesModel.findById(id).exec();
+    if (!rule) throw new NotFoundException('Tax rule not found');
+    if (rule.status !== ConfigStatus.DRAFT)
+        throw new ForbiddenException('Only DRAFT rules can be edited');
 
-        return await this.taxRulesModel.findByIdAndUpdate(
-            id,
-            { $set: dto },
-            { new: true, runValidators: false },
-        );
-    }
+    // Check what happens with taxComponents here
+    return await this.taxRulesModel.findByIdAndUpdate(
+        id,
+        { $set: dto },
+        { new: true, runValidators: true } // ensure validators run
+    );
+}
+
 
     async deleteTaxRule(id: string) {
         const rule = await this.taxRulesModel.findById(id).exec();
@@ -172,253 +182,86 @@ export class PayrollConfigurationService {
         return await taxRule.save();
     }
 
-    // ========== TAX BRACKETS METHODS (BR 5) ==========
-    
-    async createTaxBracket(dto: {
-        name: string;
-        description?: string;
-        localTaxLawReference: string;
-        minIncome: number;
-        maxIncome: number;
-        taxRate: number;
-        baseAmount: number;
-        effectiveDate?: Date;
-        expiryDate?: Date;
-        createdBy: string;
-    }) {
-        // Check for duplicate name
-        const exists = await this.taxBracketsModel.findOne({ 
-            name: { $regex: new RegExp(`^${dto.name}$`, 'i') } 
-        }).exec();
-        if (exists) throw new BadRequestException(`Tax bracket '${dto.name}' already exists`);
+    async createTaxBracket(dto: CreateTaxBracketDto) {
+  const exists = await this.taxBracketsModel.findOne({ 
+    name: { $regex: new RegExp(`^${dto.name}$`, 'i') } 
+  }).exec();
+  
+  if (exists) {
+    throw new BadRequestException(`Tax bracket '${dto.name}' already exists`);
+  }
 
-        // Check for overlapping income ranges
-        const overlapping = await this.taxBracketsModel.findOne({
-            $and: [
-                { status: { $in: [ConfigStatus.DRAFT, ConfigStatus.APPROVED] } },
-                {
-                    $or: [
-                        { minIncome: { $lte: dto.minIncome }, maxIncome: { $gte: dto.minIncome } },
-                        { minIncome: { $lte: dto.maxIncome }, maxIncome: { $gte: dto.maxIncome } },
-                        { minIncome: { $gte: dto.minIncome }, maxIncome: { $lte: dto.maxIncome } }
-                    ]
-                }
-            ]
-        }).exec();
+  // Validate income range
+  if (dto.maxIncome <= dto.minIncome) {
+    throw new BadRequestException('Maximum income must be greater than minimum income');
+  }
 
-        if (overlapping) {
-            throw new BadRequestException(
-                `Tax bracket overlaps with existing bracket '${overlapping.name}' ` +
-                `(${overlapping.minIncome} - ${overlapping.maxIncome})`
-            );
-        }
+  const taxBracket = new this.taxBracketsModel({
+    name: dto.name,
+    description: dto.description,
+    localTaxLawReference: dto.localTaxLawReference,
+    minIncome: dto.minIncome,
+    maxIncome: dto.maxIncome,
+    taxRate: dto.taxRate,
+    baseAmount: dto.baseAmount,
+    effectiveDate: dto.effectiveDate,
+    expiryDate: dto.expiryDate,
+    createdBy: dto.createdByEmployeeId,
+    status: ConfigStatus.DRAFT
+  });
 
-        const taxBracket = new this.taxBracketsModel({ 
-            ...dto, 
-            status: ConfigStatus.DRAFT,
-            createdBy: new Types.ObjectId(dto.createdBy)
-        });
-        return await taxBracket.save();
+  return await taxBracket.save();
+}
+
+async getTaxBrackets() {
+  return await this.taxBracketsModel.find().sort({ minIncome: 1 }).exec();
+}
+
+async getTaxBracket(id: string) {
+  const bracket = await this.taxBracketsModel.findById(id).exec();
+  if (!bracket) {
+    throw new NotFoundException('Tax bracket not found');
+  }
+  return bracket;
+}
+
+async updateTaxBracket(id: string, dto: UpdateTaxBracketDto) {
+  const bracket = await this.taxBracketsModel.findById(id).exec();
+  if (!bracket) {
+    throw new NotFoundException('Tax bracket not found');
+  }
+  
+  if (bracket.status !== ConfigStatus.DRAFT) {
+    throw new ForbiddenException('Only DRAFT tax brackets can be edited');
+  }
+
+  // Validate income range if both are provided
+  if (dto.minIncome !== undefined && dto.maxIncome !== undefined) {
+    if (dto.maxIncome <= dto.minIncome) {
+      throw new BadRequestException('Maximum income must be greater than minimum income');
     }
+  }
 
-    async getTaxBrackets() {
-        return await this.taxBracketsModel.find().sort({ minIncome: 1 }).exec();
-    }
+  return await this.taxBracketsModel.findByIdAndUpdate(
+    id,
+    { $set: dto },
+    { new: true, runValidators: true }
+  );
+}
 
-    async getTaxBracketById(id: string) {
-        const taxBracket = await this.taxBracketsModel.findById(id).exec();
-        if (!taxBracket) throw new NotFoundException(`Tax bracket with ID ${id} not found`);
-        return taxBracket;
-    }
+async deleteTaxBracket(id: string) {
+  const bracket = await this.taxBracketsModel.findById(id).exec();
+  if (!bracket) {
+    throw new NotFoundException('Tax bracket not found');
+  }
+  
+  if (bracket.status !== ConfigStatus.DRAFT) {
+    throw new ForbiddenException('Only DRAFT tax brackets can be deleted');
+  }
 
-    async approveTaxBracket(id: string, approvedBy: string) {
-        const taxBracket = await this.taxBracketsModel.findById(id).exec();
-        if (!taxBracket) throw new NotFoundException('Tax bracket not found');
-        if (taxBracket.status !== ConfigStatus.DRAFT) {
-            throw new BadRequestException('Only DRAFT tax brackets can be approved');
-        }
-
-        await this.validateApprover(approvedBy, taxBracket.createdBy);
-
-        taxBracket.approvedBy = new Types.ObjectId(approvedBy);
-        taxBracket.status = ConfigStatus.APPROVED;
-        taxBracket.approvedAt = new Date();
-
-        return await taxBracket.save();
-    }
-
-    async updateTaxBracket(id: string, dto: Partial<{
-        name: string;
-        description: string;
-        localTaxLawReference: string;
-        minIncome: number;
-        maxIncome: number;
-        taxRate: number;
-        baseAmount: number;
-        effectiveDate: Date;
-        expiryDate: Date;
-    }>) {
-        const taxBracket = await this.taxBracketsModel.findById(id).exec();
-        if (!taxBracket) throw new NotFoundException('Tax bracket not found');
-        if (taxBracket.status !== ConfigStatus.DRAFT) {
-            throw new ForbiddenException('Only DRAFT tax brackets can be edited');
-        }
-
-        // Check for overlaps if income range is being updated
-        if (dto.minIncome !== undefined || dto.maxIncome !== undefined) {
-            const newMinIncome = dto.minIncome ?? taxBracket.minIncome;
-            const newMaxIncome = dto.maxIncome ?? taxBracket.maxIncome;
-
-            const overlapping = await this.taxBracketsModel.findOne({
-                _id: { $ne: id },
-                $and: [
-                    { status: { $in: [ConfigStatus.DRAFT, ConfigStatus.APPROVED] } },
-                    {
-                        $or: [
-                            { minIncome: { $lte: newMinIncome }, maxIncome: { $gte: newMinIncome } },
-                            { minIncome: { $lte: newMaxIncome }, maxIncome: { $gte: newMaxIncome } },
-                            { minIncome: { $gte: newMinIncome }, maxIncome: { $lte: newMaxIncome } }
-                        ]
-                    }
-                ]
-            }).exec();
-
-            if (overlapping) {
-                throw new BadRequestException(
-                    `Updated income range overlaps with bracket '${overlapping.name}'`
-                );
-            }
-        }
-
-        return await this.taxBracketsModel.findByIdAndUpdate(
-            id,
-            { $set: dto },
-            { new: true, runValidators: false }
-        );
-    }
-
-    async deleteTaxBracket(id: string) {
-        const taxBracket = await this.taxBracketsModel.findById(id).exec();
-        if (!taxBracket) throw new NotFoundException(`Tax bracket with ID ${id} not found`);
-        if (taxBracket.status !== ConfigStatus.DRAFT) {
-            throw new ForbiddenException('Only DRAFT tax brackets can be deleted');
-        }
-
-        await this.taxBracketsModel.findByIdAndDelete(id).exec();
-        return { message: `Tax bracket '${taxBracket.name}' successfully deleted` };
-    }
-
-    async rejectTaxBracket(id: string, approvedBy: string) {
-        const taxBracket = await this.taxBracketsModel.findById(id).exec();
-        if (!taxBracket) throw new NotFoundException('Tax bracket not found');
-        if (taxBracket.status !== ConfigStatus.DRAFT) {
-            throw new BadRequestException('Only DRAFT tax brackets can be rejected');
-        }
-
-        await this.validateApprover(approvedBy, taxBracket.createdBy);
-
-        taxBracket.approvedBy = new Types.ObjectId(approvedBy);
-        taxBracket.status = ConfigStatus.REJECTED;
-        taxBracket.approvedAt = new Date();
-
-        return await taxBracket.save();
-    }
-
-    // ========== TAX RULES WITH MULTIPLE COMPONENTS (BR 6) ==========
-    
-    async createTaxRuleWithComponents(dto: {
-        name: string;
-        description?: string;
-        taxComponents: Array<{
-            type: TaxComponentType;
-            name: string;
-            description: string;
-            rate: number;
-            maxAmount?: number;
-            minAmount?: number;
-            formula?: string;
-        }>;
-        createdBy: string;
-    }) {
-        const exists = await this.taxRulesModel.findOne({ 
-            name: { $regex: new RegExp(`^${dto.name}$`, 'i') } 
-        }).exec();
-        if (exists) throw new BadRequestException(`Tax rule '${dto.name}' already exists`);
-
-        const taxRule = new this.taxRulesModel({ 
-            ...dto, 
-            status: ConfigStatus.DRAFT,
-            createdBy: new Types.ObjectId(dto.createdBy)
-        });
-        return await taxRule.save();
-    }
-
-    async calculateTaxComponents(income: number): Promise<{
-        totalTax: number;
-        components: Array<{
-            type: TaxComponentType;
-            name: string;
-            amount: number;
-        }>;
-    }> {
-        // Get approved tax rules
-        const taxRules = await this.taxRulesModel.find({ 
-            status: ConfigStatus.APPROVED 
-        }).exec();
-
-        if (taxRules.length === 0) {
-            return { totalTax: 0, components: [] };
-        }
-
-        // Use the most recent approved tax rule
-        const activeTaxRule = taxRules.sort((a, b) => 
-            new Date(b.approvedAt || 0).getTime() - new Date(a.approvedAt || 0).getTime()
-        )[0];
-
-        let totalTax = 0;
-        const components: Array<{ type: TaxComponentType; name: string; amount: number }> = [];
-
-        for (const component of activeTaxRule.taxComponents) {
-            if (!component.isActive) continue;
-
-            let componentAmount = 0;
-            
-            switch (component.type) {
-                case TaxComponentType.INCOME_TAX:
-                    componentAmount = income * (component.rate / 100);
-                    break;
-                case TaxComponentType.EXEMPTION:
-                    componentAmount = -income * (component.rate / 100); // Negative for exemption
-                    break;
-                case TaxComponentType.SURCHARGE:
-                    componentAmount = income * (component.rate / 100);
-                    break;
-                case TaxComponentType.CESS:
-                    componentAmount = income * (component.rate / 100);
-                    break;
-                case TaxComponentType.OTHER_DEDUCTION:
-                    componentAmount = income * (component.rate / 100);
-                    break;
-            }
-
-            // Apply min/max limits
-            if (component.minAmount && componentAmount < component.minAmount) {
-                componentAmount = component.minAmount;
-            }
-            if (component.maxAmount && componentAmount > component.maxAmount) {
-                componentAmount = component.maxAmount;
-            }
-
-            totalTax += componentAmount;
-            components.push({
-                type: component.type,
-                name: component.name,
-                amount: componentAmount
-            });
-        }
-
-        return { totalTax, components };
-    }
+  await this.taxBracketsModel.findByIdAndDelete(id).exec();
+  return { message: 'Tax bracket deleted successfully' };
+}
 
     // ========== LAMA'S INSURANCE BRACKETS METHODS ==========
     async createInsuranceBracket(dto: CreateInsuranceDto) {
@@ -468,44 +311,43 @@ export class PayrollConfigurationService {
     }
 
     async updateInsuranceBracket(id: string, dto: UpdateInsuranceDto) {
-        const bracket = await this.insuranceModel.findById(id).exec();
-        if (!bracket) throw new NotFoundException('Insurance bracket not found');
-        if (bracket.status !== ConfigStatus.DRAFT)
-            throw new ForbiddenException('Only DRAFT brackets can be edited');
+    const bracket = await this.insuranceModel.findById(id).exec();
+    if (!bracket) throw new NotFoundException('Insurance bracket not found');
+    if (bracket.status !== ConfigStatus.DRAFT)
+        throw new ForbiddenException('Only DRAFT brackets can be edited');
 
-        // If salary range is being updated, check for overlaps
-        if (dto.minSalary !== undefined || dto.maxSalary !== undefined) {
-            const newMinSalary = dto.minSalary ?? bracket.minSalary;
-            const newMaxSalary = dto.maxSalary ?? bracket.maxSalary;
+    const newMinSalary = dto.minSalary !== undefined ? Number(dto.minSalary) : bracket.minSalary;
+    const newMaxSalary = dto.maxSalary !== undefined ? Number(dto.maxSalary) : bracket.maxSalary;
 
-            const overlapping = await this.insuranceModel.findOne({
-                _id: { $ne: id }, // Exclude current bracket
-                $and: [
-                    { status: { $in: [ConfigStatus.DRAFT, ConfigStatus.APPROVED] } },
-                    {
-                        $or: [
-                            { minSalary: { $lte: newMinSalary }, maxSalary: { $gte: newMinSalary } },
-                            { minSalary: { $lte: newMaxSalary }, maxSalary: { $gte: newMaxSalary } },
-                            { minSalary: { $gte: newMinSalary }, maxSalary: { $lte: newMaxSalary } }
-                        ]
-                    }
-                ]
-            }).exec();
+    // Run overlap check ONLY if range actually changed
+    if (newMinSalary !== bracket.minSalary || newMaxSalary !== bracket.maxSalary) {
+        const overlapping = await this.insuranceModel.findOne({
+            _id: { $ne: id }, // exclude current bracket
+            name: bracket.name, // check only brackets of the same insurance type
+            status: { $in: [ConfigStatus.DRAFT, ConfigStatus.APPROVED] },
+            $or: [
+                { minSalary: { $lte: newMinSalary }, maxSalary: { $gte: newMinSalary } },
+                { minSalary: { $lte: newMaxSalary }, maxSalary: { $gte: newMaxSalary } },
+                { minSalary: { $gte: newMinSalary }, maxSalary: { $lte: newMaxSalary } }
+            ]
+        }).exec();
 
-            if (overlapping) {
-                throw new BadRequestException(
-                    `Updated salary range overlaps with bracket '${overlapping.name}' ` +
-                    `(${overlapping.minSalary} - ${overlapping.maxSalary})`
-                );
-            }
+        if (overlapping) {
+            throw new BadRequestException(
+                `Updated salary range overlaps with bracket '${overlapping.name}' ` +
+                `(${overlapping.minSalary} - ${overlapping.maxSalary})`
+            );
         }
-
-        return await this.insuranceModel.findByIdAndUpdate(
-            id,
-            { $set: dto },
-            { new: true, runValidators: false },
-        );
     }
+
+    // Update the bracket
+    return await this.insuranceModel.findByIdAndUpdate(
+        id,
+        { $set: dto },
+        { new: true, runValidators: true }, // runValidators true is safer
+    );
+}
+
 
     async approveInsuranceBracket(id: string, dto: ApproveInsuranceDto) {
         const bracket = await this.insuranceModel.findById(id).exec();
@@ -1478,11 +1320,21 @@ export class PayrollConfigurationService {
 
     // ========== LAMA'S HELPER METHOD ==========
     calculateContributions(bracket: insuranceBrackets, salary: number) {
-        if (salary < bracket.minSalary || salary > bracket.maxSalary) return null;
-        const employeeContribution = (salary * bracket.employeeRate) / 100;
-        const employerContribution = (salary * bracket.employerRate) / 100;
-        return { employeeContribution, employerContribution };
-    }
+    // Ensure inclusive check
+    const isValid = salary >= bracket.minSalary && salary <= bracket.maxSalary;
+
+    const employeeContribution = (salary * bracket.employeeRate) / 100;
+    const employerContribution = (salary * bracket.employerRate) / 100;
+    const totalContribution = employeeContribution + employerContribution;
+
+    return {
+        employeeContribution,
+        employerContribution,
+        totalContribution,
+        isValid,
+    };
+}
+
 
     // ========== DAREEN'S CALCULATION METHOD ==========
     async calculateTerminationEntitlements(employeeData: any): Promise<any> {
