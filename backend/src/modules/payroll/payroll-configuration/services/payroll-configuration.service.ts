@@ -414,14 +414,22 @@ async createInsuranceBracket(dto: CreateInsuranceDto) {
     }
 
     // ========== DAREEN'S PAYROLL POLICIES METHODS ==========
-    async create(createDto: CreatePayrollPolicyDto): Promise<payrollPolicies> {
-        const newPolicy = new this.payrollPolicyModel({
-            ...createDto,
-            status: ConfigStatus.DRAFT,
-            effectiveDate: new Date(createDto.effectiveDate),
-        });
-        return await newPolicy.save();
-    }
+   async create(createDto: CreatePayrollPolicyDto): Promise<payrollPolicies> {
+    const policyData = {
+        policyName: createDto.policyName,
+        policyType: createDto.policyType,
+        description: createDto.description,
+        effectiveDate: new Date(createDto.effectiveDate),
+        ruleDefinition: createDto.ruleDefinition,
+        applicability: createDto.applicability,
+        status: ConfigStatus.DRAFT,
+        createdBy: createDto.createdByEmployeeId 
+            ? new mongoose.Types.ObjectId(createDto.createdByEmployeeId) 
+            : undefined,
+    };
+    const newPolicy = new this.payrollPolicyModel(policyData);
+    return await newPolicy.save();
+}
 
     async findAll(queryDto: QueryPayrollPolicyDto): Promise<{
         data: payrollPolicies[];
@@ -687,22 +695,27 @@ async createInsuranceBracket(dto: CreateInsuranceDto) {
     }
 
     // ========== DAREEN'S ALLOWANCE METHODS ==========
-    async createAllowance(createDto: CreateAllowanceDto): Promise<allowance> {
-        const existingAllowance = await this.allowanceModel.findOne({
-            name: { $regex: new RegExp(`^${createDto.name}$`, 'i') }
-        }).exec();
+async createAllowance(createDto: CreateAllowanceDto): Promise<allowance> {
+    const existingAllowance = await this.allowanceModel.findOne({
+        name: { $regex: new RegExp(`^${createDto.name}$`, 'i') }
+    }).exec();
 
-        if (existingAllowance) {
-            throw new BadRequestException(`Allowance '${createDto.name}' already exists`);
-        }
-
-        const newAllowance = new this.allowanceModel({
-            ...createDto,
-            status: ConfigStatus.DRAFT,
-        });
-
-        return await newAllowance.save();
+    if (existingAllowance) {
+        throw new BadRequestException(`Allowance '${createDto.name}' already exists`);
     }
+
+    const allowanceData = {
+        name: createDto.name,
+        amount: createDto.amount,
+        status: ConfigStatus.DRAFT,
+        ...(createDto.createdByEmployeeId && {
+            createdBy: new mongoose.Types.ObjectId(createDto.createdByEmployeeId)
+        })
+    };
+    const newAllowance = new this.allowanceModel(allowanceData);
+
+    return await newAllowance.save();
+}
 
     async findAllAllowances(queryDto: QueryAllowanceDto): Promise<{
         data: allowance[];
@@ -819,22 +832,27 @@ async createInsuranceBracket(dto: CreateInsuranceDto) {
     }
 
     // ========== DAREEN'S SIGNING BONUS METHODS ==========
-    async createSigningBonus(createDto: CreateSigningBonusDto): Promise<signingBonus> {
-        const existingSigningBonus = await this.signingBonusModel.findOne({
-            positionName: { $regex: new RegExp(`^${createDto.positionName}$`, 'i') }
-        }).exec();
+  async createSigningBonus(createDto: CreateSigningBonusDto): Promise<signingBonus> {
+    const existingSigningBonus = await this.signingBonusModel.findOne({
+        positionName: { $regex: new RegExp(`^${createDto.positionName}$`, 'i') }
+    }).exec();
 
-        if (existingSigningBonus) {
-            throw new BadRequestException(`Signing bonus for position '${createDto.positionName}' already exists`);
-        }
-
-        const newSigningBonus = new this.signingBonusModel({
-            ...createDto,
-            status: ConfigStatus.DRAFT,
-        });
-
-        return await newSigningBonus.save();
+    if (existingSigningBonus) {
+        throw new BadRequestException(`Signing bonus for position '${createDto.positionName}' already exists`);
     }
+
+    const signingBonusData = {
+        positionName: createDto.positionName,
+        amount: createDto.amount,
+        status: ConfigStatus.DRAFT,
+        ...(createDto.createdByEmployeeId && {
+            createdBy: new mongoose.Types.ObjectId(createDto.createdByEmployeeId)
+        })
+    };
+    const newSigningBonus = new this.signingBonusModel(signingBonusData);
+
+    return await newSigningBonus.save();
+}
 
     async findAllSigningBonuses(queryDto: QuerySigningBonusDto): Promise<{
         data: signingBonus[];
@@ -960,22 +978,28 @@ async createInsuranceBracket(dto: CreateInsuranceDto) {
     }
 
     // ========== DAREEN'S TERMINATION & RESIGNATION BENEFITS METHODS ==========
-    async createTerminationBenefit(createDto: CreateTerminationBenefitDto): Promise<terminationAndResignationBenefits> {
-        const existingBenefit = await this.terminationBenefitsModel.findOne({
-            name: { $regex: new RegExp(`^${createDto.name}$`, 'i') }
-        }).exec();
+async createTerminationBenefit(createDto: CreateTerminationBenefitDto): Promise<terminationAndResignationBenefits> {
+    const existingBenefit = await this.terminationBenefitsModel.findOne({
+        name: { $regex: new RegExp(`^${createDto.name}$`, 'i') }
+    }).exec();
 
-        if (existingBenefit) {
-            throw new BadRequestException(`Termination benefit '${createDto.name}' already exists`);
-        }
-
-        const newBenefit = new this.terminationBenefitsModel({
-            ...createDto,
-            status: ConfigStatus.DRAFT,
-        });
-
-        return await newBenefit.save();
+    if (existingBenefit) {
+        throw new BadRequestException(`Termination benefit '${createDto.name}' already exists`);
     }
+
+    const benefitData = {
+        name: createDto.name,
+        amount: createDto.amount,
+        terms: createDto.terms,
+        status: ConfigStatus.DRAFT,
+        ...(createDto.createdByEmployeeId && {
+            createdBy: new mongoose.Types.ObjectId(createDto.createdByEmployeeId)
+        })
+    };
+    const newBenefit = new this.terminationBenefitsModel(benefitData);
+
+    return await newBenefit.save();
+}
 
     async findAllTerminationBenefits(queryDto: QueryTerminationBenefitDto): Promise<{
         data: terminationAndResignationBenefits[];
@@ -1341,11 +1365,34 @@ async createInsuranceBracket(dto: CreateInsuranceDto) {
 
 
     // ========== DAREEN'S CALCULATION METHOD ==========
+    /**
+     * Calculate termination entitlements based on approved benefits
+     * Business Rules Applied:
+     * - BR29: Termination benefits calculated based on reason (resignation vs termination)
+     * - BR56: All calculations use approved benefit configurations only
+     * 
+     * Calculation Formulas:
+     * - Gratuity: Last Salary × 0.5 × Years of Service
+     * - Severance: Last Salary × Years of Service (max 12 months)
+     * - All Other Benefits: Base Amount × Years of Service
+     * 
+     * Note: Actual unused leave days should be fetched from Leave Management module separately.
+     * This calculator uses configured benefit amounts only.
+     * 
+     * @param employeeData.benefitIds - Optional array of benefit IDs to include. If empty/undefined, all approved benefits are used.
+     */
     async calculateTerminationEntitlements(employeeData: any): Promise<any> {
-        const { employeeId, lastSalary, yearsOfService = 1, reason = 'resignation' } = employeeData;
+        const { employeeId, lastSalary, yearsOfService = 1, reason = 'resignation', benefitIds } = employeeData;
 
+        // BR56: Only use APPROVED benefits for calculations
+        // If specific benefitIds provided, filter by those IDs as well
+        let query: any = { status: ConfigStatus.APPROVED };
+        if (benefitIds && Array.isArray(benefitIds) && benefitIds.length > 0) {
+            query._id = { $in: benefitIds.map((id: string) => new Types.ObjectId(id)) };
+        }
+        
         const approvedBenefits = await this.terminationBenefitsModel
-            .find({ status: ConfigStatus.APPROVED })
+            .find(query)
             .exec();
 
         const calculations: any[] = [];
@@ -1354,23 +1401,36 @@ async createInsuranceBracket(dto: CreateInsuranceDto) {
         for (const benefit of approvedBenefits) {
             let calculatedAmount = 0;
             let formula = '';
+            const benefitNameLower = benefit.name.toLowerCase();
 
-            if (benefit.name.toLowerCase().includes('gratuity')) {
+            if (benefitNameLower.includes('gratuity')) {
+                // Gratuity: Half month salary per year of service
                 calculatedAmount = lastSalary * 0.5 * yearsOfService;
                 formula = `Last Salary (${lastSalary}) × 0.5 × Years of Service (${yearsOfService})`;
-            } else if (benefit.name.toLowerCase().includes('severance')) {
+            } else if (benefitNameLower.includes('severance')) {
+                // Severance: One month salary per year, capped at 12 months
                 const months = Math.min(yearsOfService, 12);
                 calculatedAmount = lastSalary * months;
-                formula = `Last Salary (${lastSalary}) × Years of Service (${yearsOfService}, max 12 months)`;
+                formula = `Last Salary (${lastSalary}) × ${months} months (Years: ${yearsOfService}, max 12)`;
             } else {
+                // All other benefits (including leave encashment): Base Amount × Years of Service
                 calculatedAmount = benefit.amount * yearsOfService;
                 formula = `Base Amount (${benefit.amount}) × Years of Service (${yearsOfService})`;
+            }
+
+            // BR29: Apply reason-specific entitlement rules
+            let reasonNote = '';
+            if (reason === 'termination' && benefitNameLower.includes('severance')) {
+                // Terminated employees get higher severance (1.5x)
+                calculatedAmount *= 1.5;
+                reasonNote = ' (Termination multiplier: 1.5x)';
+                formula += reasonNote;
             }
 
             calculations.push({
                 benefitName: benefit.name,
                 baseAmount: benefit.amount,
-                calculatedAmount,
+                calculatedAmount: Math.round(calculatedAmount * 100) / 100,
                 formula,
                 reasonSpecific: reason === 'resignation' ? 'Resignation Entitlement' : 'Termination Entitlement'
             });
@@ -1384,9 +1444,12 @@ async createInsuranceBracket(dto: CreateInsuranceDto) {
             lastSalary,
             yearsOfService,
             calculations,
-            totalEntitlement,
+            totalEntitlement: Math.round(totalEntitlement * 100) / 100,
             calculationDate: new Date(),
-            businessRulesApplied: ['BR29', 'BR56']
+            businessRulesApplied: [
+                'BR29: Reason-based entitlement calculation (termination gets 1.5x severance)',
+                'BR56: Only APPROVED benefits are included in calculations'
+            ]
         };
     }
 
