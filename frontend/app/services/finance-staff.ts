@@ -295,8 +295,7 @@ export const financeStaffService = {
             amount: request.refundDetails.amount,
             description: request.refundDetails.description
           },
-          employeeId: request.employeeId,
-          financeStaffId: request.financeStaffId
+          employeeId: request.employeeId
         }
       );
       return response;
@@ -309,8 +308,7 @@ export const financeStaffService = {
             amount: request.refundDetails.amount,
             description: request.refundDetails.description
           },
-          employeeId: request.employeeId,
-          financeStaffId: request.financeStaffId
+          employeeId: request.employeeId
         }
       );
       return response;
