@@ -55,6 +55,12 @@ export default function PayTypesPage() {
   const [selectedPayType, setSelectedPayType] = useState<PayType | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   
+  // Search and filter state
+  const [filters, setFilters] = useState({
+    search: '',
+    status: '',
+  });
+  
   // Form state - ONLY the fields your backend expects
   const [formData, setFormData] = useState({
     type: '',
@@ -122,41 +128,9 @@ const handleCreatePayType = async () => {
 
     setActionLoading(true);
     
-    // Get the employee ID - this is REQUIRED by the backend DTO
-    let createdByEmployeeId = '';
+    // Get the employee ID - REQUIRED by backend DTO
+    let createdByEmployeeId = user?.id || '';
     
-    // First, try to get it from localStorage
-    const storedUser = localStorage.getItem('hr_system_user');
-    if (storedUser) {
-      try {
-        const userData = JSON.parse(storedUser);
-        console.log('User data from localStorage:', userData);
-        
-        // The backend expects a string for createdByEmployeeId
-        // We should use the user's MongoDB _id as this is likely what the backend expects
-        // when it tries to convert to ObjectId
-        if (userData.id) {
-          createdByEmployeeId = userData.id; // This should be the MongoDB ObjectId string
-        } else if (userData._id) {
-          createdByEmployeeId = userData._id; // Alternative field name
-        }
-        
-        console.log('Using employee ID:', createdByEmployeeId);
-      } catch (e) {
-        console.error('Failed to parse user data:', e);
-      }
-    }
-    
-    // If still empty, try from useAuth hook
-    if (!createdByEmployeeId && user) {
-      console.log('User from useAuth:', user);
-      
-      if (user.id) {
-        createdByEmployeeId = user.id;
-      }
-    }
-    
-    // If still empty, show error
     if (!createdByEmployeeId) {
       setError('Unable to identify user. Please make sure you are logged in.');
       setActionLoading(false);
@@ -347,6 +321,22 @@ const handleCreatePayType = async () => {
     }));
   };
 
+  const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Filter pay types based on search and status
+  const filteredPayTypes = payTypes.filter(payType => {
+    const matchesSearch = !filters.search || 
+      payType.type.toLowerCase().includes(filters.search.toLowerCase());
+    const matchesStatus = !filters.status || payType.status === filters.status;
+    return matchesSearch && matchesStatus;
+  });
+
   const formatDate = (dateString: string) => {
     try {
       return new Date(dateString).toLocaleDateString('en-US', {
@@ -439,23 +429,77 @@ const handleCreatePayType = async () => {
         </div>
       )}
 
+      {/* Filters */}
+      <div className="bg-white rounded-lg border border-slate-200 p-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Search Pay Types
+            </label>
+            <input
+              type="text"
+              name="search"
+              value={filters.search}
+              onChange={handleFilterChange}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+              placeholder="Search by pay type name..."
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Status Filter
+            </label>
+            <select
+              name="status"
+              value={filters.status}
+              onChange={handleFilterChange}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+            >
+              <option value="">All Statuses</option>
+              <option value="draft">Draft</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+          <div className="flex items-end">
+            <button
+              onClick={() => setFilters({ search: '', status: '' })}
+              className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium w-full"
+            >
+              Clear Filters
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Pay Types Table */}
       <div className="bg-white rounded-lg border border-slate-200 shadow-sm">
         <div className="p-6 border-b border-slate-200">
-          <h2 className="text-xl font-bold text-slate-900">Pay Types ({payTypes.length})</h2>
+          <h2 className="text-xl font-bold text-slate-900">
+            Pay Types ({filteredPayTypes.length})
+            {(filters.search || filters.status) && (
+              <span className="text-slate-500 text-sm ml-2">of {payTypes.length} total</span>
+            )}
+          </h2>
         </div>
         
-        {payTypes.length === 0 ? (
+        {filteredPayTypes.length === 0 ? (
           <div className="p-12 text-center">
             <div className="text-slate-400 mb-4">💰</div>
-            <p className="text-slate-600 font-medium">No pay types found</p>
-            <p className="text-slate-500 text-sm mt-1">Create your first pay type to get started</p>
-            <button
-              onClick={handleCreateClick}
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-            >
-              Create Pay Type
-            </button>
+            <p className="text-slate-600 font-medium">
+              {(filters.search || filters.status) ? 'No pay types match your filters' : 'No pay types found'}
+            </p>
+            <p className="text-slate-500 text-sm mt-1">
+              {(filters.search || filters.status) ? 'Try adjusting your search criteria' : 'Create your first pay type to get started'}
+            </p>
+            {!(filters.search || filters.status) && (
+              <button
+                onClick={handleCreateClick}
+                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                Create Pay Type
+              </button>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -470,7 +514,7 @@ const handleCreatePayType = async () => {
                 </tr>
               </thead>
               <tbody>
-                {payTypes.map((payType) => (
+                {filteredPayTypes.map((payType) => (
                   <tr key={payType._id} className="border-b border-slate-100 hover:bg-slate-50">
                     <td className="py-4 px-6">
                       <div>

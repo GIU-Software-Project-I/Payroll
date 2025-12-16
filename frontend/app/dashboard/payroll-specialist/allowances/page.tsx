@@ -62,6 +62,7 @@ export default function AllowancesPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [selectedAllowance, setSelectedAllowance] = useState<Allowance | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   
@@ -83,7 +84,6 @@ export default function AllowancesPage() {
   const [formData, setFormData] = useState({
     name: '',
     amount: '',
-    createdByEmployeeId: '',
   });
 
   // Fetch allowances on component mount and when filters change
@@ -183,41 +183,22 @@ export default function AllowancesPage() {
 
     setActionLoading(true);
     
-    // Get the employee ID - this is REQUIRED by the backend DTO
-    let createdByEmployeeId = '';
+    // Get the employee ID - REQUIRED by backend DTO
+    let createdByEmployeeId = user?.id || '';
     
-    // First, try to get it from localStorage
-    const storedUser = localStorage.getItem('hr_system_user');
-    if (storedUser) {
+    // Fallback to localStorage if user.id is not available
+    if (!createdByEmployeeId) {
       try {
-        const userData = JSON.parse(storedUser);
-        console.log('User data from localStorage:', userData);
-        
-        // The backend expects a string for createdByEmployeeId
-        // We should use the user's MongoDB _id as this is likely what the backend expects
-        // when it tries to convert to ObjectId
-        if (userData.id) {
-          createdByEmployeeId = userData.id; // This should be the MongoDB ObjectId string
-        } else if (userData._id) {
-          createdByEmployeeId = userData._id; // Alternative field name
+        const storedUser = localStorage.getItem('hr_system_user');
+        if (storedUser) {
+          const userData = JSON.parse(storedUser);
+          createdByEmployeeId = userData.id || userData._id || '';
         }
-        
-        console.log('Using employee ID for allowance:', createdByEmployeeId);
       } catch (e) {
-        console.error('Failed to parse user data:', e);
+        console.error('Failed to get user from localStorage:', e);
       }
     }
     
-    // If still empty, try from useAuth hook (if you have it in this component)
-    if (!createdByEmployeeId && user) { // Assuming you have const { user } = useAuth();
-      console.log('User from useAuth:', user);
-      
-      if (user.id) {
-        createdByEmployeeId = user.id;
-      }
-    }
-    
-    // If still empty, show error
     if (!createdByEmployeeId) {
       setError('Unable to identify user. Please make sure you are logged in.');
       setActionLoading(false);
@@ -341,11 +322,67 @@ export default function AllowancesPage() {
     setShowViewModal(true);
   };
 
+  const handleEditClick = (allowance: Allowance) => {
+    setSelectedAllowance(allowance);
+    setFormData({
+      name: allowance.name,
+      amount: allowance.amount.toString(),
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateAllowance = async () => {
+    if (!selectedAllowance) return;
+    
+    try {
+      if (!formData.name || !formData.amount) {
+        setError('Please fill all required fields');
+        return;
+      }
+
+      const amountNum = parseFloat(formData.amount);
+      
+      if (isNaN(amountNum) || amountNum < 0) {
+        setError('Amount must be a valid number 0 or greater');
+        return;
+      }
+
+      setActionLoading(true);
+      
+      const apiData = {
+        name: formData.name,
+        amount: amountNum,
+      };
+      
+      console.log('Updating allowance with data:', apiData);
+      
+      const response = await payrollConfigurationService.updateAllowance(selectedAllowance._id, apiData);
+      
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      
+      setSuccess('Allowance updated successfully');
+      setShowEditModal(false);
+      setSelectedAllowance(null);
+      resetForm();
+      fetchAllowances();
+    } catch (err: any) {
+      console.error('Update error:', err);
+      let errorMessage = 'Failed to update allowance';
+      if (err.message) {
+        errorMessage = err.message;
+      }
+      setError(errorMessage);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       name: '',
       amount: '',
-      createdByEmployeeId: '',
     });
   };
 
@@ -590,17 +627,16 @@ export default function AllowancesPage() {
             👁️
           </button>
           
-          {/* Delete button - Only for DRAFT allowances */}
-          {/* {allowance.status === 'draft' && (
+          {/* Edit button - Only for DRAFT allowances */}
+          {allowance.status === 'draft' && (
             <button
-              onClick={() => handleDeleteAllowance(allowance)}
-              disabled={actionLoading}
-              className="p-1.5 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
-              title="Delete"
+              onClick={() => handleEditClick(allowance)}
+              className="p-1.5 text-slate-600 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
+              title="Edit Allowance"
             >
-              🗑️
+              ✏️
             </button>
-          )} */}
+          )}
         </div>
       </td>
     </tr>
@@ -829,25 +865,95 @@ export default function AllowancesPage() {
                 </code>
               </div>
             </div>
-            <div className="p-6 border-t border-slate-200 flex justify-between">
-              {selectedAllowance.status === 'draft' && (
-                <button
-                  onClick={() => {
-                    if (confirm(`Are you sure you want to delete "${selectedAllowance.name}"?`)) {
-                      handleDeleteAllowance(selectedAllowance);
-                      setShowViewModal(false);
-                    }
-                  }}
-                  className="px-4 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors font-medium"
-                >
-                  Delete Allowance
-                </button>
-              )}
+            <div className="p-6 border-t border-slate-200 flex justify-end">
               <button
                 onClick={() => setShowViewModal(false)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium ml-auto"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && selectedAllowance && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-slate-200">
+              <h3 className="text-xl font-bold text-slate-900">
+                Edit Allowance
+              </h3>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Allowance Name *
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+                  required
+                  placeholder="e.g., Transportation Allowance"
+                  list="allowance-suggestions-edit"
+                />
+                <datalist id="allowance-suggestions-edit">
+                  {commonAllowanceTypes.map((option) => (
+                    <option key={option.value} value={option.value} />
+                  ))}
+                </datalist>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Amount (USD) *
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span className="text-slate-500">$</span>
+                  </div>
+                  <input
+                    type="number"
+                    name="amount"
+                    value={formData.amount}
+                    onChange={handleChange}
+                    className="w-full pl-8 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+                    required
+                    placeholder="e.g., 500"
+                    step="0.01"
+                    min="0"
+                  />
+                </div>
+              </div>
+              
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <span className="font-semibold">Current Status:</span> {statusLabels[selectedAllowance.status]}
+                </p>
+              </div>
+            </div>
+            <div className="p-6 border-t border-slate-200 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setSelectedAllowance(null);
+                  resetForm();
+                }}
+                disabled={actionLoading}
+                className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateAllowance}
+                disabled={actionLoading}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-400 transition-colors font-medium"
+              >
+                {actionLoading ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>

@@ -57,14 +57,26 @@ const statusLabels = {
 export default function TerminationBenefitsPage() {
   const { user } = useAuth();
   const [terminationBenefits, setTerminationBenefits] = useState<TerminationBenefit[]>([]);
+  const [approvedBenefits, setApprovedBenefits] = useState<TerminationBenefit[]>([]); // All approved benefits for calculation
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [showCalculateModal, setShowCalculateModal] = useState(false);
   const [selectedTerminationBenefit, setSelectedTerminationBenefit] = useState<TerminationBenefit | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [calculationResult, setCalculationResult] = useState<any>(null);
+  
+  // Calculate form state
+  const [calculateFormData, setCalculateFormData] = useState({
+    employeeId: '',
+    lastSalary: '',
+    yearsOfService: '1',
+    reason: 'resignation',
+    selectedBenefits: [] as string[], // Array of benefit IDs to include in calculation
+  });
   
   // Pagination state
   const [pagination, setPagination] = useState({
@@ -91,6 +103,34 @@ export default function TerminationBenefitsPage() {
   useEffect(() => {
     fetchTerminationBenefits();
   }, [pagination.page, filters]);
+
+  // Fetch all approved benefits for calculation (without user filter)
+  useEffect(() => {
+    fetchApprovedBenefits();
+  }, []);
+
+  const fetchApprovedBenefits = async () => {
+    try {
+      const response = await payrollConfigurationService.getTerminationBenefits({
+        status: 'approved',
+        limit: 100, // Get all approved benefits
+      });
+      
+      if (response.error) {
+        console.error('Error fetching approved benefits:', response.error);
+        return;
+      }
+      
+      const apiData = response.data as any;
+      if (apiData?.data && Array.isArray(apiData.data)) {
+        setApprovedBenefits(apiData.data);
+      } else if (Array.isArray(apiData)) {
+        setApprovedBenefits(apiData);
+      }
+    } catch (err) {
+      console.error('Error fetching approved benefits for calculation:', err);
+    }
+  };
 
   const fetchTerminationBenefits = async () => {
     try {
@@ -184,40 +224,22 @@ export default function TerminationBenefitsPage() {
 
     setActionLoading(true);
     
-    // Get the employee ID - this is REQUIRED by the backend DTO
-    let createdByEmployeeId = '';
+    // Get the employee ID - REQUIRED by backend DTO
+    let createdByEmployeeId = user?.id || '';
     
-    // First, try to get it from localStorage
-    const storedUser = localStorage.getItem('hr_system_user');
-    if (storedUser) {
+    // Fallback to localStorage if user.id is not available
+    if (!createdByEmployeeId) {
       try {
-        const userData = JSON.parse(storedUser);
-        console.log('User data from localStorage:', userData);
-        
-        // The backend expects a string for createdByEmployeeId
-        // We should use the user's MongoDB _id as this is likely what the backend expects
-        if (userData.id) {
-          createdByEmployeeId = userData.id; // This should be the MongoDB ObjectId string
-        } else if (userData._id) {
-          createdByEmployeeId = userData._id; // Alternative field name
+        const storedUser = localStorage.getItem('hr_system_user');
+        if (storedUser) {
+          const userData = JSON.parse(storedUser);
+          createdByEmployeeId = userData.id || userData._id || '';
         }
-        
-        console.log('Using employee ID for termination benefit:', createdByEmployeeId);
       } catch (e) {
-        console.error('Failed to parse user data:', e);
+        console.error('Failed to get user from localStorage:', e);
       }
     }
     
-    // If still empty, try from useAuth hook
-    if (!createdByEmployeeId && user) {
-      console.log('User from useAuth:', user);
-      
-      if (user.id) {
-        createdByEmployeeId = user.id;
-      }
-    }
-    
-    // If still empty, show error
     if (!createdByEmployeeId) {
       setError('Unable to identify user. Please make sure you are logged in.');
       setActionLoading(false);
@@ -277,6 +299,7 @@ export default function TerminationBenefitsPage() {
     setShowCreateModal(false);
     resetForm();
     fetchTerminationBenefits();
+    fetchApprovedBenefits(); // Refresh approved benefits list
   } catch (err: any) {
     console.error('Create error details:', err);
     
@@ -362,6 +385,7 @@ export default function TerminationBenefitsPage() {
       setShowEditModal(false);
       resetForm();
       fetchTerminationBenefits();
+      fetchApprovedBenefits(); // Refresh approved benefits list
     } catch (err: any) {
       console.error('Update error details:', err);
       
@@ -399,6 +423,7 @@ export default function TerminationBenefitsPage() {
       
       setSuccess(`Termination benefit "${benefit.name}" deleted successfully`);
       fetchTerminationBenefits();
+      fetchApprovedBenefits(); // Refresh approved benefits list
     } catch (err: any) {
       console.error('Delete error:', err);
       
@@ -438,6 +463,98 @@ export default function TerminationBenefitsPage() {
   const handleViewClick = (benefit: TerminationBenefit) => {
     setSelectedTerminationBenefit(benefit);
     setShowViewModal(true);
+  };
+
+  const handleCalculateClick = () => {
+    // Auto-populate employee ID from logged-in user
+    let employeeId = user?.id || '';
+    
+    // Fallback to localStorage if user.id is not available
+    if (!employeeId) {
+      try {
+        const storedUser = localStorage.getItem('hr_system_user');
+        if (storedUser) {
+          const userData = JSON.parse(storedUser);
+          employeeId = userData.id || userData._id || '';
+        }
+      } catch (e) {
+        console.error('Failed to get user from localStorage:', e);
+      }
+    }
+    
+    setCalculateFormData({
+      employeeId: employeeId,
+      lastSalary: '',
+      yearsOfService: '1',
+      reason: 'resignation',
+      selectedBenefits: [], // Empty = all approved benefits
+    });
+    setCalculationResult(null);
+    setShowCalculateModal(true);
+  };
+
+  const handleCalculateEntitlements = async () => {
+    try {
+      if (!calculateFormData.employeeId || !calculateFormData.lastSalary || !calculateFormData.yearsOfService) {
+        setError('Please fill all required fields');
+        return;
+      }
+
+      const lastSalary = parseFloat(calculateFormData.lastSalary);
+      const yearsOfService = parseFloat(calculateFormData.yearsOfService);
+
+      if (isNaN(lastSalary) || lastSalary <= 0) {
+        setError('Last salary must be a positive number');
+        return;
+      }
+
+      if (isNaN(yearsOfService) || yearsOfService < 0) {
+        setError('Years of service must be 0 or greater');
+        return;
+      }
+
+      setActionLoading(true);
+
+      const response = await payrollConfigurationService.calculateTerminationEntitlements({
+        employeeId: calculateFormData.employeeId,
+        lastSalary,
+        yearsOfService,
+        reason: calculateFormData.reason,
+        benefitIds: calculateFormData.selectedBenefits.length > 0 ? calculateFormData.selectedBenefits : undefined,
+      });
+
+      console.log('Calculate API Response:', response);
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
+      // Handle potential response wrapping - backend may return data directly or wrapped
+      const result = response.data?.data || response.data;
+      
+      console.log('Parsed result:', result);
+      
+      if (!result || !result.employeeId) {
+        console.error('Unexpected response format:', response);
+        throw new Error('Invalid response format from server');
+      }
+      
+      setCalculationResult(result);
+      setSuccess('Calculation completed successfully');
+    } catch (err: any) {
+      console.error('Calculation error:', err);
+      setError(err.message || 'Failed to calculate entitlements');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCalculateFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setCalculateFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const resetForm = () => {
@@ -702,6 +819,17 @@ export default function TerminationBenefitsPage() {
                               title="Edit"
                             >
                               ✏️
+                            </button>
+                          )}
+                          
+                          {/* Calculate button - Only for APPROVED termination benefits */}
+                          {benefit.status === 'approved' && (
+                            <button
+                              onClick={() => handleCalculateClick()}
+                              className="p-1.5 text-slate-600 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors"
+                              title="Calculate Entitlements"
+                            >
+                              🧮
                             </button>
                           )}
                           
@@ -992,34 +1120,21 @@ export default function TerminationBenefitsPage() {
                 </ul>
               </div>
             </div>
-            <div className="p-6 border-t border-slate-200 flex justify-between">
+            <div className="p-6 border-t border-slate-200 flex justify-end gap-3">
               <button
-                onClick={() => {
-                  if (confirm('Are you sure you want to delete this termination benefit?')) {
-                    handleDeleteTerminationBenefit(selectedTerminationBenefit);
-                    setShowEditModal(false);
-                  }
-                }}
-                className="px-4 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors font-medium"
+                onClick={() => setShowEditModal(false)}
+                disabled={actionLoading}
+                className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors font-medium"
               >
-                Delete
+                Cancel
               </button>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowEditModal(false)}
-                  disabled={actionLoading}
-                  className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleUpdateTerminationBenefit}
-                  disabled={actionLoading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-400 transition-colors font-medium"
-                >
-                  {actionLoading ? 'Updating...' : 'Update Benefit'}
-                </button>
-              </div>
+              <button
+                onClick={handleUpdateTerminationBenefit}
+                disabled={actionLoading}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-400 transition-colors font-medium"
+              >
+                {actionLoading ? 'Updating...' : 'Update Benefit'}
+              </button>
             </div>
           </div>
         </div>
@@ -1098,24 +1213,270 @@ export default function TerminationBenefitsPage() {
                 </code>
               </div>
             </div>
-            <div className="p-6 border-t border-slate-200 flex justify-between">
-              {selectedTerminationBenefit.status === 'draft' && (
-                <button
-                  onClick={() => {
-                    handleEditClick(selectedTerminationBenefit);
-                    setShowViewModal(false);
-                  }}
-                  className="px-4 py-2 border border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 transition-colors font-medium"
-                >
-                  Edit Benefit
-                </button>
-              )}
+            <div className="p-6 border-t border-slate-200 flex justify-end">
               <button
                 onClick={() => setShowViewModal(false)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium ml-auto"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
               >
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Calculate Modal */}
+      {showCalculateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-slate-200">
+              <h3 className="text-xl font-bold text-slate-900">
+                Calculate Termination Entitlements
+              </h3>
+              <p className="text-slate-600 text-sm mt-1">Calculate total entitlements based on approved benefits</p>
+            </div>
+            <div className="p-6 space-y-4">
+              {!calculationResult ? (
+                <>
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                    <p className="text-sm text-slate-600">
+                      <span className="font-medium">Employee:</span> {user ? `${user.firstName} ${user.lastName}` : 'Current User'}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      ID: {calculateFormData.employeeId}
+                    </p>
+                  </div>
+                  
+                  {/* Benefit Selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Select Benefits to Calculate
+                    </label>
+                    <div className="border border-slate-300 rounded-lg max-h-40 overflow-y-auto">
+                      {approvedBenefits.length > 0 ? (
+                        <>
+                          <label className="flex items-center p-3 border-b border-slate-100 bg-slate-50 hover:bg-slate-100 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={calculateFormData.selectedBenefits.length === 0}
+                              onChange={() => {
+                                setCalculateFormData(prev => ({
+                                  ...prev,
+                                  selectedBenefits: []
+                                }));
+                              }}
+                              className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                            />
+                            <span className="ml-3 text-sm font-medium text-slate-700">All Approved Benefits ({approvedBenefits.length})</span>
+                          </label>
+                          {approvedBenefits.map(benefit => (
+                              <label key={benefit._id} className="flex items-center p-3 border-b border-slate-100 hover:bg-slate-50 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={calculateFormData.selectedBenefits.includes(benefit._id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setCalculateFormData(prev => ({
+                                        ...prev,
+                                        selectedBenefits: [...prev.selectedBenefits, benefit._id]
+                                      }));
+                                    } else {
+                                      setCalculateFormData(prev => ({
+                                        ...prev,
+                                        selectedBenefits: prev.selectedBenefits.filter(id => id !== benefit._id)
+                                      }));
+                                    }
+                                  }}
+                                  className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                                />
+                                <span className="ml-3 text-sm text-slate-700">
+                                  {benefit.name} <span className="text-slate-500">({formatCurrency(benefit.amount)})</span>
+                                </span>
+                              </label>
+                            ))}
+                        </>
+                      ) : (
+                        <div className="p-4 text-center text-slate-500 text-sm">
+                          No approved benefits available. Please approve some benefits first.
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {calculateFormData.selectedBenefits.length === 0 
+                        ? 'All approved benefits will be included' 
+                        : `${calculateFormData.selectedBenefits.length} benefit(s) selected`}
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Last Salary (USD) *
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <span className="text-slate-500">$</span>
+                      </div>
+                      <input
+                        type="number"
+                        name="lastSalary"
+                        value={calculateFormData.lastSalary}
+                        onChange={handleCalculateFormChange}
+                        className="w-full pl-8 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+                        placeholder="e.g., 5000"
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Years of Service *
+                    </label>
+                    <input
+                      type="number"
+                      name="yearsOfService"
+                      value={calculateFormData.yearsOfService}
+                      onChange={handleCalculateFormChange}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+                      placeholder="e.g., 5"
+                      min="0"
+                      step="0.5"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Reason *
+                    </label>
+                    <select
+                      name="reason"
+                      value={calculateFormData.reason}
+                      onChange={handleCalculateFormChange}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+                    >
+                      <option value="resignation">Resignation</option>
+                      <option value="termination">Termination</option>
+                    </select>
+                  </div>
+                  
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm font-medium text-blue-800 mb-2">ℹ️ Calculation Formulas</p>
+                    <ul className="text-xs text-blue-700 space-y-1">
+                      <li>• <span className="font-semibold">Gratuity:</span> Last Salary × 0.5 × Years of Service</li>
+                      <li>• <span className="font-semibold">Severance:</span> Last Salary × Years (max 12 months)</li>
+                      <li>• <span className="font-semibold">Other Benefits:</span> Base Amount × Years of Service</li>
+                      <li className="pt-1 border-t border-blue-200 mt-1">• <span className="font-semibold">BR29:</span> Termination gets 1.5× severance</li>
+                      <li>• <span className="font-semibold">BR56:</span> Only APPROVED benefits included</li>
+                    </ul>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-4">
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <h4 className="font-semibold text-green-900 mb-2">Calculation Results</h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-green-700">Employee ID:</p>
+                        <p className="font-medium text-green-900">{calculationResult.employeeId || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-green-700">Reason:</p>
+                        <p className="font-medium text-green-900 capitalize">{calculationResult.reason || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-green-700">Last Salary:</p>
+                        <p className="font-medium text-green-900">{calculationResult.lastSalary != null ? formatCurrency(calculationResult.lastSalary) : 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-green-700">Years of Service:</p>
+                        <p className="font-medium text-green-900">{calculationResult.yearsOfService ?? 'N/A'}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="border border-slate-200 rounded-lg overflow-hidden">
+                    <table className="w-full">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <th className="text-left py-3 px-4 font-semibold text-slate-700">Benefit</th>
+                          <th className="text-left py-3 px-4 font-semibold text-slate-700">Base Amount</th>
+                          <th className="text-left py-3 px-4 font-semibold text-slate-700">Calculated</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {calculationResult.calculations?.length > 0 ? (
+                          calculationResult.calculations.map((calc: any, index: number) => (
+                            <tr key={index} className="border-t border-slate-100">
+                              <td className="py-3 px-4">
+                                <p className="font-medium text-slate-900">{calc.benefitName}</p>
+                                <p className="text-xs text-slate-500">{calc.formula}</p>
+                              </td>
+                              <td className="py-3 px-4 text-slate-700">{formatCurrency(calc.baseAmount)}</td>
+                              <td className="py-3 px-4 font-medium text-slate-900">{formatCurrency(calc.calculatedAmount)}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={3} className="py-6 px-4 text-center text-slate-500">
+                              No approved benefits found to calculate
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                      <tfoot className="bg-slate-100">
+                        <tr>
+                          <td colSpan={2} className="py-3 px-4 font-semibold text-slate-900">Total Entitlement</td>
+                          <td className="py-3 px-4 font-bold text-xl text-green-600">{formatCurrency(calculationResult.totalEntitlement || 0)}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                  
+                  <div className="text-xs text-slate-500">
+                    <p>Calculated on: {calculationResult.calculationDate ? formatDate(calculationResult.calculationDate) : 'N/A'}</p>
+                    <p>Business Rules Applied: {calculationResult.businessRulesApplied?.join(', ') || 'None'}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="p-6 border-t border-slate-200 flex justify-end gap-3">
+              {calculationResult ? (
+                <>
+                  <button
+                    onClick={() => setCalculationResult(null)}
+                    className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium"
+                  >
+                    New Calculation
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowCalculateModal(false);
+                      setCalculationResult(null);
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                  >
+                    Close
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setShowCalculateModal(false)}
+                    disabled={actionLoading}
+                    className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCalculateEntitlements}
+                    disabled={actionLoading}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-slate-400 transition-colors font-medium"
+                  >
+                    {actionLoading ? 'Calculating...' : '🧮 Calculate'}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
