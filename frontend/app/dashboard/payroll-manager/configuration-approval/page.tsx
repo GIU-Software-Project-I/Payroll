@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { payrollConfigurationService } from "@/app/services/payroll-configuration";
 import { ConfigStatus } from "@/app/types/enums";
 import { useAuth } from "@/app/context/AuthContext";
-import { useSearchParams } from "next/navigation";
 
 interface ConfigItem {
   id: string;
@@ -22,7 +21,10 @@ type EditState = {
 
 export default function PayrollSystemConfigurationApprovalPage() {
   const { user } = useAuth();
-  const searchParams = useSearchParams();
+  const searchParams = useMemo(() => {
+    if (typeof window === "undefined") return new URLSearchParams();
+    return new URLSearchParams(window.location.search);
+  }, []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -41,6 +43,7 @@ export default function PayrollSystemConfigurationApprovalPage() {
     { id: "signingBonuses", label: "Signing Bonuses", icon: "🎁" },
     { id: "terminationBenefits", label: "Termination Benefits", icon: "🚪" },
     { id: "taxRules", label: "Tax Rules", icon: "📊" },
+    { id: "taxBrackets", label: "Tax Brackets", icon: "🧮" },
   ];
 
   const filtered = useMemo(() => {
@@ -58,6 +61,8 @@ export default function PayrollSystemConfigurationApprovalPage() {
       displayName = raw.type || "";
     } else if (activeTab === "taxRules") {
       displayName = raw.name || raw.ruleName || "";
+    } else if (activeTab === "taxBrackets") {
+      displayName = raw.name || raw.title || "";
     } else if (activeTab === "allowances") {
       displayName = raw.name || raw.allowanceName || "";
     } else if (activeTab === "signingBonuses") {
@@ -104,6 +109,9 @@ export default function PayrollSystemConfigurationApprovalPage() {
           break;
         case "taxRules":
           res = await payrollConfigurationService.getTaxRules();
+          break;
+        case "taxBrackets":
+          res = await payrollConfigurationService.getTaxBrackets();
           break;
         default:
           res = { data: [] };
@@ -155,6 +163,8 @@ export default function PayrollSystemConfigurationApprovalPage() {
           rawData = data.terminationBenefits;
         } else if (data.taxRules && Array.isArray(data.taxRules)) {
           rawData = data.taxRules;
+        } else if (data.taxBrackets && Array.isArray(data.taxBrackets)) {
+          rawData = data.taxBrackets;
         }
         // Case 5: Try to find any array property
         else if (typeof data === 'object') {
@@ -220,6 +230,9 @@ export default function PayrollSystemConfigurationApprovalPage() {
         case "taxRules":
           res = await payrollConfigurationService.approveTaxRule(id, { approvedBy: user.id });
           break;
+        case "taxBrackets":
+          res = await payrollConfigurationService.approveTaxBracket(id, { approvedBy: user.id });
+          break;
       }
       
       if ((res as any)?.error) {
@@ -266,6 +279,9 @@ export default function PayrollSystemConfigurationApprovalPage() {
         case "taxRules":
           res = await payrollConfigurationService.rejectTaxRule(id, { approvedBy: user.id });
           break;
+        case "taxBrackets":
+          res = await payrollConfigurationService.rejectTaxBracket(id, { approvedBy: user.id });
+          break;
       }
       
       if ((res as any)?.error) {
@@ -310,6 +326,9 @@ export default function PayrollSystemConfigurationApprovalPage() {
           break;
         case "taxRules":
           res = await payrollConfigurationService.deleteTaxRule(id);
+          break;
+        case "taxBrackets":
+          res = await payrollConfigurationService.deleteTaxBracket(id);
           break;
       }
       
@@ -416,6 +435,28 @@ export default function PayrollSystemConfigurationApprovalPage() {
           description: edit.description,
         };
         res = await payrollConfigurationService.updateTaxRule(edit.id, payload);
+      } else if (activeTab === "taxBrackets") {
+        const minIncome = Number(edit.minIncome);
+        const maxIncome = Number(edit.maxIncome);
+        if (!Number.isFinite(minIncome) || !Number.isFinite(maxIncome)) {
+          throw new Error("Please enter valid numbers for min and max income");
+        }
+        if (maxIncome <= minIncome) {
+          throw new Error("Maximum income must be greater than minimum income");
+        }
+
+        payload = {
+          name: edit.name,
+          description: edit.description,
+          localTaxLawReference: edit.localTaxLawReference,
+          minIncome,
+          maxIncome,
+          taxRate: Number(edit.taxRate),
+          baseAmount: Number(edit.baseAmount),
+          effectiveDate: edit.effectiveDate,
+          expiryDate: edit.expiryDate,
+        };
+        res = await payrollConfigurationService.updateTaxBracket(edit.id, payload);
       }
 
       if ((res as any)?.error) {
@@ -591,6 +632,89 @@ export default function PayrollSystemConfigurationApprovalPage() {
                 </div>
               )}
 
+              {activeTab === "taxBrackets" && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-slate-700">Name</label>
+                    <input
+                      className="w-full border border-slate-300 rounded px-3 py-2 text-sm"
+                      value={edit.name || ""}
+                      onChange={(e) => setEdit({ ...edit, name: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-700">Description</label>
+                    <input
+                      className="w-full border border-slate-300 rounded px-3 py-2 text-sm"
+                      value={edit.description || ""}
+                      onChange={(e) => setEdit({ ...edit, description: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-700">Min Income</label>
+                    <input
+                      type="number"
+                      className="w-full border border-slate-300 rounded px-3 py-2 text-sm"
+                      value={edit.minIncome || ""}
+                      onChange={(e) => setEdit({ ...edit, minIncome: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-700">Max Income</label>
+                    <input
+                      type="number"
+                      className="w-full border border-slate-300 rounded px-3 py-2 text-sm"
+                      value={edit.maxIncome || ""}
+                      onChange={(e) => setEdit({ ...edit, maxIncome: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-700">Tax Rate (%)</label>
+                    <input
+                      type="number"
+                      className="w-full border border-slate-300 rounded px-3 py-2 text-sm"
+                      value={edit.taxRate || ""}
+                      onChange={(e) => setEdit({ ...edit, taxRate: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-700">Base Amount</label>
+                    <input
+                      type="number"
+                      className="w-full border border-slate-300 rounded px-3 py-2 text-sm"
+                      value={edit.baseAmount || ""}
+                      onChange={(e) => setEdit({ ...edit, baseAmount: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-700">Local Tax Law Reference</label>
+                    <input
+                      className="w-full border border-slate-300 rounded px-3 py-2 text-sm"
+                      value={edit.localTaxLawReference || ""}
+                      onChange={(e) => setEdit({ ...edit, localTaxLawReference: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-700">Effective Date</label>
+                    <input
+                      type="date"
+                      className="w-full border border-slate-300 rounded px-3 py-2 text-sm"
+                      value={edit.effectiveDate ? edit.effectiveDate.substring(0, 10) : ""}
+                      onChange={(e) => setEdit({ ...edit, effectiveDate: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-700">Expiry Date</label>
+                    <input
+                      type="date"
+                      className="w-full border border-slate-300 rounded px-3 py-2 text-sm"
+                      value={edit.expiryDate ? edit.expiryDate.substring(0, 10) : ""}
+                      onChange={(e) => setEdit({ ...edit, expiryDate: e.target.value })}
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-end gap-2">
                 <button
                   onClick={cancelEdit}
@@ -645,6 +769,14 @@ export default function PayrollSystemConfigurationApprovalPage() {
                     {activeTab === "terminationBenefits" && (
                       <th className="py-2 px-3">Amount (EGP)</th>
                     )}
+                    {activeTab === "taxBrackets" && (
+                      <>
+                        <th className="py-2 px-3">Min Income</th>
+                        <th className="py-2 px-3">Max Income</th>
+                        <th className="py-2 px-3">Rate %</th>
+                        <th className="py-2 px-3">Base</th>
+                      </>
+                    )}
                     <th className="py-2 px-3">Status</th>
                     <th className="py-2 px-3">Created</th>
                     <th className="py-2 px-3">Actions</th>
@@ -690,6 +822,22 @@ export default function PayrollSystemConfigurationApprovalPage() {
                         <td className="py-2 px-3 text-slate-700">
                           {item.amount ? `${Number(item.amount).toLocaleString()} EGP` : "-"}
                         </td>
+                      )}
+                      {activeTab === "taxBrackets" && (
+                        <>
+                          <td className="py-2 px-3 text-slate-700">
+                            {item.minIncome !== undefined ? `${Number(item.minIncome).toLocaleString()} EGP` : "-"}
+                          </td>
+                          <td className="py-2 px-3 text-slate-700">
+                            {item.maxIncome !== undefined ? `${Number(item.maxIncome).toLocaleString()} EGP` : "-"}
+                          </td>
+                          <td className="py-2 px-3 text-slate-700">
+                            {item.taxRate !== undefined ? `${Number(item.taxRate)}%` : "-"}
+                          </td>
+                          <td className="py-2 px-3 text-slate-700">
+                            {item.baseAmount !== undefined ? `${Number(item.baseAmount).toLocaleString()} EGP` : "-"}
+                          </td>
+                        </>
                       )}
                       <td className="py-2 px-3">
                         <span
@@ -905,6 +1053,25 @@ export default function PayrollSystemConfigurationApprovalPage() {
                       </ul>
                     </div>
                   )}
+                </div>
+              )}
+
+              {activeTab === 'taxBrackets' && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <KV label="Name" value={view.name || view.title || '—'} />
+                    <KV label="Local Law Reference" value={(view as any).localTaxLawReference || '—'} />
+                    <KV label="Min Income" value={view.minIncome !== undefined ? `${Number(view.minIncome).toLocaleString()} EGP` : '—'} />
+                    <KV label="Max Income" value={view.maxIncome !== undefined ? `${Number(view.maxIncome).toLocaleString()} EGP` : '—'} />
+                    <KV label="Tax Rate" value={view.taxRate !== undefined ? `${Number(view.taxRate)}%` : '—'} />
+                    <KV label="Base Amount" value={view.baseAmount !== undefined ? `${Number(view.baseAmount).toLocaleString()} EGP` : '—'} />
+                    <KV label="Effective Date" value={view.effectiveDate ? new Date(view.effectiveDate).toLocaleDateString() : '—'} />
+                    <KV label="Expiry Date" value={view.expiryDate ? new Date(view.expiryDate).toLocaleDateString() : '—'} />
+                  </div>
+                  <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+                    <div className="text-xs text-slate-500">Description</div>
+                    <div className="text-sm text-slate-800 whitespace-pre-wrap">{view.description || '—'}</div>
+                  </div>
                 </div>
               )}
             </div>

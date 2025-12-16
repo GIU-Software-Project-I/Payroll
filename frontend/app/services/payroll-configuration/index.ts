@@ -75,6 +75,14 @@ export const payrollConfigurationService = {
     return apiService.delete(`/payroll-configuration-requirements/tax-brackets/${id}`);
   },
 
+  approveTaxBracket: async (id: string, data: any) => {
+    return apiService.patch(`/payroll-configuration-requirements/tax-brackets/${id}/approve`, data);
+  },
+
+  rejectTaxBracket: async (id: string, data: any) => {
+    return apiService.patch(`/payroll-configuration-requirements/tax-brackets/${id}/reject`, data);
+  },
+
   // ========== INSURANCE BRACKETS ==========
   getInsuranceBrackets: async () => {
     return apiService.get('/payroll-configuration-requirements/insurance-brackets');

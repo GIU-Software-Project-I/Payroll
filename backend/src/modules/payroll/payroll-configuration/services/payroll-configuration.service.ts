@@ -155,8 +155,6 @@ async updateLegalRule(id: string, dto: UpdateTaxRuleDto) {
     async deleteTaxRule(id: string) {
         const rule = await this.taxRulesModel.findById(id).exec();
         if (!rule) throw new NotFoundException(`Tax rule with ID ${id} not found`);
-        if (rule.status !== ConfigStatus.DRAFT)
-            throw new ForbiddenException('Only DRAFT rules can be deleted');
 
         await this.taxRulesModel.findByIdAndDelete(id).exec();
         return { message: `Tax rule '${rule.name}' successfully deleted` };
@@ -232,7 +230,7 @@ async updateTaxBracket(id: string, dto: UpdateTaxBracketDto) {
   }
   
   if (bracket.status !== ConfigStatus.DRAFT) {
-    throw new ForbiddenException('Only DRAFT tax brackets can be edited');
+        throw new ForbiddenException('Only DRAFT tax brackets can be edited');
   }
 
   // Validate income range if both are provided
@@ -254,13 +252,35 @@ async deleteTaxBracket(id: string) {
   if (!bracket) {
     throw new NotFoundException('Tax bracket not found');
   }
-  
-  if (bracket.status !== ConfigStatus.DRAFT) {
-    throw new ForbiddenException('Only DRAFT tax brackets can be deleted');
-  }
 
   await this.taxBracketsModel.findByIdAndDelete(id).exec();
   return { message: 'Tax bracket deleted successfully' };
+}
+
+async approveTaxBracket(id: string, dto: ApproveTaxRuleDto) {
+    const bracket = await this.taxBracketsModel.findById(id).exec();
+    if (!bracket) throw new NotFoundException('Tax bracket not found');
+
+    await this.validateApprover(dto.approvedBy, bracket.createdBy);
+
+    bracket.approvedBy = new Types.ObjectId(dto.approvedBy);
+    bracket.status = ConfigStatus.APPROVED;
+    bracket.approvedAt = new Date();
+
+    return await bracket.save();
+}
+
+async rejectTaxBracket(id: string, dto: ApproveTaxRuleDto) {
+    const bracket = await this.taxBracketsModel.findById(id).exec();
+    if (!bracket) throw new NotFoundException('Tax bracket not found');
+
+    await this.validateApprover(dto.approvedBy, bracket.createdBy);
+
+    bracket.approvedBy = new Types.ObjectId(dto.approvedBy);
+    bracket.status = ConfigStatus.REJECTED;
+    bracket.approvedAt = new Date();
+
+    return await bracket.save();
 }
 
     // ========== LAMA'S INSURANCE BRACKETS METHODS ==========
