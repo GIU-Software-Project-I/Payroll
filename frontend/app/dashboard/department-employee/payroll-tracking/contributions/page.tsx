@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -12,6 +13,41 @@ import { payrollTrackingService } from '@/app/services/payroll-tracking';
  * REQ-PY-14: View employer contributions (insurance, pension, allowances)
  */
 
+// Backend response types
+interface BackendLeaveCompensation {
+  employeeId: string;
+  employeeName: string;
+  baseSalary: number;
+  unusedLeaveDays: number;
+  leaveEntitlements: Array<{
+    leaveTypeId: string;
+    leaveTypeName: string;
+    remaining: number;
+    carryForward: number;
+  }>;
+  encashmentRate: number;
+  dailyRate: number;
+  totalCompensation: number;
+  currency: string;
+  lastUpdated: string;
+}
+
+interface BackendTransportCompensation {
+  transportationAllowance: number;
+  createdAt: string;
+}
+
+interface BackendEmployerContribution {
+  payslipId: string;
+  employerContributions: Array<{
+    type?: string;
+    amount: number;
+    description?: string;
+  }>;
+  totalEmployerContribution: number;
+}
+
+// Frontend display types
 interface LeaveCompensation {
   id: string;
   leaveType: string;
@@ -62,16 +98,70 @@ export default function ContributionsPage() {
         
         // Fetch all data in parallel
         const [leaveRes, transportRes, contributionsRes] = await Promise.all([
-          payrollTrackingService.getLeaveCompensation(user.id).catch(() => ({ data: [] })),
-          payrollTrackingService.getTransportationCompensation(user.id).catch(() => ({ data: [] })),
+          payrollTrackingService.getLeaveCompensation(user.id).catch(() => ({ data: null })),
+          payrollTrackingService.getTransportationCompensation(user.id).catch(() => ({ data: null })),
           payrollTrackingService.getEmployerContributions(user.id).catch(() => ({ data: [] })),
         ]);
 
-        setLeaveCompensation(leaveRes?.data || []);
-        setTransportationCompensation(transportRes?.data || []);
-        setEmployerContributions(contributionsRes?.data || []);
-      } catch (err: any) {
-        setError(err.message || 'Failed to load compensation data');
+        // Map backend leave compensation to frontend format
+        const leaveData = leaveRes?.data as BackendLeaveCompensation | null;
+        if (leaveData && leaveData.leaveEntitlements) {
+          const mappedLeave: LeaveCompensation[] = leaveData.leaveEntitlements
+            .filter(ent => ent.remaining > 0)
+            .map((ent, index) => ({
+              id: ent.leaveTypeId || `leave-${index}`,
+              leaveType: ent.leaveTypeName,
+              unusedDays: ent.remaining,
+              dailyRate: leaveData.dailyRate,
+              totalAmount: ent.remaining * leaveData.dailyRate * (leaveData.encashmentRate / 100),
+              encashmentDate: leaveData.lastUpdated,
+              status: 'available',
+            }));
+          setLeaveCompensation(mappedLeave);
+        } else {
+          setLeaveCompensation([]);
+        }
+
+        // Map backend transport compensation to frontend format
+        const transportData = transportRes?.data as BackendTransportCompensation | null;
+        if (transportData && transportData.transportationAllowance > 0) {
+          const mappedTransport: TransportationCompensation[] = [{
+            id: 'transport-1',
+            type: 'Transportation Allowance',
+            amount: transportData.transportationAllowance,
+            frequency: 'Monthly',
+            description: 'Monthly transportation compensation',
+            effectiveDate: transportData.createdAt || new Date().toISOString(),
+          }];
+          setTransportationCompensation(mappedTransport);
+        } else {
+          setTransportationCompensation([]);
+        }
+
+        // Map backend employer contributions to frontend format
+        const contributionsData = contributionsRes?.data as BackendEmployerContribution[] | null;
+        if (Array.isArray(contributionsData) && contributionsData.length > 0) {
+          const allContributions: EmployerContribution[] = [];
+          contributionsData.forEach((payslipContrib) => {
+            if (payslipContrib.employerContributions) {
+              payslipContrib.employerContributions.forEach((contrib, cIndex) => {
+                allContributions.push({
+                  id: `${payslipContrib.payslipId}-${cIndex}`,
+                  type: contrib.type || 'Benefit',
+                  amount: contrib.amount || 0,
+                  frequency: 'Monthly',
+                  description: contrib.description,
+                });
+              });
+            }
+          });
+          setEmployerContributions(allContributions);
+        } else {
+          setEmployerContributions([]);
+        }
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load compensation data';
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -210,7 +300,7 @@ export default function ContributionsPage() {
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
+            onClick={() => setActiveTab(tab.id as 'employer' | 'leave' | 'transportation')}
             className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2 ${
               activeTab === tab.id
                 ? 'bg-purple-100 text-purple-700 border border-purple-200'

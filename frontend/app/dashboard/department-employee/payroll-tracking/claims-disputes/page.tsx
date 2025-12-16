@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/app/context/AuthContext';
 import { payrollTrackingService, CreateDisputeDto, CreateClaimDto } from '@/app/services/payroll-tracking';
-import { employeeProfileService } from '@/app/services/employee-profile';
 
 /**
  * Claims & Disputes Page - Department Employee
@@ -13,8 +12,15 @@ import { employeeProfileService } from '@/app/services/employee-profile';
  * REQ-PY-18: Track approval and payment status of claims and disputes
  */
 
+// Response types
+interface TrackingData {
+  claims: Claim[];
+  disputes: Dispute[];
+}
+
 interface Dispute {
   id: string;
+  _id?: string;
   payslipId: string;
   description: string;
   amount?: number;
@@ -27,6 +33,7 @@ interface Dispute {
 
 interface Claim {
   id: string;
+  _id?: string;
   claimType: string;
   description: string;
   amount: number;
@@ -37,15 +44,35 @@ interface Claim {
   reviewNotes?: string;
 }
 
+interface BackendPayslip {
+  _id: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 interface Payslip {
   id: string;
   periodStart: string;
   periodEnd: string;
 }
 
+// Map backend payslip to frontend format
+function mapPayslipForSelect(backend: BackendPayslip): Payslip {
+  const createdDate = backend.createdAt ? new Date(backend.createdAt) : new Date();
+  const periodStart = new Date(createdDate.getFullYear(), createdDate.getMonth(), 1);
+  const periodEnd = new Date(createdDate.getFullYear(), createdDate.getMonth() + 1, 0);
+  
+  return {
+    id: backend._id,
+    periodStart: periodStart.toISOString(),
+    periodEnd: periodEnd.toISOString(),
+  };
+}
+
 export default function ClaimsDisputesPage() {
   const { user } = useAuth();
-  const [employeeId, setEmployeeId] = useState<string | null>(null);
+  // Use user.id directly from AuthContext - this is already the employee profile ID
+  const employeeId = user?.id || null;
   const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [claims, setClaims] = useState<Claim[]>([]);
   const [payslips, setPayslips] = useState<Payslip[]>([]);
@@ -83,22 +110,6 @@ export default function ClaimsDisputesPage() {
     'Other',
   ];
 
-  // First, fetch the employee profile to get the employee ID
-  useEffect(() => {
-    const fetchEmployeeId = async () => {
-      try {
-        const profileResponse = await employeeProfileService.getMyProfile();
-        const profile = profileResponse?.data as any;
-        if (profile?.id || profile?._id) {
-          setEmployeeId(profile.id || profile._id);
-        }
-      } catch (err) {
-        console.error('Failed to fetch employee profile:', err);
-      }
-    };
-    fetchEmployeeId();
-  }, []);
-
   useEffect(() => {
     const fetchData = async () => {
       if (!employeeId) {
@@ -111,16 +122,18 @@ export default function ClaimsDisputesPage() {
         
         // Fetch tracking data
         const trackingResponse = await payrollTrackingService.trackClaimsAndDisputes(employeeId);
-        const trackingData = (trackingResponse?.data || {}) as any;
+        const trackingData = (trackingResponse?.data || {}) as TrackingData;
         
         setDisputes(trackingData.disputes || []);
         setClaims(trackingData.claims || []);
         
         // Fetch payslips for dispute form
         const payslipsResponse = await payrollTrackingService.getEmployeePayslips(employeeId);
-        setPayslips((payslipsResponse?.data || []) as Payslip[]);
-      } catch (err: any) {
-        setError(err.message || 'Failed to load data');
+        const backendPayslips = (payslipsResponse?.data || []) as BackendPayslip[];
+        setPayslips(backendPayslips.map(mapPayslipForSelect));
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load data';
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -148,14 +161,16 @@ export default function ClaimsDisputesPage() {
       
       // Refresh data
       const response = await payrollTrackingService.trackClaimsAndDisputes(employeeId);
-      setDisputes(((response?.data as any)?.disputes || []));
+      const trackingData = (response?.data || {}) as TrackingData;
+      setDisputes(trackingData.disputes || []);
       
       // Reset form
       setDisputeForm({ payslipId: '', description: '', amount: undefined });
       setShowDisputeForm(false);
       alert('Dispute submitted successfully!');
-    } catch (err: any) {
-      alert('Failed to submit dispute: ' + (err.message || 'Unknown error'));
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      alert('Failed to submit dispute: ' + errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -186,27 +201,37 @@ export default function ClaimsDisputesPage() {
     
     try {
       setSubmitting(true);
+      
+      // Debug log
+      console.log('Submitting claim with data:', {
+        employeeId,
+        claimForm,
+      });
+      
       const result = await payrollTrackingService.createClaim(employeeId, claimForm);
       
       console.log('Submit claim - result:', result);
       
       // Check for API errors
       if (result.error) {
+        console.error('Claim API error:', result.error, 'Status:', result.status);
         alert('Failed to submit claim: ' + result.error);
         return;
       }
       
       // Refresh data
       const response = await payrollTrackingService.trackClaimsAndDisputes(employeeId);
-      setClaims(((response?.data as any)?.claims || []));
+      const trackingData = (response?.data || {}) as TrackingData;
+      setClaims(trackingData.claims || []);
       
       // Reset form
       setClaimForm({ claimType: '', description: '', amount: 0 });
       setShowClaimForm(false);
       alert('Claim submitted successfully!');
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       console.error('Submit claim error:', err);
-      alert('Failed to submit claim: ' + (err.message || 'Unknown error'));
+      alert('Failed to submit claim: ' + errorMessage);
     } finally {
       setSubmitting(false);
     }

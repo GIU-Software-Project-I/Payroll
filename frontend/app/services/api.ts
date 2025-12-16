@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:500';
 
 export interface ApiResponse<T = unknown> {
   data?: T;
@@ -79,7 +79,7 @@ class ApiService {
       if (contentType && contentType.includes('application/json')) {
         try {
           data = await response.json();
-        } catch (jsonError) {
+        } catch {
           // If JSON parsing fails, try to get text
           const text = await response.text();
           console.error('[API] Failed to parse JSON response:', text);
@@ -161,6 +161,46 @@ class ApiService {
 
   async delete<T>(endpoint: string, headers?: HeadersInit): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { method: 'DELETE', headers });
+  }
+
+  // Special method for downloading files (returns blob)
+  async downloadFile(endpoint: string): Promise<{ blob?: Blob; filename?: string; error?: string }> {
+    const url = `${this.baseUrl}${endpoint}`;
+
+    const headers: HeadersInit = {};
+    const token = getAccessToken();
+    if (token) {
+      (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+    }
+
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers,
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        return { error: `Download failed: ${response.status}` };
+      }
+
+      const blob = await response.blob();
+      
+      // Try to get filename from Content-Disposition header
+      const contentDisposition = response.headers.get('content-disposition');
+      let filename = 'download';
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?([^";\n]+)"?/);
+        if (match) {
+          filename = match[1];
+        }
+      }
+
+      return { blob, filename };
+    } catch (error) {
+      console.error('[API] Download failed:', error);
+      return { error: error instanceof Error ? error.message : 'Download failed' };
+    }
   }
 }
 

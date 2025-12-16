@@ -12,11 +12,24 @@ import { payrollTrackingService } from '@/app/services/payroll-tracking';
  * BR 2: Calculate base salary according to contract terms and role type
  */
 
+// Backend response type for salary history
+interface BackendSalaryRecord {
+  payslipId: string;
+  grossSalary: number;
+  netSalary: number;
+  status: string;
+  totalDeductions: number;
+  createdAt: string;
+}
+
 interface SalaryRecord {
   id: string;
   effectiveDate: string;
   endDate?: string;
   baseSalary: number;
+  grossSalary: number;
+  netSalary: number;
+  totalDeductions: number;
   currency: string;
   contractType: string;
   payGrade?: string;
@@ -32,6 +45,28 @@ interface BaseSalaryInfo {
   effectiveDate: string;
   workHoursPerWeek?: number;
   salaryFrequency?: string;
+}
+
+// Helper to safely format numbers (returns 0 instead of NaN)
+function safeNumber(value: unknown): number {
+  if (value === null || value === undefined) return 0;
+  const num = Number(value);
+  return isNaN(num) ? 0 : num;
+}
+
+// Map backend salary record to frontend format
+function mapSalaryRecord(record: BackendSalaryRecord): SalaryRecord {
+  return {
+    id: record.payslipId,
+    effectiveDate: record.createdAt,
+    baseSalary: safeNumber(record.grossSalary),
+    grossSalary: safeNumber(record.grossSalary),
+    netSalary: safeNumber(record.netSalary),
+    totalDeductions: safeNumber(record.totalDeductions),
+    currency: 'USD',
+    contractType: 'Full-Time',
+    status: record.status || 'N/A',
+  };
 }
 
 export default function SalaryHistoryPage() {
@@ -54,13 +89,25 @@ export default function SalaryHistoryPage() {
         
         // Fetch current base salary
         const baseSalaryResponse = await payrollTrackingService.getBaseSalary(user.id);
-        setBaseSalaryInfo(baseSalaryResponse?.data || null);
+        if (baseSalaryResponse?.data) {
+          const data = baseSalaryResponse.data as BaseSalaryInfo;
+          // Ensure numeric fields are safe
+          setBaseSalaryInfo({
+            ...data,
+            currentBaseSalary: safeNumber(data.currentBaseSalary),
+            workHoursPerWeek: data.workHoursPerWeek ? safeNumber(data.workHoursPerWeek) : undefined,
+          });
+        } else {
+          setBaseSalaryInfo(null);
+        }
         
         // Fetch salary history
         const historyResponse = await payrollTrackingService.getSalaryHistory(user.id);
-        setSalaryHistory(historyResponse?.data || []);
-      } catch (err: any) {
-        setError(err.message || 'Failed to load salary information');
+        const historyData = (historyResponse?.data || []) as BackendSalaryRecord[];
+        setSalaryHistory(historyData.map(mapSalaryRecord));
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load salary information';
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -69,11 +116,12 @@ export default function SalaryHistoryPage() {
     fetchSalaryData();
   }, [user?.id]);
 
-  const formatCurrency = (amount: number, currency: string = 'USD') => {
+  const formatCurrency = (amount: number | undefined | null, currency: string = 'USD') => {
+    const safeAmount = safeNumber(amount);
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currency,
-    }).format(amount);
+    }).format(safeAmount);
   };
 
   const formatDate = (dateString: string) => {
@@ -100,8 +148,11 @@ export default function SalaryHistoryPage() {
   };
 
   const calculatePercentageChange = (current: number, previous: number) => {
-    if (previous === 0) return 0;
-    return ((current - previous) / previous * 100).toFixed(1);
+    const safeCurrent = safeNumber(current);
+    const safePrevious = safeNumber(previous);
+    if (safePrevious === 0) return '0';
+    const change = ((safeCurrent - safePrevious) / safePrevious * 100);
+    return isNaN(change) ? '0' : change.toFixed(1);
   };
 
   if (loading) {
@@ -279,19 +330,18 @@ export default function SalaryHistoryPage() {
             <div className="p-8 text-center">
               <div className="text-6xl mb-4">📊</div>
               <h3 className="text-xl font-semibold text-slate-900 mb-2">No Salary History</h3>
-              <p className="text-slate-600">Your salary change history will appear here.</p>
+              <p className="text-slate-600">Your salary change history will appear here once you have payslips.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">Effective Date</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">End Date</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">Base Salary</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">Contract Type</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">Pay Grade</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">Change Reason</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">Pay Period</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">Gross Salary</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">Deductions</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">Net Salary</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">Status</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">Change</th>
                   </tr>
                 </thead>
@@ -299,10 +349,10 @@ export default function SalaryHistoryPage() {
                   {salaryHistory.map((record, index) => {
                     const previousRecord = salaryHistory[index + 1];
                     const percentChange = previousRecord
-                      ? calculatePercentageChange(record.baseSalary, previousRecord.baseSalary)
+                      ? calculatePercentageChange(record.grossSalary, previousRecord.grossSalary)
                       : null;
-                    const isIncrease = previousRecord && record.baseSalary > previousRecord.baseSalary;
-                    const isDecrease = previousRecord && record.baseSalary < previousRecord.baseSalary;
+                    const isIncrease = previousRecord && record.grossSalary > previousRecord.grossSalary;
+                    const isDecrease = previousRecord && record.grossSalary < previousRecord.grossSalary;
 
                     return (
                       <tr key={record.id} className="hover:bg-slate-50">
@@ -311,22 +361,29 @@ export default function SalaryHistoryPage() {
                             {formatDate(record.effectiveDate)}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-slate-600">
-                          {record.endDate ? formatDate(record.endDate) : 'Current'}
-                        </td>
                         <td className="px-6 py-4">
                           <span className="font-bold text-green-600">
-                            {formatCurrency(record.baseSalary, record.currency)}
+                            {formatCurrency(record.grossSalary, record.currency)}
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          {getContractTypeBadge(record.contractType)}
+                          <span className="font-medium text-red-600">
+                            -{formatCurrency(record.totalDeductions, record.currency)}
+                          </span>
                         </td>
-                        <td className="px-6 py-4 text-slate-700">
-                          {record.payGrade || 'N/A'}
+                        <td className="px-6 py-4">
+                          <span className="font-bold text-blue-600">
+                            {formatCurrency(record.netSalary, record.currency)}
+                          </span>
                         </td>
-                        <td className="px-6 py-4 text-slate-600 text-sm">
-                          {record.reason || 'N/A'}
+                        <td className="px-6 py-4">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            record.status === 'paid' ? 'bg-green-100 text-green-700' :
+                            record.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-slate-100 text-slate-700'
+                          }`}>
+                            {record.status || 'N/A'}
+                          </span>
                         </td>
                         <td className="px-6 py-4">
                           {percentChange !== null && (

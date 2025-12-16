@@ -10,6 +10,18 @@ import { payrollTrackingService } from '@/app/services/payroll-tracking';
  * REQ-PY-15: Download tax documents (e.g., annual tax statement) for official purposes
  */
 
+// Backend response type
+interface TaxDocumentsResponse {
+  employeeId: string;
+  taxYear: number;
+  documents: Array<{
+    type: string;
+    fileName: string;
+    downloadUrl: string;
+    generatedDate: string;
+  }>;
+}
+
 interface TaxDocument {
   id: string;
   year: number;
@@ -17,6 +29,8 @@ interface TaxDocument {
   status: string;
   generatedDate: string;
   description?: string;
+  fileName?: string;
+  downloadUrl?: string;
 }
 
 export default function TaxDocumentsPage() {
@@ -44,16 +58,30 @@ export default function TaxDocumentsPage() {
           user.id,
           selectedYear || undefined
         );
-        setTaxDocuments(response?.data || []);
-      } catch (err: any) {
-        setError(err.message || 'Failed to load tax documents');
+        // Backend returns { employeeId, taxYear, documents: [...] }
+        const data = response?.data as TaxDocumentsResponse | undefined;
+        const documents = data?.documents || [];
+        // Map backend documents to frontend TaxDocument format
+        const mappedDocuments: TaxDocument[] = documents.map((doc, index) => ({
+          id: `${data?.taxYear || currentYear}-${index}`,
+          year: data?.taxYear || currentYear,
+          type: doc.type,
+          status: 'available',
+          generatedDate: doc.generatedDate,
+          fileName: doc.fileName,
+          downloadUrl: doc.downloadUrl,
+        }));
+        setTaxDocuments(mappedDocuments);
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load tax documents';
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
     };
 
     fetchTaxDocuments();
-  }, [user?.id, selectedYear]);
+  }, [user?.id, selectedYear, currentYear]);
 
   const handleDownload = async (year: number) => {
     if (!user?.id) return;
@@ -62,20 +90,25 @@ export default function TaxDocumentsPage() {
       setDownloading(year.toString());
       const response = await payrollTrackingService.downloadAnnualTaxStatement(user.id, year);
       
-      // Handle file download
-      if (response?.data) {
-        const blob = new Blob([response.data], { type: 'application/pdf' });
-        const url = window.URL.createObjectURL(blob);
+      // Handle file download - downloadFile returns { blob, filename, error }
+      if (response?.error) {
+        alert('Failed to download tax document: ' + response.error);
+        return;
+      }
+      
+      if (response?.blob) {
+        const url = window.URL.createObjectURL(response.blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `tax-statement-${year}.pdf`;
+        a.download = response.filename || `tax-statement-${year}.csv`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
       }
-    } catch (err: any) {
-      alert('Failed to download tax document: ' + (err.message || 'Unknown error'));
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      alert('Failed to download tax document: ' + errorMessage);
     } finally {
       setDownloading(null);
     }

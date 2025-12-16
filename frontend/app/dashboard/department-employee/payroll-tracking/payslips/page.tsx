@@ -12,6 +12,35 @@ import { payrollTrackingService } from '@/app/services/payroll-tracking';
  * BR 17: Auto-generated Payslip with clear breakdown of components
  */
 
+// Backend Payslip structure from MongoDB
+interface BackendPayslip {
+  _id: string;
+  employeeId: string;
+  payrollRunId: string;
+  earningsDetails?: {
+    baseSalary: number;
+    allowances?: { name: string; amount: number }[];
+    bonuses?: { name: string; amount: number }[];
+    benefits?: { name: string; amount: number }[];
+    refunds?: { amount: number; description?: string }[];
+  };
+  deductionsDetails?: {
+    taxes?: { name: string; amount: number }[];
+    insurances?: { name: string; amount: number }[];
+    penalties?: { totalAmount?: number };
+    taxAmount?: number;
+    insuranceAmount?: number;
+    penaltiesAmount?: number;
+  };
+  totalGrossSalary: number;
+  totaDeductions?: number;
+  netPay: number;
+  paymentStatus: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// Frontend Payslip interface for display
 interface Payslip {
   id: string;
   periodStart: string;
@@ -35,6 +64,54 @@ interface Payslip {
   }[];
 }
 
+// Map backend payslip to frontend format
+function mapPayslip(backend: BackendPayslip): Payslip {
+  const createdDate = backend.createdAt ? new Date(backend.createdAt) : new Date();
+  
+  // Calculate period (assume monthly - start of month to end of month)
+  const periodStart = new Date(createdDate.getFullYear(), createdDate.getMonth(), 1);
+  const periodEnd = new Date(createdDate.getFullYear(), createdDate.getMonth() + 1, 0);
+  
+  // Map earnings
+  const earnings: { type: string; amount: number; description?: string }[] = [];
+  if (backend.earningsDetails?.baseSalary) {
+    earnings.push({ type: 'Base Salary', amount: backend.earningsDetails.baseSalary });
+  }
+  backend.earningsDetails?.allowances?.forEach(a => {
+    earnings.push({ type: 'Allowance', amount: a.amount, description: a.name });
+  });
+  backend.earningsDetails?.bonuses?.forEach(b => {
+    earnings.push({ type: 'Bonus', amount: b.amount, description: b.name });
+  });
+  
+  // Map deductions
+  const deductions: { type: string; amount: number; description?: string }[] = [];
+  if (backend.deductionsDetails?.taxAmount) {
+    deductions.push({ type: 'Tax', amount: backend.deductionsDetails.taxAmount });
+  }
+  if (backend.deductionsDetails?.insuranceAmount) {
+    deductions.push({ type: 'Insurance', amount: backend.deductionsDetails.insuranceAmount });
+  }
+  if (backend.deductionsDetails?.penaltiesAmount) {
+    deductions.push({ type: 'Penalties', amount: backend.deductionsDetails.penaltiesAmount });
+  }
+  
+  return {
+    id: backend._id,
+    periodStart: periodStart.toISOString(),
+    periodEnd: periodEnd.toISOString(),
+    payDate: backend.createdAt || new Date().toISOString(),
+    status: backend.paymentStatus || 'PENDING',
+    baseSalary: backend.earningsDetails?.baseSalary || 0,
+    grossPay: backend.totalGrossSalary || 0,
+    totalDeductions: backend.totaDeductions || 0,
+    netPay: backend.netPay || 0,
+    currency: 'EGP',
+    earnings,
+    deductions,
+  };
+}
+
 export default function PayslipsPage() {
   const { user } = useAuth();
   const [payslips, setPayslips] = useState<Payslip[]>([]);
@@ -53,9 +130,13 @@ export default function PayslipsPage() {
       try {
         setLoading(true);
         const response = await payrollTrackingService.getEmployeePayslips(user.id);
-        setPayslips(response?.data || []);
-      } catch (err: any) {
-        setError(err.message || 'Failed to load payslips');
+        // Map backend payslips to frontend format
+        const backendPayslips = (response?.data || []) as BackendPayslip[];
+        const mappedPayslips = backendPayslips.map(mapPayslip);
+        setPayslips(mappedPayslips);
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load payslips';
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -69,8 +150,17 @@ export default function PayslipsPage() {
     
     try {
       const response = await payrollTrackingService.getPayslipDetails(payslip.id, user.id);
-      setSelectedPayslip(response?.data || payslip);
-    } catch (err) {
+      // The detail response includes { payslip, disputes } - map the payslip portion
+      const responseData = response?.data as { payslip?: BackendPayslip; disputes?: unknown[] } | undefined;
+      if (responseData?.payslip) {
+        const detailedPayslip = mapPayslip(responseData.payslip);
+        setSelectedPayslip(detailedPayslip);
+      } else {
+        // Fallback to the already mapped payslip from the list
+        setSelectedPayslip(payslip);
+      }
+    } catch {
+      // On error, just show the basic payslip data we already have
       setSelectedPayslip(payslip);
     }
   };
@@ -82,20 +172,22 @@ export default function PayslipsPage() {
       setDownloading(payslipId);
       const response = await payrollTrackingService.downloadPayslip(payslipId, user.id);
       
-      // Handle file download
-      if (response?.data) {
-        const blob = new Blob([response.data], { type: 'application/pdf' });
-        const url = window.URL.createObjectURL(blob);
+      // Handle file download - response now contains blob and filename
+      if (response?.blob) {
+        const url = window.URL.createObjectURL(response.blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `payslip-${payslipId}.pdf`;
+        a.download = response.filename || `payslip-${payslipId}.csv`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
+      } else if (response?.error) {
+        alert('Failed to download payslip: ' + response.error);
       }
-    } catch (err: any) {
-      alert('Failed to download payslip: ' + (err.message || 'Unknown error'));
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      alert('Failed to download payslip: ' + errorMessage);
     } finally {
       setDownloading(null);
     }
@@ -134,7 +226,7 @@ export default function PayslipsPage() {
   const formatPeriod = (start: string, end: string) => {
     const startDate = new Date(start);
     const endDate = new Date(end);
-    return `${startDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`;
+    return `${startDate.toLocaleDateString('en-US', { month: 'short' })} - ${endDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`;
   };
 
   if (loading) {

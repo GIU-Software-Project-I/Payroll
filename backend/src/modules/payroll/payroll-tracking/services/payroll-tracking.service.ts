@@ -1822,57 +1822,99 @@ async getLeaveCompensation(employeeId: string) {
 
 // REQ-PY-16: Dispute payroll errors
 async createDispute(employeeId: string, createDisputeDto: any) {
-  // Generate dispute ID
-  const latestDispute = await this.disputesModel.findOne()
-    .sort({ createdAt: -1 })
-    .exec();
-  
-  let nextNumber = 1;
-  if (latestDispute && latestDispute.disputeId) {
-    const match = latestDispute.disputeId.match(/DISP-(\d+)/);
-    if (match) {
-      nextNumber = parseInt(match[1]) + 1;
+  try {
+    // Validate employeeId is a valid ObjectId
+    if (!Types.ObjectId.isValid(employeeId)) {
+      throw new BadRequestException(`Invalid employee ID format: ${employeeId}`);
     }
+
+    // Generate dispute ID - find the highest existing dispute number
+    const allDisputes = await this.disputesModel.find({}, { disputeId: 1 }).exec();
+    
+    let maxNumber = 0;
+    for (const dispute of allDisputes) {
+      if (dispute.disputeId) {
+        const match = dispute.disputeId.match(/DISP-(\d+)/);
+        if (match) {
+          const num = parseInt(match[1]);
+          if (num > maxNumber) {
+            maxNumber = num;
+          }
+        }
+      }
+    }
+    
+    const disputeId = `DISP-${(maxNumber + 1).toString().padStart(4, '0')}`;
+    
+    console.log('Creating dispute with data:', {
+      disputeId,
+      employeeId,
+      createDisputeDto,
+    });
+
+    const dispute = new this.disputesModel({
+      disputeId,
+      employeeId: new Types.ObjectId(employeeId),
+      ...createDisputeDto,
+      payslipId: new Types.ObjectId(createDisputeDto.payslipId),
+      status: DisputeStatus.UNDER_REVIEW
+    });
+    
+    const savedDispute = await dispute.save();
+    console.log('Dispute saved successfully:', savedDispute);
+    return savedDispute;
+  } catch (error) {
+    console.error('Error creating dispute:', error);
+    throw error;
   }
-  
-  const disputeId = `DISP-${nextNumber.toString().padStart(4, '0')}`;
-  
-  const dispute = new this.disputesModel({
-    disputeId,
-    employeeId: new Types.ObjectId(employeeId),
-    ...createDisputeDto,
-    payslipId: new Types.ObjectId(createDisputeDto.payslipId),
-    status: DisputeStatus.UNDER_REVIEW
-  });
-  
-  return dispute.save();
 }
 
 // REQ-PY-17: Submit expense reimbursement claims
 async createClaim(employeeId: string, createClaimDto: any) {
-  // Generate claim ID
-  const latestClaim = await this.claimsModel.findOne()
-    .sort({ createdAt: -1 })
-    .exec();
-  
-  let nextNumber = 1;
-  if (latestClaim && latestClaim.claimId) {
-    const match = latestClaim.claimId.match(/CLAIM-(\d+)/);
-    if (match) {
-      nextNumber = parseInt(match[1]) + 1;
+  try {
+    // Validate employeeId is a valid ObjectId
+    if (!Types.ObjectId.isValid(employeeId)) {
+      throw new BadRequestException(`Invalid employee ID format: ${employeeId}`);
     }
+
+    // Generate claim ID - find the highest existing claim number
+    const allClaims = await this.claimsModel.find({}, { claimId: 1 }).exec();
+    
+    let maxNumber = 0;
+    for (const claim of allClaims) {
+      if (claim.claimId) {
+        const match = claim.claimId.match(/CLAIM-(\d+)/);
+        if (match) {
+          const num = parseInt(match[1]);
+          if (num > maxNumber) {
+            maxNumber = num;
+          }
+        }
+      }
+    }
+    
+    const claimId = `CLAIM-${(maxNumber + 1).toString().padStart(4, '0')}`;
+    
+    console.log('Creating claim with data:', {
+      claimId,
+      employeeId,
+      createClaimDto,
+    });
+
+    const claim = new this.claimsModel({
+      claimId,
+      employeeId: new Types.ObjectId(employeeId),
+      ...createClaimDto,
+      status: ClaimStatus.UNDER_REVIEW
+    });
+    
+    const savedClaim = await claim.save();
+    console.log('Claim saved successfully:', savedClaim);
+    return savedClaim;
+  } catch (error) {
+    console.error('Error creating claim:', error);
+    throw error;
   }
-  
-  const claimId = `CLAIM-${nextNumber.toString().padStart(4, '0')}`;
-  
-  const claim = new this.claimsModel({
-    claimId,
-    employeeId: new Types.ObjectId(employeeId),
-    ...createClaimDto,
-    status: ClaimStatus.UNDER_REVIEW
-  });
-  
-  return claim.save();
 }
 
 // REQ-PY-18: Track the approval and payment status of my claims, disputes
