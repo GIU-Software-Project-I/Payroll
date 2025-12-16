@@ -173,11 +173,13 @@ export class EmployeeAuthService {
       throw new BadRequestException('Invalid credentials');
     }
 
-    console.log(`[Auth] Successful login for: ${normalizedEmail}`);
+    console.log(`[Auth] Successful login for: ${normalizedEmail}, Employee ID: ${employee._id}`);
 
     // Get employee roles
     const systemRole = await this.employeeSystemRoleModel.findOne({ employeeProfileId: employee._id, isActive: true }).exec();
     const roles = systemRole?.roles || [SystemRole.DEPARTMENT_EMPLOYEE];
+    
+    console.log(`[Auth] Returning employee with _id: ${employee._id}, roles: ${roles}`);
 
     return { employee, roles };
   }

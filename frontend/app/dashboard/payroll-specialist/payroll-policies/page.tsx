@@ -72,6 +72,13 @@ export default function PayrollPoliciesPage() {
   const [selectedPolicy, setSelectedPolicy] = useState<PayrollPolicy | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   
+  // Search and filter state
+  const [filters, setFilters] = useState({
+    search: '',
+    status: '',
+    policyType: '',
+  });
+  
   // Form state
   const [formData, setFormData] = useState({
     policyType: '',
@@ -80,7 +87,7 @@ export default function PayrollPoliciesPage() {
     effectiveDate: '',
     expirationDate: '',
     applicability: '',
-    createdByEmployeeId: 'current-user-id',
+    createdByEmployeeId: '',
   });
 
   const [ruleDefinition, setRuleDefinition] = useState({
@@ -178,41 +185,22 @@ export default function PayrollPoliciesPage() {
 
       setActionLoading(true);
       
-      // Get the employee ID - this is REQUIRED by the backend DTO
-      let createdByEmployeeId = '';
+      // Get the employee ID - REQUIRED by backend DTO
+      let createdByEmployeeId = user?.id || '';
       
-      // First, try to get it from localStorage
-      const storedUser = localStorage.getItem('hr_system_user');
-      if (storedUser) {
+      // Fallback to localStorage if user.id is not available
+      if (!createdByEmployeeId) {
         try {
-          const userData = JSON.parse(storedUser);
-          console.log('User data from localStorage:', userData);
-          
-          // The backend expects a string for createdByEmployeeId
-          // We should use the user's MongoDB _id as this is likely what the backend expects
-          // when it tries to convert to ObjectId
-          if (userData.id) {
-            createdByEmployeeId = userData.id; // This should be the MongoDB ObjectId string
-          } else if (userData._id) {
-            createdByEmployeeId = userData._id; // Alternative field name
+          const storedUser = localStorage.getItem('hr_system_user');
+          if (storedUser) {
+            const userData = JSON.parse(storedUser);
+            createdByEmployeeId = userData.id || userData._id || '';
           }
-          
-          console.log('Using employee ID for policy:', createdByEmployeeId);
         } catch (e) {
-          console.error('Failed to parse user data:', e);
+          console.error('Failed to get user from localStorage:', e);
         }
       }
       
-      // If still empty, try from useAuth hook
-      if (!createdByEmployeeId && user) {
-        console.log('User from useAuth:', user);
-        
-        if (user.id) {
-          createdByEmployeeId = user.id;
-        }
-      }
-      
-      // If still empty, show error
       if (!createdByEmployeeId) {
         setError('Unable to identify user. Please make sure you are logged in.');
         setActionLoading(false);
@@ -505,7 +493,7 @@ export default function PayrollPoliciesPage() {
       effectiveDate: '',
       expirationDate: '',
       applicability: '',
-      createdByEmployeeId: 'current-user-id',
+      createdByEmployeeId: '',
     });
     setRuleDefinition({
       percentage: '',
@@ -536,6 +524,24 @@ export default function PayrollPoliciesPage() {
       [name]: value
     }));
   };
+
+  const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Filter policies based on search, status, and policy type
+  const filteredPolicies = policies.filter(policy => {
+    const matchesSearch = !filters.search || 
+      policy.policyName.toLowerCase().includes(filters.search.toLowerCase()) ||
+      policy.description.toLowerCase().includes(filters.search.toLowerCase());
+    const matchesStatus = !filters.status || policy.status === filters.status;
+    const matchesPolicyType = !filters.policyType || policy.policyType === filters.policyType;
+    return matchesSearch && matchesStatus && matchesPolicyType;
+  });
 
   const formatDate = (dateString: string) => {
     try {
@@ -630,23 +636,94 @@ export default function PayrollPoliciesPage() {
         </div>
       )}
 
+      {/* Filters */}
+      <div className="bg-white rounded-lg border border-slate-200 p-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Search Policies
+            </label>
+            <input
+              type="text"
+              name="search"
+              value={filters.search}
+              onChange={handleFilterChange}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+              placeholder="Search by name or description..."
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Policy Type
+            </label>
+            <select
+              name="policyType"
+              value={filters.policyType}
+              onChange={handleFilterChange}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+            >
+              <option value="">All Types</option>
+              {policyTypes.map(type => (
+                <option key={type.value} value={type.value}>{type.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Status Filter
+            </label>
+            <select
+              name="status"
+              value={filters.status}
+              onChange={handleFilterChange}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+            >
+              <option value="">All Statuses</option>
+              <option value="draft">Draft</option>
+              <option value="pending_approval">Pending Approval</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+          <div className="flex items-end">
+            <button
+              onClick={() => setFilters({ search: '', status: '', policyType: '' })}
+              className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium w-full"
+            >
+              Clear Filters
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Policies Table */}
       <div className="bg-white rounded-lg border border-slate-200 shadow-sm">
         <div className="p-6 border-b border-slate-200">
-          <h2 className="text-xl font-bold text-slate-900">Payroll Policies ({policies.length})</h2>
+          <h2 className="text-xl font-bold text-slate-900">
+            Payroll Policies ({filteredPolicies.length})
+            {(filters.search || filters.status || filters.policyType) && (
+              <span className="text-slate-500 text-sm ml-2">of {policies.length} total</span>
+            )}
+          </h2>
         </div>
         
-        {policies.length === 0 ? (
+        {filteredPolicies.length === 0 ? (
           <div className="p-12 text-center">
             <div className="text-slate-400 mb-4">📄</div>
-            <p className="text-slate-600 font-medium">No payroll policies found</p>
-            <p className="text-slate-500 text-sm mt-1">Create your first payroll policy to get started</p>
-            <button
-              onClick={handleCreateClick}
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-            >
-              Create Policy
-            </button>
+            <p className="text-slate-600 font-medium">
+              {(filters.search || filters.status || filters.policyType) ? 'No policies match your filters' : 'No payroll policies found'}
+            </p>
+            <p className="text-slate-500 text-sm mt-1">
+              {(filters.search || filters.status || filters.policyType) ? 'Try adjusting your search criteria' : 'Create your first payroll policy to get started'}
+            </p>
+            {!(filters.search || filters.status || filters.policyType) && (
+              <button
+                onClick={handleCreateClick}
+                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                Create Policy
+              </button>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -662,7 +739,7 @@ export default function PayrollPoliciesPage() {
                 </tr>
               </thead>
               <tbody>
-                {policies.map((policy) => (
+                {filteredPolicies.map((policy) => (
                   <tr key={policy._id} className="border-b border-slate-100 hover:bg-slate-50">
                     <td className="py-4 px-6">
                       <div>

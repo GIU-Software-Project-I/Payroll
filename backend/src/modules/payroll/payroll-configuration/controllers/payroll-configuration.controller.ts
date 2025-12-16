@@ -246,7 +246,7 @@ async calculateContributions(
     }
 
     @Patch('policies/:id')
-    @Roles(SystemRole.PAYROLL_MANAGER)
+    @Roles(SystemRole.PAYROLL_MANAGER, SystemRole.PAYROLL_SPECIALIST)
     @HttpCode(HttpStatus.OK)
     async update(
         @Param('id') id: string,
@@ -337,7 +337,7 @@ async calculateContributions(
     }
 
     @Patch('pay-types/:id')
-    @Roles(SystemRole.PAYROLL_MANAGER)
+    @Roles(SystemRole.PAYROLL_MANAGER, SystemRole.PAYROLL_SPECIALIST)
     @HttpCode(HttpStatus.OK)
     async updatePayType(
         @Param('id') id: string,
@@ -428,7 +428,7 @@ async calculateContributions(
     }
 
     @Patch('allowances/:id')
-    @Roles(SystemRole.PAYROLL_MANAGER)
+    @Roles(SystemRole.PAYROLL_MANAGER, SystemRole.PAYROLL_SPECIALIST)
     @HttpCode(HttpStatus.OK)
     async updateAllowance(
         @Param('id') id: string,
@@ -519,7 +519,7 @@ async calculateContributions(
     }
 
     @Patch('signing-bonuses/:id')
-    @Roles(SystemRole.PAYROLL_MANAGER)
+    @Roles(SystemRole.PAYROLL_MANAGER, SystemRole.PAYROLL_SPECIALIST)
     @HttpCode(HttpStatus.OK)
     async updateSigningBonus(
         @Param('id') id: string,
@@ -610,7 +610,7 @@ async calculateContributions(
     }
 
     @Patch('termination-benefits/:id')
-    @Roles(SystemRole.PAYROLL_MANAGER)
+    @Roles(SystemRole.PAYROLL_MANAGER, SystemRole.PAYROLL_SPECIALIST)
     @HttpCode(HttpStatus.OK)
     async updateTerminationBenefit(
         @Param('id') id: string,
