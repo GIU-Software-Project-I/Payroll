@@ -138,7 +138,8 @@ export default function PayrollManagerRunsPage() {
       const res = await payrollExecutionService.listRuns(params);
       
       if (res?.error) {
-        setError(res.error);
+        setError(res.error || 'Failed to connect to server. Please ensure the backend is running on http://localhost:9000');
+        setRuns([]);
         return;
       }
       
@@ -150,16 +151,22 @@ export default function PayrollManagerRunsPage() {
         // Show runs awaiting manager approval:
         // - Status 'under review' or 'under_review' means processed and awaiting manager approval (REQ-PY-20, REQ-PY-22)
         // - Must NOT have managerApprovalDate set (manager hasn't approved yet)
-        items = items.filter((r: PayrollRun) => 
-          (r.status === 'under review' || r.status === 'under_review') && !r.managerApprovalDate
-        );
+        items = items.filter((r: PayrollRun) => {
+          const status = (r.status || '').toLowerCase();
+          return (status === 'under review' || status === 'under_review') && !r.managerApprovalDate;
+        });
       } else if (activeTab === 'frozen') {
-        items = items.filter((r: PayrollRun) => r.frozen || r.status === 'locked');
+        items = items.filter((r: PayrollRun) => {
+          const status = (r.status || '').toLowerCase();
+          return r.frozen || status === 'locked' || status === 'frozen';
+        });
       }
       
       setRuns(items);
     } catch (e: any) {
-      setError(e?.message || 'Failed to load runs');
+      console.error('Failed to load runs:', e);
+      setError(e?.message || 'Failed to load runs. Please check if the backend is running.');
+      setRuns([]);
     } finally {
       setLoading(false);
     }

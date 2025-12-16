@@ -113,10 +113,71 @@ export default function PayrollSystemConfigurationApprovalPage() {
         throw new Error((res as any).error);
       }
 
-      const rawData = (res.data as any)?.data || (res.data as any) || [];
+      // Check for errors in response
+      if (res?.error) {
+        setError(res.error);
+        setItems([]);
+        return;
+      }
+
+      // Handle different response structures
+      let rawData: any[] = [];
+      
+      // First check if res.data exists
+      if (res?.data) {
+        const data = res.data as any;
+        // Case 1: Direct array
+        if (Array.isArray(data)) {
+          rawData = data;
+        }
+        // Case 2: Wrapped in { data: [...] }
+        else if (data.data && Array.isArray(data.data)) {
+          rawData = data.data;
+        }
+        // Case 3: Wrapped in { statusCode, message, data: [...] }
+        else if (data.statusCode && data.data && Array.isArray(data.data)) {
+          rawData = data.data;
+        }
+        // Case 4: Specific property names
+        else if (data.payGrades && Array.isArray(data.payGrades)) {
+          rawData = data.payGrades;
+        } else if (data.payrollPolicies && Array.isArray(data.payrollPolicies)) {
+          rawData = data.payrollPolicies;
+        } else if (data.policies && Array.isArray(data.policies)) {
+          rawData = data.policies;
+        } else if (data.payTypes && Array.isArray(data.payTypes)) {
+          rawData = data.payTypes;
+        } else if (data.allowances && Array.isArray(data.allowances)) {
+          rawData = data.allowances;
+        } else if (data.signingBonuses && Array.isArray(data.signingBonuses)) {
+          rawData = data.signingBonuses;
+        } else if (data.terminationBenefits && Array.isArray(data.terminationBenefits)) {
+          rawData = data.terminationBenefits;
+        } else if (data.taxRules && Array.isArray(data.taxRules)) {
+          rawData = data.taxRules;
+        }
+        // Case 5: Try to find any array property
+        else if (typeof data === 'object') {
+          const keys = Object.keys(data);
+          for (const key of keys) {
+            if (Array.isArray(data[key])) {
+              rawData = data[key];
+              break;
+            }
+          }
+        }
+      }
+      // If res itself is an array
+      else if (Array.isArray(res)) {
+        rawData = res;
+      }
+      
+      console.log(`[ConfigApproval] Loaded ${rawData.length} items for ${activeTab}`, { rawData: rawData.slice(0, 2) });
       setItems(Array.isArray(rawData) ? rawData.map(normalize) : []);
     } catch (e: any) {
-      setError(e?.message || `Failed to load ${activeTab}`);
+      console.error(`Failed to load ${activeTab}:`, e);
+      setError(e?.message || `Failed to load ${activeTab}. Please check if the backend is running.`);
+      setItems([]);
     } finally {
       setLoading(false);
     }
@@ -273,10 +334,19 @@ export default function PayrollSystemConfigurationApprovalPage() {
   const closeView = () => setView(null);
 
   const beginEdit = (item: ConfigItem) => {
-    // Only DRAFT items can be edited
-    if (item.status !== ConfigStatus.DRAFT) {
-      setError("Only DRAFT configurations can be edited.");
-      return;
+    const isPayType = activeTab === "payTypes";
+
+    // Pay Types: allow editing when NOT draft; others: only when draft
+    if (isPayType) {
+      if (item.status === ConfigStatus.DRAFT) {
+        setError("Pay Types can be edited after leaving draft (e.g., pending/approved).");
+        return;
+      }
+    } else {
+      if (item.status !== ConfigStatus.DRAFT) {
+        setError("Only DRAFT configurations can be edited.");
+        return;
+      }
     }
 
     setEdit(item);
@@ -572,6 +642,9 @@ export default function PayrollSystemConfigurationApprovalPage() {
                     {activeTab === "signingBonuses" && (
                       <th className="py-2 px-3">Amount (EGP)</th>
                     )}
+                    {activeTab === "terminationBenefits" && (
+                      <th className="py-2 px-3">Amount (EGP)</th>
+                    )}
                     <th className="py-2 px-3">Status</th>
                     <th className="py-2 px-3">Created</th>
                     <th className="py-2 px-3">Actions</th>
@@ -613,6 +686,11 @@ export default function PayrollSystemConfigurationApprovalPage() {
                           {item.amount ? `${Number(item.amount).toLocaleString()} EGP` : "-"}
                         </td>
                       )}
+                      {activeTab === "terminationBenefits" && (
+                        <td className="py-2 px-3 text-slate-700">
+                          {item.amount ? `${Number(item.amount).toLocaleString()} EGP` : "-"}
+                        </td>
+                      )}
                       <td className="py-2 px-3">
                         <span
                           className={`px-2 py-1 rounded text-xs border ${
@@ -647,14 +725,25 @@ export default function PayrollSystemConfigurationApprovalPage() {
                               </button>
                             </>
                           )}
-                          {(item.status === ConfigStatus.DRAFT) && activeTab !== "payTypes" && (
-                            <button
-                              className="px-3 py-1 border border-blue-300 rounded hover:bg-blue-50 text-blue-700 text-xs"
-                              onClick={() => beginEdit(item)}
-                            >
-                              ✎ Edit
-                            </button>
-                          )}
+
+                          {/* Edit: Pay Types editable when NOT draft; others only when DRAFT */}
+                          {activeTab === "payTypes"
+                            ? item.status !== ConfigStatus.DRAFT && (
+                                <button
+                                  className="px-3 py-1 border border-blue-300 rounded hover:bg-blue-50 text-blue-700 text-xs"
+                                  onClick={() => beginEdit(item)}
+                                >
+                                  ✎ Edit
+                                </button>
+                              )
+                            : item.status === ConfigStatus.DRAFT && (
+                                <button
+                                  className="px-3 py-1 border border-blue-300 rounded hover:bg-blue-50 text-blue-700 text-xs"
+                                  onClick={() => beginEdit(item)}
+                                >
+                                  ✎ Edit
+                                </button>
+                              )}
                           <button
                             className="px-3 py-1 border rounded hover:bg-blue-50 text-xs"
                             onClick={() => viewItem(item)}

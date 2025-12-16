@@ -12,7 +12,7 @@ export default function PayrollManagerClaimsPage() {
   const [selectedClaim, setSelectedClaim] = useState<ClaimConfirmation | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmationNotes, setConfirmationNotes] = useState('');
-  const [filter, setFilter] = useState<'pending_confirmation' | 'confirmed' | 'all'>('pending_confirmation');
+  const [filter, setFilter] = useState<'pending_confirmation' | 'confirmed' | 'under review' | 'all'>('pending_confirmation');
 
   useEffect(() => {
     if (!hasRole([SystemRole.PAYROLL_MANAGER, SystemRole.HR_ADMIN])) return;
@@ -22,18 +22,84 @@ export default function PayrollManagerClaimsPage() {
   const loadClaims = async () => {
     setLoading(true);
     try {
-      const response = filter === 'all' 
-        ? await payrollManagerService.getPendingClaimConfirmations()
-        : await payrollManagerService.getConfirmedClaims();
+      // Fetch pending, confirmed, and under review claims
+      const [pendingResponse, confirmedResponse, underReviewResponse] = await Promise.all([
+        payrollManagerService.getPendingClaimConfirmations(),
+        payrollManagerService.getConfirmedClaims(),
+        payrollManagerService.getUnderReviewClaims(),
+      ]);
       
-      if (response.data) {
-        const filtered = filter === 'all' 
-          ? response.data 
-          : response.data.filter((c: ClaimConfirmation) => c.status === filter);
-        setClaims(filtered);
+      // Check for errors in responses
+      if (pendingResponse.error) {
+        console.error('Error fetching pending claims:', pendingResponse.error);
       }
+      if (confirmedResponse.error) {
+        console.error('Error fetching confirmed claims:', confirmedResponse.error);
+      }
+      if (underReviewResponse.error) {
+        console.error('Error fetching under review claims:', underReviewResponse.error);
+      }
+      
+      console.log('Claims responses:', {
+        pending: pendingResponse.data?.length || 0,
+        confirmed: confirmedResponse.data?.length || 0,
+        underReview: underReviewResponse.data?.length || 0,
+        errors: {
+          pending: pendingResponse.error,
+          confirmed: confirmedResponse.error,
+          underReview: underReviewResponse.error,
+        },
+      });
+      
+      // Use a Map to avoid duplicates by ID
+      const claimsMap = new Map<string, ClaimConfirmation>();
+      
+      // Add pending claims
+      if (pendingResponse.data && Array.isArray(pendingResponse.data)) {
+        pendingResponse.data.forEach((c: ClaimConfirmation) => {
+          claimsMap.set(c.id, c);
+        });
+      }
+      
+      // Add confirmed claims (will overwrite pending if same ID, which is correct)
+      if (confirmedResponse.data && Array.isArray(confirmedResponse.data)) {
+        confirmedResponse.data.forEach((c: ClaimConfirmation) => {
+          claimsMap.set(c.id, c);
+        });
+      }
+      
+      // Add under review claims
+      if (underReviewResponse.data && Array.isArray(underReviewResponse.data)) {
+        underReviewResponse.data.forEach((c: ClaimConfirmation) => {
+          claimsMap.set(c.id, c);
+        });
+      }
+      
+      const allClaims = Array.from(claimsMap.values());
+      
+      // Filter based on selected filter
+      let filtered: ClaimConfirmation[] = [];
+      if (filter === 'all') {
+        filtered = allClaims;
+      } else if (filter === 'pending_confirmation') {
+        filtered = allClaims.filter((c: ClaimConfirmation) => 
+          c.status === 'pending_confirmation'
+        );
+      } else if (filter === 'confirmed') {
+        filtered = allClaims.filter((c: ClaimConfirmation) => 
+          c.status === 'confirmed'
+        );
+      } else if (filter === 'under review') {
+        filtered = allClaims.filter((c: ClaimConfirmation) => 
+          c.status === 'under review'
+        );
+      }
+      
+      console.log(`Filtered claims for "${filter}":`, filtered.length);
+      setClaims(filtered);
     } catch (error) {
       console.error('Failed to load claim confirmations:', error);
+      setClaims([]);
     } finally {
       setLoading(false);
     }
@@ -49,16 +115,22 @@ export default function PayrollManagerClaimsPage() {
         notes: confirmationNotes,
       });
 
+      if (response.error) {
+        console.error('Failed to confirm claim:', response.error);
+        alert(`Error: ${response.error}`);
+        return;
+      }
+
       if (response.data) {
-        setClaims(prev => prev.map(c => 
-          c.id === selectedClaim.id ? response.data! : c
-        ));
         setShowConfirmModal(false);
         setSelectedClaim(null);
         setConfirmationNotes('');
+        // Reload claims to get updated list
+        await loadClaims();
       }
     } catch (error) {
       console.error('Failed to confirm claim:', error);
+      alert('Failed to confirm claim. Please try again.');
     }
   };
 
@@ -72,16 +144,22 @@ export default function PayrollManagerClaimsPage() {
         notes: confirmationNotes,
       });
 
+      if (response.error) {
+        console.error('Failed to reject claim:', response.error);
+        alert(`Error: ${response.error}`);
+        return;
+      }
+
       if (response.data) {
-        setClaims(prev => prev.map(c => 
-          c.id === selectedClaim.id ? response.data! : c
-        ));
         setShowConfirmModal(false);
         setSelectedClaim(null);
         setConfirmationNotes('');
+        // Reload claims to get updated list
+        await loadClaims();
       }
     } catch (error) {
       console.error('Failed to reject claim:', error);
+      alert('Failed to reject claim. Please try again.');
     }
   };
 
@@ -99,6 +177,7 @@ export default function PayrollManagerClaimsPage() {
     switch (status) {
       case 'pending_confirmation': return 'bg-blue-100 text-blue-800';
       case 'confirmed': return 'bg-green-100 text-green-800';
+      case 'under review': return 'bg-yellow-100 text-yellow-800';
       case 'rejected_by_manager': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -126,7 +205,7 @@ export default function PayrollManagerClaimsPage() {
         <div className="flex items-center space-x-4">
           <label className="text-sm font-medium text-slate-700">Status:</label>
           <div className="flex space-x-2">
-            {['all', 'pending_confirmation', 'confirmed'].map((status) => (
+            {['all', 'pending_confirmation', 'under review', 'confirmed'].map((status) => (
               <button
                 key={status}
                 onClick={() => setFilter(status as any)}
@@ -136,7 +215,13 @@ export default function PayrollManagerClaimsPage() {
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
-                {status === 'all' ? 'All' : status.replace('_', ' ').charAt(0).toUpperCase() + status.slice(1).replace('_', ' ')}
+                {status === 'all' 
+                  ? 'All' 
+                  : status === 'pending_confirmation'
+                  ? 'Pending'
+                  : status === 'under review'
+                  ? 'Under Review'
+                  : status.charAt(0).toUpperCase() + status.slice(1)}
               </button>
             ))}
           </div>

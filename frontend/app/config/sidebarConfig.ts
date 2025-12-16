@@ -339,7 +339,6 @@ const PAYROLL_SPECIALIST_NAV: NavItem[] = [
       { label: 'Allowances', href: '/dashboard/payroll-specialist/allowances', icon: 'gift' },
       { label: 'Signing Bonuses', href: '/dashboard/payroll-specialist/signing-bonuses', icon: 'award' },
       { label: 'Termination Benefits', href: '/dashboard/payroll-specialist/termination-benefits', icon: 'package' },
-      { label: 'Tax Rules', href: '/dashboard/payroll-specialist/tax-rules', icon: 'percent' },
       { label: 'Insurance Brackets', href: '/dashboard/payroll-specialist/insurance-brackets', icon: 'shield' },
     ],
   },

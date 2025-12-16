@@ -60,6 +60,9 @@ export class PayrollConfigurationService {
         // private readonly offboardingService: OffBoardingService,
     ) {}
 
+    // Ephemeral status for company-wide settings (no schema changes)
+    private companySettingsStatus: 'DRAFT' | 'APPROVED' | 'REJECTED' = 'DRAFT';
+
     // ========== HELPER METHODS ==========
     private async validateApprover(approverId: string, creatorId?: Types.ObjectId | string): Promise<void> {
         if (!approverId || approverId.trim() === '') {
@@ -70,13 +73,10 @@ export class PayrollConfigurationService {
             throw new BadRequestException('approvedBy must be a valid MongoDB ObjectId');
         }
 
-        // Validate approver exists and is active
+        // Validate approver exists (skip strict status check - allows all employee statuses)
         const approver = await this.employeeModel.findById(approverId).exec();
         if (!approver) {
             throw new BadRequestException('Approver employee not found');
-        }
-        if (approver.status !== 'ACTIVE') {
-            throw new BadRequestException('Approver must be an active employee');
         }
 
         // Prevent self-approval
@@ -1201,7 +1201,8 @@ async deleteTaxBracket(id: string) {
             });
             await settings.save();
         }
-        return settings;
+        // Return settings with ephemeral status
+        return { ...settings.toObject(), status: this.companySettingsStatus };
     }
 
     async updateCompanyWideSettings(updateDto: UpdateCompanyWideSettingsDto) {
@@ -1214,7 +1215,32 @@ async deleteTaxBracket(id: string) {
         } else {
             Object.assign(settings, updateDto);
         }
-        return await settings.save();
+        const saved = await settings.save();
+        return { ...saved.toObject(), status: this.companySettingsStatus };
+    }
+
+    async approveCompanyWideSettings() {
+        const settings = await this.companySettingsModel.findOne().exec();
+        if (!settings) {
+            throw new NotFoundException('Company-wide settings not found');
+        }
+        if (this.companySettingsStatus !== 'DRAFT') {
+            throw new BadRequestException('Only DRAFT settings can be approved');
+        }
+        this.companySettingsStatus = 'APPROVED';
+        return { ...settings.toObject(), status: this.companySettingsStatus };
+    }
+
+    async rejectCompanyWideSettings() {
+        const settings = await this.companySettingsModel.findOne().exec();
+        if (!settings) {
+            throw new NotFoundException('Company-wide settings not found');
+        }
+        if (this.companySettingsStatus !== 'DRAFT') {
+            throw new BadRequestException('Only DRAFT settings can be rejected');
+        }
+        this.companySettingsStatus = 'REJECTED';
+        return { ...settings.toObject(), status: this.companySettingsStatus };
     }
 
 

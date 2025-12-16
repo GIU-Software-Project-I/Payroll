@@ -82,7 +82,7 @@ export class PayrollConfigurationController {
     }
 
     @Patch('tax-rules/:id')
-    @Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.LEGAL_POLICY_ADMIN)
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     updateLegalRule(@Param('id') id: string, @Body() dto: UpdateTaxRuleDto) {
         return this.payrollConfigService.updateLegalRule(id, dto);
@@ -130,7 +130,6 @@ export class PayrollConfigurationController {
     }
 
     @Patch('insurance-brackets/:id')
-    @Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.HR_MANAGER)
     @HttpCode(HttpStatus.OK)
     updateInsurance(@Param('id') id: string, @Body() dto: UpdateInsuranceDto) {
         return this.payrollConfigService.updateInsuranceBracket(id, dto);
@@ -247,7 +246,7 @@ async calculateContributions(
     }
 
     @Patch('policies/:id')
-    @Roles(SystemRole.PAYROLL_SPECIALIST)
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     async update(
         @Param('id') id: string,
@@ -338,7 +337,7 @@ async calculateContributions(
     }
 
     @Patch('pay-types/:id')
-    @Roles(SystemRole.PAYROLL_SPECIALIST)
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     async updatePayType(
         @Param('id') id: string,
@@ -429,7 +428,7 @@ async calculateContributions(
     }
 
     @Patch('allowances/:id')
-    @Roles(SystemRole.PAYROLL_SPECIALIST)
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     async updateAllowance(
         @Param('id') id: string,
@@ -520,7 +519,7 @@ async calculateContributions(
     }
 
     @Patch('signing-bonuses/:id')
-    @Roles(SystemRole.PAYROLL_SPECIALIST)
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     async updateSigningBonus(
         @Param('id') id: string,
@@ -611,7 +610,7 @@ async calculateContributions(
     }
 
     @Patch('termination-benefits/:id')
-    @Roles(SystemRole.PAYROLL_SPECIALIST)
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     async updateTerminationBenefit(
         @Param('id') id: string,
@@ -702,7 +701,7 @@ async calculateContributions(
     }
 
     @Patch('pay-grades/:id')
-    @Roles(SystemRole.PAYROLL_SPECIALIST)
+    @Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER)
     updatePayGrade(
         @Param('id') id: string,
         @Body() updateDto: UpdatePayGradeDto,
@@ -759,6 +758,18 @@ async calculateContributions(
     @Roles(SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_MANAGER)
     updateCompanyWideSettings(@Body() updateDto: UpdateCompanyWideSettingsDto) {
         return this.payrollConfigService.updateCompanyWideSettings(updateDto);
+    }
+
+    @Patch('company-settings/approve')
+    @Roles(SystemRole.SYSTEM_ADMIN)
+    approveCompanyWideSettings() {
+        return this.payrollConfigService.approveCompanyWideSettings();
+    }
+
+    @Patch('company-settings/reject')
+    @Roles(SystemRole.SYSTEM_ADMIN)
+    rejectCompanyWideSettings() {
+        return this.payrollConfigService.rejectCompanyWideSettings();
     }
 
     // ========== MANOS' BACKUP ENDPOINTS ==========
