@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, ForbiddenException, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import mongoose, { Model, Types } from 'mongoose';
 import { EmployeeProfile } from '../../../employee/models/employee/employee-profile.schema';
 import { taxRules, taxRulesDocument } from '../models/taxRules.schema';
 import { insuranceBrackets, insuranceBracketsDocument } from '../models/insuranceBrackets.schema';
@@ -264,41 +264,55 @@ async deleteTaxBracket(id: string) {
 }
 
     // ========== LAMA'S INSURANCE BRACKETS METHODS ==========
-    async createInsuranceBracket(dto: CreateInsuranceDto) {
-        // Case-insensitive duplicate check
-        const exists = await this.insuranceModel.findOne({ 
-            name: { $regex: new RegExp(`^${dto.name}$`, 'i') } 
-        }).exec();
-        if (exists) throw new BadRequestException(`Insurance bracket '${dto.name}' already exists`);
+async createInsuranceBracket(dto: CreateInsuranceDto) {
+    // Case-insensitive duplicate name check
+    const exists = await this.insuranceModel.findOne({
+        name: { $regex: new RegExp(`^${dto.name}$`, 'i') }
+    }).exec();
 
-        // Check for overlapping salary ranges
-        const overlapping = await this.insuranceModel.findOne({
-            $and: [
-                { status: { $in: [ConfigStatus.DRAFT, ConfigStatus.APPROVED] } }, // Only check active brackets
-                {
-                    $or: [
-                        // New range starts within existing range
-                        { minSalary: { $lte: dto.minSalary }, maxSalary: { $gte: dto.minSalary } },
-                        // New range ends within existing range
-                        { minSalary: { $lte: dto.maxSalary }, maxSalary: { $gte: dto.maxSalary } },
-                        // New range encompasses existing range
-                        { minSalary: { $gte: dto.minSalary }, maxSalary: { $lte: dto.maxSalary } }
-                    ]
-                }
-            ]
-        }).exec();
-
-        if (overlapping) {
-            throw new BadRequestException(
-                `Insurance bracket overlaps with existing bracket '${overlapping.name}' ` +
-                `(${overlapping.minSalary} - ${overlapping.maxSalary}). ` +
-                `Please adjust salary ranges to avoid overlap.`
-            );
-        }
-
-        const bracket = new this.insuranceModel({ ...dto, status: ConfigStatus.DRAFT });
-        return await bracket.save();
+    if (exists) {
+        throw new BadRequestException(
+            `Insurance bracket '${dto.name}' already exists`
+        );
     }
+
+    // SAME overlap logic as update
+    const overlapping = await this.insuranceModel.findOne({
+        name: dto.name, // only same insurance type
+        status: { $in: [ConfigStatus.DRAFT, ConfigStatus.APPROVED] },
+        $or: [
+            { minSalary: { $lte: dto.minSalary }, maxSalary: { $gte: dto.minSalary } },
+            { minSalary: { $lte: dto.maxSalary }, maxSalary: { $gte: dto.maxSalary } },
+            { minSalary: { $gte: dto.minSalary }, maxSalary: { $lte: dto.maxSalary } }
+        ]
+    }).exec();
+
+    if (overlapping) {
+        throw new BadRequestException(
+            `Insurance bracket overlaps with existing bracket '${overlapping.name}' ` +
+            `(${overlapping.minSalary} - ${overlapping.maxSalary}).`
+        );
+    }
+
+    // Create a new object without createdByEmployeeId, but with createdBy
+    const bracketData = {
+        name: dto.name,
+        amount: dto.amount,
+        minSalary: dto.minSalary,
+        maxSalary: dto.maxSalary,
+        employeeRate: dto.employeeRate,
+        employerRate: dto.employerRate,
+        status: ConfigStatus.DRAFT,
+        // Only add createdBy if createdByEmployeeId is provided
+        ...(dto.createdByEmployeeId && {
+            createdBy: new mongoose.Types.ObjectId(dto.createdByEmployeeId)
+        })
+    };
+
+    const bracket = new this.insuranceModel(bracketData);
+
+    return await bracket.save();
+}
 
     async getInsuranceBrackets() {
         return await this.insuranceModel.find().sort({ createdAt: -1 }).exec();
