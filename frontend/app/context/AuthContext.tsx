@@ -46,6 +46,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  hasRole: (roles: SystemRole[]) => boolean;
   login: (email: string, password: string) => Promise<boolean>;
   register: (data: RegisterData) => Promise<boolean>;
   logout: () => Promise<void>;
@@ -215,6 +216,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
   }, []);
 
+  const hasRole = useCallback(
+    (rolesToCheck: SystemRole[]) => {
+      if (!user) return false;
+      // Check mapped primary role plus raw backend roles mapped to SystemRole
+      if (rolesToCheck.includes(user.role)) return true;
+      return (user.roles || []).some((r) => rolesToCheck.includes(mapRole(r)));
+    },
+    [user]
+  );
+
   const getDashboardRoute = useCallback((): string => {
     if (!user) return '/login';
     return getDashboardRouteForRole(user.role);
@@ -227,6 +238,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!user,
         isLoading,
         error,
+        hasRole,
         login,
         register,
         logout,

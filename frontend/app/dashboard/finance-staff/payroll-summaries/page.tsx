@@ -12,6 +12,25 @@ export default function PayrollSummariesPage() {
   const [filters, setFilters] = useState<SummaryFilters>({});
   const [selectedSummary, setSelectedSummary] = useState<PayrollSummary | null>(null);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
+  
+  // Form state for GenerateReportDto
+  const [reportType, setReportType] = useState<string>('monthly');
+  const [departmentId, setDepartmentId] = useState<string>('');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    const savedSummaries = localStorage.getItem('payrollSummaries');
+    if (savedSummaries) {
+      try {
+        setSummaries(JSON.parse(savedSummaries));
+      } catch (error) {
+        console.error('Failed to parse saved summaries:', error);
+      }
+    }
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
     if (!hasRole([SystemRole.FINANCE_STAFF, SystemRole.PAYROLL_MANAGER, SystemRole.HR_ADMIN])) return;
@@ -22,24 +41,67 @@ export default function PayrollSummariesPage() {
     setLoading(true);
     try {
       const response = await financeStaffService.getPayrollSummaries(filters);
-      if (response.data) setSummaries(response.data);
+      if (response.data) {
+        setSummaries(response.data);
+        // Save to localStorage
+        localStorage.setItem('payrollSummaries', JSON.stringify(response.data));
+      }
     } catch (error) {
       console.error('Failed to load payroll summaries:', error);
+      // Load from localStorage as fallback
+      const savedSummaries = localStorage.getItem('payrollSummaries');
+      if (savedSummaries) {
+        try {
+          const parsed = JSON.parse(savedSummaries);
+          // Apply filters if any
+          let filtered = parsed;
+          if (filters.type) {
+            filtered = filtered.filter((s: PayrollSummary) => s.type === filters.type);
+          }
+          if (filters.status) {
+            filtered = filtered.filter((s: PayrollSummary) => s.status === filters.status);
+          }
+          if (filters.period) {
+            filtered = filtered.filter((s: PayrollSummary) => s.period === filters.period);
+          }
+          setSummaries(filtered);
+        } catch (parseError) {
+          console.error('Failed to parse saved summaries:', parseError);
+        }
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGenerateSummary = async (type: 'month_end' | 'year_end', period: string) => {
+  const handleGenerateSummary = async () => {
     try {
-      const response = await financeStaffService.generatePayrollSummary(type, period);
+      const reportData = {
+        reportType,
+        departmentId: departmentId || undefined,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined
+      };
+      
+      const response = await financeStaffService.generatePayrollSummary(reportData);
       if (response.data) {
-        setSummaries(prev => [response.data!, ...prev]);
+        const updatedSummaries = [response.data!, ...summaries];
+        setSummaries(updatedSummaries);
+        // Save to localStorage
+        localStorage.setItem('payrollSummaries', JSON.stringify(updatedSummaries));
         setShowGenerateModal(false);
+        resetForm();
       }
     } catch (error) {
       console.error('Failed to generate summary:', error);
     }
+  };
+
+  const resetForm = () => {
+    setReportType('monthly');
+    setDepartmentId('');
+    setStartDate('');
+    setEndDate('');
   };
 
   const handleDownloadSummary = async (summaryId: string) => {
@@ -318,20 +380,48 @@ export default function PayrollSummariesPage() {
       {showGenerateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">Generate Payroll Summary</h3>
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">Generate Payroll Report</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Type</label>
-                <select className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="month_end">Month-End</option>
-                  <option value="year_end">Year-End</option>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Report Type</label>
+                <select 
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={reportType}
+                  onChange={(e) => setReportType(e.target.value)}
+                >
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                  <option value="department">Department</option>
+                  <option value="tax">Tax</option>
+                  <option value="insurance">Insurance</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Period</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Department ID (Optional)</label>
                 <input
-                  type="month"
+                  type="text"
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={departmentId}
+                  onChange={(e) => setDepartmentId(e.target.value)}
+                  placeholder="Enter department ID"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Start Date (Optional)</label>
+                <input
+                  type="date"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">End Date (Optional)</label>
+                <input
+                  type="date"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
                 />
               </div>
             </div>
@@ -343,7 +433,7 @@ export default function PayrollSummariesPage() {
                 Cancel
               </button>
               <button
-                onClick={() => handleGenerateSummary('month_end', '2024-01')}
+                onClick={handleGenerateSummary}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
                 Generate

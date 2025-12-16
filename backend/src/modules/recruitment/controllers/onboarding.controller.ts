@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { OnboardingService } from '../services/onboarding.service';
-import {CreateOnboardingDto, CreateOnboardingTaskDto, UpdateTaskStatusDto, UploadDocumentDto, ReserveEquipmentDto, ProvisionAccessDto, TriggerPayrollInitiationDto, ScheduleAccessRevocationDto, CancelOnboardingDto,} from '../dto/onboarding';
+import {CreateOnboardingDto, CreateOnboardingTaskDto, UpdateTaskStatusDto, OnboardingUploadDocumentDto, ReserveEquipmentDto, ProvisionAccessDto, TriggerPayrollInitiationDto, ScheduleAccessRevocationDto, CancelOnboardingDto,} from '../dto/onboarding';
 import { AuthenticationGuard } from '../../auth/guards/authentication-guard';
 import { AuthorizationGuard } from '../../auth/guards/authorization-guard';
 import { Roles } from '../../auth/decorators/roles-decorator';
@@ -25,9 +25,9 @@ export class OnboardingController {
         summary: 'Candidate upload signed contract and forms',
         description: 'As a Candidate, I want to upload signed contract and candidate required forms and templates to initiate the onboarding process.',
     })
-    @ApiBody({ type: UploadDocumentDto })
+    @ApiBody({ type: OnboardingUploadDocumentDto })
     @ApiResponse({ status: 201, description: 'Contract and forms uploaded successfully' })
-    async uploadContractAndForms(@Body() dto: UploadDocumentDto) {
+    async uploadContractAndForms(@Body() dto: OnboardingUploadDocumentDto) {
         return this.onboardingService.uploadDocument(dto);
     }
 
@@ -198,9 +198,9 @@ export class OnboardingController {
         summary: 'ONB-007: Upload compliance documents',
         description: 'New Hire uploads documents (ID, contracts, certifications). BR 7: Documents collected before first working day.',
     })
-    @ApiBody({ type: UploadDocumentDto })
+    @ApiBody({ type: OnboardingUploadDocumentDto })
     @ApiResponse({ status: 201, description: 'Document uploaded successfully' })
-    async uploadDocument(@Body() dto: UploadDocumentDto) {
+    async uploadDocument(@Body() dto: OnboardingUploadDocumentDto) {
         return this.onboardingService.uploadDocument(dto);
     }
 

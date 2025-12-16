@@ -2,7 +2,8 @@ import { IsEnum, IsNotEmpty, IsString, IsMongoId } from 'class-validator';
 import { DocumentType } from '../../enums/document-type.enum';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class UploadDocumentDto {
+// Named distinctly to avoid schema collision with employee profile UploadDocumentDto
+export class OnboardingUploadDocumentDto {
     @ApiProperty({ description: 'Owner ID (employee/candidate)', example: '507f1f77bcf86cd799439011' })
     @IsMongoId()
     @IsNotEmpty()

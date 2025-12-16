@@ -80,6 +80,4 @@ export class payrollRuns {
   financeApprovalDate?: Date;
 }
 
-
-
 export const payrollRunsSchema = SchemaFactory.createForClass(payrollRuns);
