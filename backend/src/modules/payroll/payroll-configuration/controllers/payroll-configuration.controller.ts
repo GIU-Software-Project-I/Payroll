@@ -197,18 +197,32 @@ async calculateContributions(
   }
 
   @Patch('tax-brackets/:id')
-  @Roles(SystemRole.LEGAL_POLICY_ADMIN)
+    @Roles(SystemRole.LEGAL_POLICY_ADMIN, SystemRole.PAYROLL_MANAGER)
   @HttpCode(HttpStatus.OK)
   updateTaxBracket(@Param('id') id: string, @Body() dto: UpdateTaxBracketDto) {
     return this.payrollConfigService.updateTaxBracket(id, dto);
   }
 
   @Delete('tax-brackets/:id')
-  @Roles(SystemRole.LEGAL_POLICY_ADMIN)
+    @Roles(SystemRole.LEGAL_POLICY_ADMIN, SystemRole.PAYROLL_MANAGER)
   @HttpCode(HttpStatus.OK)
   deleteTaxBracket(@Param('id') id: string) {
     return this.payrollConfigService.deleteTaxBracket(id);
   }
+
+    @Patch('tax-brackets/:id/approve')
+    @Roles(SystemRole.PAYROLL_MANAGER)
+    @HttpCode(HttpStatus.OK)
+    approveTaxBracket(@Param('id') id: string, @Body() dto: ApproveTaxRuleDto) {
+        return this.payrollConfigService.approveTaxBracket(id, dto);
+    }
+
+    @Patch('tax-brackets/:id/reject')
+    @Roles(SystemRole.PAYROLL_MANAGER)
+    @HttpCode(HttpStatus.OK)
+    rejectTaxBracket(@Param('id') id: string, @Body() dto: ApproveTaxRuleDto) {
+        return this.payrollConfigService.rejectTaxBracket(id, dto);
+    }
 
     // ========== DAREEN'S PAYROLL POLICIES ENDPOINTS ==========
     @Post('policies')
