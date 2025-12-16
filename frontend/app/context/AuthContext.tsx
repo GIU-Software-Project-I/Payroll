@@ -48,12 +48,11 @@ interface AuthContextType {
   isLoading: boolean;
   error: string | null;
   hasRole: (roles: SystemRole[]) => boolean;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<{ success: boolean; dashboardRoute?: string }>;
   register: (data: RegisterData) => Promise<boolean>;
   logout: () => Promise<void>;
   clearError: () => void;
   getDashboardRoute: () => string;
-  hasRole: (roles: SystemRole[]) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -258,17 +257,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return getDashboardRouteForRole(user.role);
   }, [user]);
 
-  const hasRole = useCallback((roles: SystemRole[]): boolean => {
-    if (!user) {
-      return false;
-    }
-    // Check if user has any of the required roles
-    // Convert SystemRole enum values to strings for comparison
-    const userRoles = user.roles || [];
-    const requiredRoleStrings = roles.map(role => role as string);
-    return requiredRoleStrings.some(roleStr => userRoles.includes(roleStr));
-  }, [user]);
-
   return (
     <AuthContext.Provider
       value={{
@@ -282,7 +270,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         clearError,
         getDashboardRoute,
-        hasRole,
       }}
     >
       {children}
