@@ -63,7 +63,7 @@ export class PayrollConfigurationController {
 
     // ========== LAMA'S TAX RULES ENDPOINTS ==========
     @Post('tax-rules')
-    @Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.LEGAL_POLICY_ADMIN)
+    @Roles(SystemRole.LEGAL_POLICY_ADMIN)
     @HttpCode(HttpStatus.CREATED)
     createTaxRule(@Body() dto: CreateTaxRuleDto) {
         return this.payrollConfigService.createTaxRule(dto);
@@ -82,7 +82,7 @@ export class PayrollConfigurationController {
     }
 
     @Patch('tax-rules/:id')
-    @Roles(SystemRole.PAYROLL_MANAGER)
+    @Roles(SystemRole.PAYROLL_MANAGER , SystemRole.LEGAL_POLICY_ADMIN)
     @HttpCode(HttpStatus.OK)
     updateLegalRule(@Param('id') id: string, @Body() dto: UpdateTaxRuleDto) {
         return this.payrollConfigService.updateLegalRule(id, dto);
