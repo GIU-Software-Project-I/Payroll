@@ -530,7 +530,8 @@ export default function TerminationBenefitsPage() {
       }
 
       // Handle potential response wrapping - backend may return data directly or wrapped
-      const result = response.data?.data || response.data;
+      const respAny = response as any;
+      const result = respAny?.data?.data ?? respAny?.data ?? respAny?.result ?? respAny;
       
       console.log('Parsed result:', result);
       
