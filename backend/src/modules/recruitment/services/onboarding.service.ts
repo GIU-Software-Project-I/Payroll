@@ -9,7 +9,7 @@ import { Document, DocumentDocument } from '../models/document.schema';
 import { Offer, OfferDocument } from '../models/offer.schema';
 
 // DTOs
-import {CreateOnboardingDto, CreateOnboardingTaskDto, UpdateTaskStatusDto, UploadDocumentDto, ReserveEquipmentDto, ProvisionAccessDto, TriggerPayrollInitiationDto, ScheduleAccessRevocationDto, CancelOnboardingDto,} from '../dto/onboarding';
+import {CreateOnboardingDto, CreateOnboardingTaskDto, UpdateTaskStatusDto, OnboardingUploadDocumentDto, ReserveEquipmentDto, ProvisionAccessDto, TriggerPayrollInitiationDto, ScheduleAccessRevocationDto, CancelOnboardingDto,} from '../dto/onboarding';
 
 // Enums
 import { OnboardingTaskStatus } from '../enums/onboarding-task-status.enum';
@@ -276,7 +276,7 @@ export class OnboardingService {
         return {employeeId, pendingTasks, overdueTasks,};
     }
 
-    async uploadDocument(dto: UploadDocumentDto): Promise<Document> {
+    async uploadDocument(dto: OnboardingUploadDocumentDto): Promise<Document> {
         await this.sharedRecruitmentService.validateEmployeeExists(dto.ownerId).catch(async () => {
             await this.sharedRecruitmentService.validateCandidateExists(dto.ownerId);
         });

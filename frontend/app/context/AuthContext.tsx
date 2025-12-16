@@ -47,12 +47,12 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  hasRole: (roles: SystemRole[]) => boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; dashboardRoute?: string }>;
   register: (data: RegisterData) => Promise<boolean>;
   logout: () => Promise<void>;
   clearError: () => void;
   getDashboardRoute: () => string;
-  hasRole: (roles: SystemRole[]) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -242,20 +242,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
   }, []);
 
+  const hasRole = useCallback(
+    (rolesToCheck: SystemRole[]) => {
+      if (!user) return false;
+      // Check mapped primary role plus raw backend roles mapped to SystemRole
+      if (rolesToCheck.includes(user.role)) return true;
+      return (user.roles || []).some((r) => rolesToCheck.includes(mapRole(r)));
+    },
+    [user]
+  );
+
   const getDashboardRoute = useCallback((): string => {
     if (!user) return '/login';
     return getDashboardRouteForRole(user.role);
-  }, [user]);
-
-  const hasRole = useCallback((roles: SystemRole[]): boolean => {
-    if (!user) {
-      return false;
-    }
-    // Check if user has any of the required roles
-    // Convert SystemRole enum values to strings for comparison
-    const userRoles = user.roles || [];
-    const requiredRoleStrings = roles.map(role => role as string);
-    return requiredRoleStrings.some(roleStr => userRoles.includes(roleStr));
   }, [user]);
 
   return (
@@ -265,12 +264,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!user,
         isLoading,
         error,
+        hasRole,
         login,
         register,
         logout,
         clearError,
         getDashboardRoute,
-        hasRole,
       }}
     >
       {children}

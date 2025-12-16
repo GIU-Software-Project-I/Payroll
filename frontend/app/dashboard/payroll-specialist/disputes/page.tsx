@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { payrollSpecialistService, PayrollDispute, DisputeReviewAction } from '@/app/services/payroll-specialist';
+import { payrollSpecialistService, PayrollDispute, DisputeReviewAction, DisputeFilters } from '@/app/services/payroll-specialist';
 import { useAuth } from '@/app/context/AuthContext';
 import { SystemRole } from '@/app/types';
 
@@ -13,24 +13,58 @@ export default function DisputesPage() {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewAction, setReviewAction] = useState<'approve' | 'reject'>('approve');
   const [reviewNotes, setReviewNotes] = useState('');
+  const [rejectionRemarks, setRejectionRemarks] = useState('');
   const [escalateToManager, setEscalateToManager] = useState(false);
-  const [filter, setFilter] = useState<PayrollDispute['status'] | 'all'>('pending');
+  const [filters, setFilters] = useState<DisputeFilters>({
+    status: 'all',
+    type: 'all',
+    priority: 'all'
+  });
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!hasRole([SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER, SystemRole.HR_ADMIN])) return;
     loadDisputes();
-  }, [hasRole, filter]);
+  }, [hasRole, filters]);
 
   const loadDisputes = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const response = filter === 'all' 
-        ? await payrollSpecialistService.getAllDisputes()
-        : await payrollSpecialistService.getAllDisputes(filter);
+      const response = await payrollSpecialistService.getAllDisputes(filters);
+      console.log('Disputes response:', response);
       
-      if (response.data) setDisputes(response.data);
+      // Map backend data to frontend format
+      if (response.data) {
+        const mappedDisputes = response.data.map((dispute: any) => {
+          console.log('Mapping dispute:', dispute.disputeId, 'Status:', dispute.status);
+          return {
+            id: dispute._id,
+            employeeId: dispute.employeeId?._id || dispute.employeeId,
+            employeeName: dispute.employeeId?.firstName && dispute.employeeId?.lastName 
+              ? `${dispute.employeeId.firstName} ${dispute.employeeId.lastName}`
+              : 'Unknown',
+            employeeNumber: dispute.employeeId?.employeeId || 'N/A',
+            department: dispute.department || 'N/A',
+            type: dispute.type || 'other',
+            description: dispute.description,
+            amount: dispute.amount,
+            period: dispute.payslipId?.payPeriod || 'N/A',
+            status: dispute.status,
+            submittedAt: dispute.createdAt,
+            reviewedAt: dispute.updatedAt,
+            notes: dispute.resolutionComment,
+            rejectionRemarks: dispute.rejectionReason,
+            priority: dispute.priority || 'medium'
+          };
+        });
+        console.log('Mapped disputes:', mappedDisputes);
+        setDisputes(mappedDisputes);
+      }
     } catch (error) {
       console.error('Failed to load disputes:', error);
+      setError('Failed to load disputes');
     } finally {
       setLoading(false);
     }
@@ -38,27 +72,52 @@ export default function DisputesPage() {
 
   const handleReviewDispute = async () => {
     if (!selectedDispute) return;
+    if (selectedDispute.status !== 'pending_review' && selectedDispute.status !== 'under_review') {
+      setError('Only disputes with "Pending Review" or "Under Review" status can be acted upon');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setSuccessMessage(null);
 
     try {
-      const action: DisputeReviewAction = {
-        disputeId: selectedDispute.id,
-        action: reviewAction,
-        notes: reviewNotes,
-        escalateToManager: reviewAction === 'approve' && escalateToManager,
-      };
-
-      const response = await payrollSpecialistService.reviewDispute(action);
-      if (response.data) {
-        setDisputes(prev => prev.map(d => 
-          d.id === selectedDispute.id ? response.data! : d
-        ));
-        setShowReviewModal(false);
-        setSelectedDispute(null);
-        setReviewNotes('');
-        setEscalateToManager(false);
+      console.log('Reviewing dispute:', selectedDispute.id, 'Action:', reviewAction);
+      let response;
+      
+      if (reviewAction === 'approve') {
+        response = await payrollSpecialistService.approveDispute(
+          selectedDispute.id,
+          escalateToManager,
+          reviewNotes
+        );
+      } else {
+        response = await payrollSpecialistService.rejectDispute(
+          selectedDispute.id,
+          rejectionRemarks
+        );
       }
+
+      console.log('Review response:', response);
+      const updatedDispute = response.data || response;
+      console.log('Updated dispute status:', updatedDispute?.status);
+      
+      setSuccessMessage(`Dispute ${reviewAction === 'approve' ? 'approved' : 'rejected'} successfully`);
+      setShowReviewModal(false);
+      setSelectedDispute(null);
+      setReviewNotes('');
+      setRejectionRemarks('');
+      setEscalateToManager(false);
+      
+      // Small delay to ensure DB write completes, then reload disputes
+      setTimeout(async () => {
+        await loadDisputes();
+      }, 500);
     } catch (error) {
       console.error('Failed to review dispute:', error);
+      setError(`Failed to ${reviewAction} dispute`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -82,9 +141,9 @@ export default function DisputesPage() {
 
   const getStatusColor = (status: PayrollDispute['status']) => {
     switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'pending_review': return 'bg-yellow-100 text-yellow-800';
       case 'under_review': return 'bg-blue-100 text-blue-800';
-      case 'approved': return 'bg-green-100 text-green-800';
+      case 'approved_by_specialist': return 'bg-green-100 text-green-800';
       case 'rejected': return 'bg-red-100 text-red-800';
       case 'escalated': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
@@ -110,25 +169,81 @@ export default function DisputesPage() {
 
       {/* Filters */}
       <div className="bg-white rounded-lg border border-slate-200 p-4">
-        <div className="flex items-center space-x-4">
-          <label className="text-sm font-medium text-slate-700">Status:</label>
-          <div className="flex space-x-2">
-            {['all', 'pending', 'under_review', 'approved', 'rejected', 'escalated'].map((status) => (
-              <button
-                key={status}
-                onClick={() => setFilter(status as any)}
-                className={`px-3 py-1 text-sm rounded-lg transition-colors ${
-                  filter === status
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {status === 'all' ? 'All' : status.replace('_', ' ').charAt(0).toUpperCase() + status.slice(1).replace('_', ' ')}
-              </button>
-            ))}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+            <select
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={filters.status || 'all'}
+              onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value as any }))}
+            >
+              <option value="all">All Status</option>
+              <option value="pending_review">Pending Review</option>
+              <option value="under_review">Under Review</option>
+              <option value="approved_by_specialist">Approved by Specialist</option>
+              <option value="rejected">Rejected</option>
+              <option value="escalated">Escalated</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Type</label>
+            <select
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={filters.type || 'all'}
+              onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value as any }))}
+            >
+              <option value="all">All Types</option>
+              <option value="salary">Salary</option>
+              <option value="deduction">Deduction</option>
+              <option value="hours">Hours</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Priority</label>
+            <select
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={filters.priority || 'all'}
+              onChange={(e) => setFilters(prev => ({ ...prev, priority: e.target.value as any }))}
+            >
+              <option value="all">All Priorities</option>
+              <option value="critical">Critical</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Payroll Period</label>
+            <input
+              type="month"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={filters.period || ''}
+              onChange={(e) => setFilters(prev => ({ ...prev, period: e.target.value }))}
+            />
           </div>
         </div>
+        <div className="flex items-end mt-4">
+          <button
+            onClick={loadDisputes}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Apply Filters
+          </button>
+        </div>
       </div>
+
+      {/* Success/Error Messages */}
+      {successMessage && (
+        <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4">
+          <p>{successMessage}</p>
+        </div>
+      )}
+      {error && (
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4">
+          <p>{error}</p>
+        </div>
+      )}
 
       {/* Disputes List */}
       <div className="bg-white rounded-lg border border-slate-200">
@@ -197,7 +312,7 @@ export default function DisputesPage() {
                         >
                           View
                         </button>
-                        {dispute.status === 'pending' && (
+                        {(dispute.status === 'pending_review' || dispute.status === 'under_review') && (
                           <>
                             <button
                               onClick={() => openReviewModal(dispute, 'approve')}
@@ -306,7 +421,7 @@ export default function DisputesPage() {
                 </div>
               )}
             </div>
-            {selectedDispute.status === 'pending' && (
+            {selectedDispute.status === 'pending_review' && (
               <div className="flex justify-end space-x-3 mt-6">
                 <button
                   onClick={() => openReviewModal(selectedDispute, 'reject')}
@@ -340,13 +455,15 @@ export default function DisputesPage() {
                 <p className="text-sm text-slate-600">{selectedDispute.employeeName}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Review Notes</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  {reviewAction === 'approve' ? 'Review Notes' : 'Rejection Remarks'}
+                </label>
                 <textarea
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   rows={3}
-                  placeholder="Add your review notes..."
-                  value={reviewNotes}
-                  onChange={(e) => setReviewNotes(e.target.value)}
+                  placeholder={reviewAction === 'approve' ? "Add your review notes..." : "Provide rejection remarks..."}
+                  value={reviewAction === 'approve' ? reviewNotes : rejectionRemarks}
+                  onChange={(e) => reviewAction === 'approve' ? setReviewNotes(e.target.value) : setRejectionRemarks(e.target.value)}
                 />
               </div>
               {reviewAction === 'approve' && (

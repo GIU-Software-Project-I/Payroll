@@ -15,10 +15,9 @@ import { LeavesModule } from "./modules/leaves/leaves.module";
 import { AuthModule } from "./modules/auth/auth-module";
 import {AuthorizationGuard} from "./modules/auth/guards/authorization-guard";
 import {AuthenticationGuard} from "./modules/auth/guards/authentication-guard";
-import {BackupModule} from "./modules/payroll/payroll-configuration/backup/backup-module";
+import { BackupModule} from "./modules/payroll/payroll-configuration/backup/backup-module";
 import {RecruitmentModule} from "./modules/recruitment/recruitment.module";
-
-
+import { FinanceModule } from "./modules/finance/finance.module";
 
 @Module({
     imports: [
@@ -42,6 +41,7 @@ import {RecruitmentModule} from "./modules/recruitment/recruitment.module";
         BackupModule,
         TimeManagementModule,
         LeavesModule,
+        FinanceModule,
 
 
     ],

@@ -430,6 +430,11 @@ const PAYROLL_SPECIALIST_NAV: NavItem[] = [
     icon: 'credit-card',
   },
   {
+    label: 'Departmental Reports',
+    href: '/dashboard/payroll-specialist/reports/departmental',
+    icon: 'trending-up',
+  },
+  {
     label: 'Payroll Tracking',
     href: '/dashboard/payroll-specialist/payroll-tracking',
     icon: 'dollar-sign',

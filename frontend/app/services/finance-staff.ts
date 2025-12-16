@@ -56,6 +56,8 @@ export interface InsuranceReport {
   period: string;
   title: string;
   totalContributions: number;
+  totalEmployeeContributions?: number;
+  totalEmployerContributions?: number;
   insuranceTypes: InsuranceTypeBreakdown[];
   employeeCount: number;
   generatedAt: string;
@@ -66,6 +68,8 @@ export interface InsuranceReport {
 export interface InsuranceTypeBreakdown {
   insuranceType: string;
   amount: number;
+  employeeContribution?: number;
+  employerContribution?: number;
   employeeCount: number;
 }
 
@@ -85,6 +89,20 @@ export interface BenefitTypeBreakdown {
   benefitType: string;
   amount: number;
   employeeCount: number;
+}
+
+export interface PayslipHistoryReport {
+  id: string;
+  period: string;
+  title: string;
+  totalPayslips: number;
+  employeeCount: number;
+  totalGrossPay: number;
+  totalNetPay: number;
+  departmentBreakdown: DepartmentBreakdown[];
+  generatedAt: string;
+  status: 'draft' | 'final' | 'archived';
+  downloadUrl?: string;
 }
 
 // Types for Approved Disputes and Claims Notifications
@@ -127,27 +145,33 @@ export interface ApprovedClaim {
 
 // Types for Refund Generation
 export interface RefundGeneration {
-  id: string;
-  type: 'dispute' | 'expense_claim';
-  sourceId: string;
+  _id: string;
+  claimId?: string;
+  disputeId?: string;
+  refundDetails: {
+    description: string;
+    amount: number;
+  };
   employeeId: string;
-  employeeName: string;
-  amount: number;
-  description: string;
+  financeStaffId?: string;
   status: 'pending' | 'processed' | 'paid';
   createdAt: string;
-  processedAt?: string;
-  payrollCycleId?: string;
-  notes?: string;
+  updatedAt: string;
+  paidInPayrollRunId?: string;
+  __v?: number;
 }
 
 export interface RefundRequest {
   disputeId?: string;
   claimId?: string;
-  amount: number;
-  description: string;
-  targetPayrollCycle: string;
-  notes?: string;
+  refundDetails: {
+    description: string;
+    amount: number;
+  };
+  employeeId: string;
+  financeStaffId?: string;
+  status?: 'pending' | 'processed' | 'paid';
+  paidInPayrollRunId?: string;
 }
 
 export interface PayrollCycle {
@@ -173,11 +197,13 @@ export const financeStaffService = {
     return response;
   },
 
-  async generatePayrollSummary(type: 'month_end' | 'year_end', period: string) {
-    const response = await api.post<PayrollSummary>('/finance/payroll-summaries/generate', {
-      type,
-      period,
-    });
+  async generatePayrollSummary(reportData: {
+    reportType?: string;
+    departmentId?: string;
+    startDate?: string;
+    endDate?: string;
+  }) {
+    const response = await api.post<PayrollSummary>('/finance/payroll-summaries/generate', reportData);
     return response;
   },
 
@@ -220,19 +246,30 @@ export const financeStaffService = {
     return response;
   },
 
-  async downloadReport(reportId: string, reportType: 'tax' | 'insurance' | 'benefits') {
+  async getPayslipHistory(period?: string) {
+    const params = period ? `?period=${period}` : '';
+    const response = await api.get<PayslipHistoryReport[]>(`/finance/payslip-history${params}`);
+    return response;
+  },
+
+  async generatePayslipHistoryReport(period: string) {
+    const response = await api.post<PayslipHistoryReport>('/finance/payslip-history/generate', { period });
+    return response;
+  },
+
+  async downloadReport(reportId: string, reportType: 'tax' | 'insurance' | 'benefits' | 'payslip-history' | 'payroll-summary') {
     const response = await api.get<Blob>(`/finance/${reportType}-reports/${reportId}/download`);
     return response;
   },
 
   // Approved Disputes and Claims Notifications
   async getApprovedDisputes() {
-    const response = await api.get<ApprovedDispute[]>('/finance/approved-disputes');
+    const response = await api.get<ApprovedDispute[]>('/payroll/tracking/disputes/approved');
     return response;
   },
 
   async getApprovedClaims() {
-    const response = await api.get<ApprovedClaim[]>('/finance/approved-claims');
+    const response = await api.get<ApprovedClaim[]>('/payroll/tracking/claims/approved');
     return response;
   },
 
@@ -244,17 +281,44 @@ export const financeStaffService = {
   // Refund Generation
   async getRefunds(status?: RefundGeneration['status']) {
     const params = status ? `?status=${status}` : '';
-    const response = await api.get<RefundGeneration[]>(`/finance/refunds${params}`);
+    const response = await api.get<RefundGeneration[]>(`/payroll/tracking/refunds${params}`);
     return response;
   },
 
-  async generateRefund(request: RefundRequest) {
-    const response = await api.post<RefundGeneration>('/finance/refunds/generate', request);
-    return response;
+  async generateRefund(request: RefundRequest, financeStaffId: string) {
+    if (request.disputeId) {
+      // Generate dispute refund
+      const response = await api.post<RefundGeneration>(
+        `/payroll/tracking/refunds/dispute/${request.disputeId}?financeStaffId=${financeStaffId}`,
+        {
+          refundDetails: {
+            amount: request.refundDetails.amount,
+            description: request.refundDetails.description
+          },
+          employeeId: request.employeeId
+        }
+      );
+      return response;
+    } else if (request.claimId) {
+      // Generate claim refund
+      const response = await api.post<RefundGeneration>(
+        `/payroll/tracking/refunds/claim/${request.claimId}?financeStaffId=${financeStaffId}`,
+        {
+          refundDetails: {
+            amount: request.refundDetails.amount,
+            description: request.refundDetails.description
+          },
+          employeeId: request.employeeId
+        }
+      );
+      return response;
+    } else {
+      throw new Error('Either disputeId or claimId must be provided');
+    }
   },
 
   async getPayrollCycles() {
-    const response = await api.get<PayrollCycle[]>('/finance/payroll-cycles');
+    const response = await api.get<PayrollCycle[]>('/payroll/tracking/payroll-cycles');
     return response;
   },
 

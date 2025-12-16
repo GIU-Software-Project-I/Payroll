@@ -6,16 +6,28 @@ import { useAuth } from '@/app/context/AuthContext';
 import { SystemRole } from '@/app/types';
 
 export default function RefundsPage() {
-  const { hasRole } = useAuth();
+  const { hasRole, user } = useAuth();
   const [refunds, setRefunds] = useState<RefundGeneration[]>([]);
   const [payrollCycles, setPayrollCycles] = useState<PayrollCycle[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Helper to safely convert any value to string (NEVER returns objects)
+  const safeString = (value: any, defaultValue: string = 'N/A'): string => {
+    if (value === null || value === undefined) return defaultValue;
+    if (typeof value === 'string') return value;
+    if (typeof value === 'object') {
+      if (value._id) return String(value._id);
+      return defaultValue;
+    }
+    return String(value);
+  };
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [selectedRefund, setSelectedRefund] = useState<RefundGeneration | null>(null);
   const [refundType, setRefundType] = useState<'dispute' | 'claim'>('dispute');
   const [selectedSourceId, setSelectedSourceId] = useState('');
   const [refundAmount, setRefundAmount] = useState('');
   const [refundDescription, setRefundDescription] = useState('');
+  const [refundEmployeeId, setRefundEmployeeId] = useState('');
   const [targetPayrollCycle, setTargetPayrollCycle] = useState('');
   const [refundNotes, setRefundNotes] = useState('');
 
@@ -42,16 +54,19 @@ export default function RefundsPage() {
   };
 
   const handleGenerateRefund = async () => {
-    const refundRequest: RefundRequest = {
+    const refundRequest = {
       [refundType === 'dispute' ? 'disputeId' : 'claimId']: selectedSourceId,
-      amount: parseFloat(refundAmount),
-      description: refundDescription,
-      targetPayrollCycle,
-      notes: refundNotes,
+      refundDetails: {
+        description: refundDescription,
+        amount: parseFloat(refundAmount)
+      },
+      employeeId: refundEmployeeId,
+      financeStaffId: user?.id || '',
+      status: 'pending' as const
     };
 
     try {
-      const response = await financeStaffService.generateRefund(refundRequest);
+      const response = await financeStaffService.generateRefund(refundRequest, user?.id || '');
       if (response.data) {
         setRefunds(prev => [response.data!, ...prev]);
         setShowGenerateModal(false);
@@ -66,7 +81,7 @@ export default function RefundsPage() {
     try {
       const response = await financeStaffService.processRefund(refundId);
       if (response.data) {
-        setRefunds(prev => prev.map(r => r.id === refundId ? response.data! : r));
+        setRefunds(prev => prev.map(r => r._id === refundId ? response.data! : r));
       }
     } catch (error) {
       console.error('Failed to process refund:', error);
@@ -77,7 +92,7 @@ export default function RefundsPage() {
     try {
       const response = await financeStaffService.updateRefundStatus(refundId, status, refundNotes);
       if (response.data) {
-        setRefunds(prev => prev.map(r => r.id === refundId ? response.data! : r));
+        setRefunds(prev => prev.map(r => r._id === refundId ? response.data! : r));
         setSelectedRefund(null);
       }
     } catch (error) {
@@ -89,7 +104,7 @@ export default function RefundsPage() {
     setSelectedSourceId('');
     setRefundAmount('');
     setRefundDescription('');
-    setTargetPayrollCycle('');
+    setRefundEmployeeId('');
     setRefundNotes('');
     setRefundType('dispute');
   };
@@ -102,7 +117,7 @@ export default function RefundsPage() {
     );
   }
 
-  const getStatusColor = (status: RefundGeneration['status']) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
       case 'processed': return 'bg-blue-100 text-blue-800';
@@ -111,7 +126,7 @@ export default function RefundsPage() {
     }
   };
 
-  const getTypeColor = (type: RefundGeneration['type']) => {
+  const getTypeColor = (type: string) => {
     return type === 'dispute' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800';
   };
 
@@ -205,23 +220,23 @@ export default function RefundsPage() {
               </thead>
               <tbody className="bg-white divide-y divide-slate-200">
                 {refunds.map((refund) => (
-                  <tr key={refund.id} className="hover:bg-slate-50">
+                  <tr key={refund._id || `${refund.claimId || refund.disputeId}-${refund.createdAt}`} className="hover:bg-slate-50">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getTypeColor(refund.type)}`}>
-                        {refund.type === 'dispute' ? 'Dispute' : 'Claim'}
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getTypeColor(refund.claimId ? 'claim' : 'dispute')}`}>
+                        {refund.claimId ? 'Claim' : refund.disputeId ? 'Dispute' : 'Unknown'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
-                        <p className="text-sm font-medium text-slate-900">{refund.employeeName}</p>
-                        <p className="text-xs text-slate-500">{refund.sourceId}</p>
+                        <p className="text-sm font-medium text-slate-900">{safeString(refund.employeeId, 'Unknown')}</p>
+                        <p className="text-xs text-slate-500">{safeString(refund.claimId || refund.disputeId, 'N/A')}</p>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                      {refund.description}
+                      {safeString(refund.refundDetails?.description, 'N/A')}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                      ${refund.amount.toLocaleString()}
+                      ${refund.refundDetails?.amount?.toLocaleString() || '0'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(refund.status)}`}>
@@ -229,7 +244,7 @@ export default function RefundsPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                      {new Date(refund.createdAt).toLocaleDateString()}
+                      {refund.createdAt ? new Date(refund.createdAt).toLocaleDateString() : 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <button
@@ -240,7 +255,7 @@ export default function RefundsPage() {
                       </button>
                       {refund.status === 'pending' && (
                         <button
-                          onClick={() => handleProcessRefund(refund.id)}
+                          onClick={() => handleProcessRefund(refund._id)}
                           className="text-green-600 hover:text-green-800"
                         >
                           Process
@@ -290,13 +305,14 @@ export default function RefundsPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Amount</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Employee ID</label>
                 <input
-                  type="number"
+                  type="text"
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={refundAmount}
-                  onChange={(e) => setRefundAmount(e.target.value)}
-                  placeholder="0.00"
+                  value={refundEmployeeId}
+                  onChange={(e) => setRefundEmployeeId(e.target.value)}
+                  placeholder="Enter employee ID"
+                  required
                 />
               </div>
               <div>
@@ -307,31 +323,20 @@ export default function RefundsPage() {
                   onChange={(e) => setRefundDescription(e.target.value)}
                   rows={3}
                   placeholder="Enter refund description"
+                  required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Target Payroll Cycle</label>
-                <select
+                <label className="block text-sm font-medium text-slate-700 mb-1">Amount</label>
+                <input
+                  type="number"
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={targetPayrollCycle}
-                  onChange={(e) => setTargetPayrollCycle(e.target.value)}
-                >
-                  <option value="">Select payroll cycle</option>
-                  {payrollCycles.map((cycle) => (
-                    <option key={cycle.id} value={cycle.id}>
-                      {cycle.name} - {cycle.period}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
-                <textarea
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={refundNotes}
-                  onChange={(e) => setRefundNotes(e.target.value)}
-                  rows={2}
-                  placeholder="Additional notes (optional)"
+                  value={refundAmount}
+                  onChange={(e) => setRefundAmount(e.target.value)}
+                  placeholder="0.00"
+                  step="0.01"
+                  min="0"
+                  required
                 />
               </div>
             </div>
@@ -370,8 +375,8 @@ export default function RefundsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-slate-500">Type</label>
-                  <span className={`block mt-1 px-2 py-1 text-xs font-medium rounded-full ${getTypeColor(selectedRefund.type)}`}>
-                    {selectedRefund.type === 'dispute' ? 'Dispute' : 'Claim'}
+                  <span className={`block mt-1 px-2 py-1 text-xs font-medium rounded-full ${getTypeColor(selectedRefund.claimId ? 'claim' : 'dispute')}`}>
+                    {selectedRefund.claimId ? 'Claim' : selectedRefund.disputeId ? 'Dispute' : 'Unknown'}
                   </span>
                 </div>
                 <div>
@@ -382,33 +387,43 @@ export default function RefundsPage() {
                 </div>
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-500">Employee</label>
-                <p className="text-slate-900">{selectedRefund.employeeName}</p>
+                <label className="text-sm font-medium text-slate-500">Employee ID</label>
+                <p className="text-slate-900">{safeString(selectedRefund.employeeId, 'Unknown')}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-500">Source</label>
+                <p className="text-slate-900">{selectedRefund.claimId ? `Claim: ${safeString(selectedRefund.claimId)}` : selectedRefund.disputeId ? `Dispute: ${safeString(selectedRefund.disputeId)}` : 'N/A'}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-slate-500">Description</label>
-                <p className="text-slate-900">{selectedRefund.description}</p>
+                <p className="text-slate-900">{safeString(selectedRefund.refundDetails?.description, 'No description')}</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-slate-500">Amount</label>
-                  <p className="text-slate-900">${selectedRefund.amount.toLocaleString()}</p>
+                  <p className="text-slate-900">${selectedRefund.refundDetails?.amount?.toLocaleString() || '0'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-slate-500">Created</label>
-                  <p className="text-slate-900">{new Date(selectedRefund.createdAt).toLocaleDateString()}</p>
+                  <p className="text-slate-900">{selectedRefund.createdAt ? new Date(selectedRefund.createdAt).toLocaleDateString() : 'N/A'}</p>
                 </div>
               </div>
-              {selectedRefund.notes && (
+              {selectedRefund.financeStaffId && (
                 <div>
-                  <label className="text-sm font-medium text-slate-500">Notes</label>
-                  <p className="text-slate-900">{selectedRefund.notes}</p>
+                  <label className="text-sm font-medium text-slate-500">Finance Staff ID</label>
+                  <p className="text-slate-900">{safeString(selectedRefund.financeStaffId)}</p>
+                </div>
+              )}
+              {selectedRefund.paidInPayrollRunId && (
+                <div>
+                  <label className="text-sm font-medium text-slate-500">Paid in Payroll Run</label>
+                  <p className="text-slate-900">{safeString(selectedRefund.paidInPayrollRunId)}</p>
                 </div>
               )}
               {selectedRefund.status === 'pending' && (
                 <div className="flex space-x-3">
                   <button
-                    onClick={() => handleUpdateRefundStatus(selectedRefund.id, 'processed')}
+                    onClick={() => handleUpdateRefundStatus(selectedRefund._id, 'processed')}
                     className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                   >
                     Mark as Processed

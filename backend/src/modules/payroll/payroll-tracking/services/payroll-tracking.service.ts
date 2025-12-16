@@ -1162,52 +1162,76 @@ async getLeaveCompensation(employeeId: string) {
     
     // Create map of employeeId to department
     const employeeDepartmentMap = new Map();
+    const employeeDepartmentIdMap = new Map();
     employees.forEach(emp => {
       const dept = emp.primaryDepartmentId as any;
-      employeeDepartmentMap.set(emp._id.toString(), dept ? dept.name || dept.code : 'Unknown');
+      const deptName = dept ? dept.name || dept.code : 'Unknown';
+      const deptId = dept ? dept._id?.toString() : 'unknown';
+      employeeDepartmentMap.set(emp._id.toString(), deptName);
+      employeeDepartmentIdMap.set(emp._id.toString(), deptId);
     });
     
     // Group by department
     const departmentSummary = payslips.reduce((acc, payslip) => {
-      const deptName = employeeDepartmentMap.get(payslip.employeeId.toString()) || 'Unknown';
+      const empIdStr = payslip.employeeId.toString();
+      const deptName = employeeDepartmentMap.get(empIdStr) || 'Unknown';
+      const deptId = employeeDepartmentIdMap.get(empIdStr) || 'unknown';
       
       // If departmentId is specified, only include matching departments
-      if (departmentId && deptName !== departmentId) {
+      if (departmentId && deptId !== departmentId) {
         return acc;
       }
       
-      if (!acc[deptName]) {
-        acc[deptName] = {
+      if (!acc[deptId]) {
+        acc[deptId] = {
+          departmentId: deptId,
+          departmentName: deptName,
           totalGross: 0,
           totalNet: 0,
           totalTax: 0,
           totalInsurance: 0,
-          employeeCount: 0
+          totalDeductions: 0,
+          employeeCount: 0,
+          employees: new Set()
         };
       }
       
-      acc[deptName].totalGross += payslip.totalGrossSalary || 0;
-      acc[deptName].totalNet += payslip.netPay || 0;
-      acc[deptName].totalTax += payslip.deductionsDetails?.taxes?.reduce((sum, t) => sum + ((t as any)?.amount || 0), 0) || 0;
-      acc[deptName].totalInsurance += payslip.deductionsDetails?.insurances?.reduce((sum, i) => sum + ((i as any)?.amount || 0), 0) || 0;
-      acc[deptName].employeeCount++;
+      acc[deptId].totalGross += payslip.totalGrossSalary || 0;
+      acc[deptId].totalNet += payslip.netPay || 0;
+      acc[deptId].totalTax += payslip.deductionsDetails?.taxes?.reduce((sum, t) => sum + ((t as any)?.amount || 0), 0) || 0;
+      acc[deptId].totalInsurance += payslip.deductionsDetails?.insurances?.reduce((sum, i) => sum + ((i as any)?.amount || 0), 0) || 0;
+      acc[deptId].totalDeductions += payslip.totaDeductions || 0;
+      acc[deptId].employees.add(empIdStr);
       
       return acc;
     }, {});
     
+    // Convert to array format expected by frontend
+    const reportsArray = Object.values(departmentSummary).map((dept: any) => ({
+      id: `${dept.departmentId}_${Date.now()}`,
+      departmentId: dept.departmentId,
+      departmentName: dept.departmentName,
+      period: startDate && endDate 
+        ? `${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`
+        : 'All Time',
+      totalEmployees: dept.employees.size,
+      totalGrossPay: dept.totalGross,
+      totalNetPay: dept.totalNet,
+      totalDeductions: dept.totalDeductions,
+      totalTaxes: dept.totalTax,
+      averageSalary: dept.employees.size > 0 ? dept.totalGross / dept.employees.size : 0,
+      costCenter: dept.departmentName,
+      generatedAt: new Date().toISOString(),
+      status: 'final' as const
+    }));
+    
     return {
+      success: true,
+      data: reportsArray.length > 0 ? reportsArray[0] : null,
+      reports: reportsArray,
       reportType: 'DEPARTMENT_PAYROLL_SUMMARY',
       generatedDate: new Date().toISOString(),
-      filters: { departmentId, startDate, endDate },
-      summary: departmentSummary,
-      detailedData: payslips.map(p => ({
-        employeeId: p.employeeId,
-        department: employeeDepartmentMap.get(p.employeeId.toString()) || 'Unknown',
-        payrollRunId: p.payrollRunId,
-        grossSalary: p.totalGrossSalary,
-        netSalary: p.netPay,
-        totalDeductions: p.totaDeductions
-      }))
+      filters: { departmentId, startDate, endDate }
     };
   }
 
@@ -1293,20 +1317,43 @@ async getLeaveCompensation(employeeId: string) {
 
   // REQ-PY-39: Payroll Specialist approve/reject disputes
   async reviewDispute(disputeId: string, specialistId: string, action: 'approve' | 'reject', reason?: string) {
-    const dispute = await this.disputesModel.findById(disputeId);
-    if (!dispute) {
-      throw new NotFoundException('Dispute not found');
+    try {
+      console.log('reviewDispute called with:', { disputeId, action });
+      
+      // Try finding by custom disputeId first, then by MongoDB _id
+      let dispute = await this.disputesModel.findOne({ disputeId: disputeId });
+      if (!dispute) {
+        dispute = await this.disputesModel.findById(disputeId);
+      }
+      if (!dispute) {
+        throw new NotFoundException('Dispute not found');
+      }
+      
+      console.log('Before update - Dispute ID:', dispute._id, 'Current Status:', dispute.status);
+      
+      if (action === 'approve') {
+        dispute.status = 'approved_by_specialist' as any;
+        dispute.resolutionComment = reason || 'Approved by Payroll Specialist';
+      } else {
+        dispute.status = 'rejected' as any;
+        dispute.rejectionReason = reason || 'Rejected by Payroll Specialist';
+      }
+      
+      await dispute.save();
+      console.log('After save - Dispute ID:', dispute._id, 'New Status:', dispute.status);
+      
+      // Return populated dispute
+      const updated = await this.disputesModel.findById(dispute._id)
+        .populate('employeeId', 'firstName lastName employeeId')
+        .populate('payslipId', 'payPeriod netSalary')
+        .exec();
+      
+      console.log('Returning dispute with status:', updated?.status);
+      return updated;
+    } catch (error) {
+      console.error('Error in reviewDispute:', error);
+      throw error;
     }
-    
-    if (action === 'approve') {
-      dispute.status = DisputeStatus.APPROVED;
-      dispute.resolutionComment = reason || 'Approved by Payroll Specialist';
-    } else {
-      dispute.status = DisputeStatus.REJECTED;
-      dispute.rejectionReason = reason || 'Rejected by Payroll Specialist';
-    }
-    
-    return dispute.save();
   }
 
   // REQ-PY-40: Payroll Manager confirm dispute approval (multi-step)
@@ -1316,8 +1363,8 @@ async getLeaveCompensation(employeeId: string) {
       throw new NotFoundException('Dispute not found');
     }
     
-    if (dispute.status !== DisputeStatus.APPROVED) {
-      throw new BadRequestException('Only approved disputes can be confirmed by manager');
+    if (dispute.status !== DisputeStatus.APPROVED_BY_SPECIALIST) {
+      throw new BadRequestException('Only disputes approved by specialist can be confirmed by manager');
     }
     
     if (action === 'confirm') {
@@ -1348,21 +1395,63 @@ async getLeaveCompensation(employeeId: string) {
 
   // REQ-PY-41: Finance staff view approved disputes
   async getApprovedDisputes(financeStaffId?: string) {
+    // Only return disputes with APPROVED status (confirmed by manager)
+    // APPROVED_BY_SPECIALIST means pending manager confirmation, not fully approved
     const query: any = { status: DisputeStatus.APPROVED };
     
     if (financeStaffId) {
       query.financeStaffId = new Types.ObjectId(financeStaffId);
     }
     
-    return this.disputesModel.find(query)
-      .populate('employeeId', 'firstName lastName employeeId')
-      .populate('payslipId', 'payPeriod netSalary')
+    const disputes = await this.disputesModel.find(query)
+      .lean()
       .exec();
+
+    console.log(`[getApprovedDisputes] Found ${disputes.length} disputes with APPROVED status`);
+
+    // Transform to expected format - NO POPULATION, return pure strings only
+    const result = disputes.map((dispute: any) => {
+      // Helper to safely convert to string - NEVER returns objects
+      const toStr = (val: any): string => {
+        if (val == null) return '';
+        if (typeof val === 'object') {
+          if (val._id) return String(val._id);
+          return '';
+        }
+        return String(val);
+      };
+      
+      return {
+        id: toStr(dispute._id),
+        employeeId: toStr(dispute.employeeId), // Pure string ID, no population
+        employeeName: 'Employee ' + toStr(dispute.employeeId).slice(-6), // Simple fallback
+        employeeNumber: 'N/A',
+        department: toStr(dispute.department || 'N/A'),
+        type: toStr(dispute.disputeType || dispute.type || 'Unknown'),
+        description: toStr(dispute.description),
+        amount: dispute.amount || 0,
+        period: toStr(dispute.payPeriod),
+        approvedAt: dispute.updatedAt || dispute.createdAt,
+        approvedBy: toStr(dispute.approvedBy || 'System'),
+        priority: toStr(dispute.priority || 'medium'),
+        refundStatus: toStr(dispute.refundStatus || 'pending'),
+        refundId: dispute.refundId,
+        needsRefund: Boolean(dispute.needsRefund)
+      };
+    });
+    
+    console.log('[getApprovedDisputes] First result:', JSON.stringify(result[0], null, 2));
+    return result;
   }
 
   // REQ-PY-42: Payroll Specialist approve/reject claims
   async reviewClaim(claimId: string, specialistId: string, action: 'approve' | 'reject', approvedAmount?: number, reason?: string) {
-    const claim = await this.claimsModel.findById(claimId);
+    // Try to find by custom claimId field first, then by MongoDB _id
+    let claim = await this.claimsModel.findOne({ claimId: claimId });
+    if (!claim) {
+      claim = await this.claimsModel.findById(claimId);
+    }
+    
     if (!claim) {
       throw new NotFoundException('Claim not found');
     }
@@ -1418,16 +1507,19 @@ async getLeaveCompensation(employeeId: string) {
 
   // REQ-PY-44: Finance staff view approved claims
   async getApprovedClaims(financeStaffId?: string) {
+    // Only return claims with APPROVED status
     const query: any = { status: ClaimStatus.APPROVED };
     
     if (financeStaffId) {
       query.financeStaffId = new Types.ObjectId(financeStaffId);
     }
     
-    // Get approved claims
+    // Get approved claims - NO POPULATION
     const claims = await this.claimsModel.find(query)
-      .populate('employeeId', 'firstName lastName employeeId')
+      .lean()
       .exec();
+    
+    console.log(`[getApprovedClaims] Found ${claims.length} claims with APPROVED status`);
     
     // Mark CLAIM_APPROVED notifications as read for this finance staff member
     if (financeStaffId) {
@@ -1440,30 +1532,71 @@ async getLeaveCompensation(employeeId: string) {
       ).exec();
     }
     
-    return claims;
+    // Transform to expected format - NO POPULATION, return pure strings only
+    const result = claims.map((claim: any) => {
+      // Helper to safely convert to string - NEVER returns objects
+      const toStr = (val: any): string => {
+        if (val == null) return '';
+        if (typeof val === 'object') {
+          if (val._id) return String(val._id);
+          return '';
+        }
+        return String(val);
+      };
+      
+      return {
+        id: toStr(claim._id),
+        employeeId: toStr(claim.employeeId), // Pure string ID, no population
+        employeeName: 'Employee ' + toStr(claim.employeeId).slice(-6), // Simple fallback
+        employeeNumber: 'N/A',
+        department: toStr(claim.department || 'N/A'),
+        title: toStr(claim.title || claim.claimType || 'Expense Claim'),
+        description: toStr(claim.description),
+        amount: claim.amount || 0,
+        category: toStr(claim.claimType || claim.category || 'General'),
+        period: toStr(claim.payPeriod),
+        approvedAt: claim.updatedAt || claim.createdAt,
+        approvedBy: toStr(claim.approvedBy || 'System'),
+        priority: toStr(claim.priority || 'medium'),
+        refundStatus: toStr(claim.refundStatus || 'pending'),
+        refundId: claim.refundId,
+        needsRefund: Boolean(claim.needsRefund)
+      };
+    });
+    
+    console.log('[getApprovedClaims] First result:', JSON.stringify(result[0], null, 2));
+    return result;
   }
 
   // ========== Refund Process Methods ==========
 
   // REQ-PY-45: Generate refund for disputes
-  async generateDisputeRefund(disputeId: string, financeStaffId: string, amount: number, description: string) {
-    const dispute = await this.disputesModel.findById(disputeId);
+  async generateDisputeRefund(disputeId: string, financeStaffId: string, amount: number, description: string, employeeId: string) {
+    // Try to find by custom disputeId field first, then by MongoDB _id
+    let dispute = await this.disputesModel.findOne({ disputeId: disputeId });
     if (!dispute) {
-      throw new NotFoundException('Dispute not found');
+      // Try MongoDB ObjectId if it's a valid ObjectId
+      if (Types.ObjectId.isValid(disputeId)) {
+        dispute = await this.disputesModel.findById(disputeId);
+      }
+    }
+    
+    if (!dispute) {
+      throw new NotFoundException(`Dispute not found with ID: ${disputeId}`);
     }
     
     if (dispute.status !== DisputeStatus.APPROVED) {
       throw new BadRequestException('Only approved disputes can generate refunds');
     }
     
-    // Check if refund already exists
-    const existingRefund = await this.refundsModel.findOne({ disputeId: new Types.ObjectId(disputeId) });
+    // Check if refund already exists using the dispute's MongoDB _id
+    const existingRefund = await this.refundsModel.findOne({ disputeId: dispute._id });
     if (existingRefund) {
       throw new BadRequestException('Refund already exists for this dispute');
     }
     
     const refund = new this.refundsModel({
-      disputeId: new Types.ObjectId(disputeId),
+      disputeId: dispute._id, // Use the dispute's MongoDB _id
       employeeId: dispute.employeeId,
       financeStaffId: new Types.ObjectId(financeStaffId),
       refundDetails: {
@@ -1473,28 +1606,41 @@ async getLeaveCompensation(employeeId: string) {
       status: RefundStatus.PENDING
     });
     
+    // Update dispute refund status
+    dispute.refundStatus = 'processed';
+    dispute.refundId = refund._id;
+    await dispute.save();
+    
     return refund.save();
   }
 
   // REQ-PY-46: Generate refund for expense claims
-  async generateClaimRefund(claimId: string, financeStaffId: string, amount: number, description: string) {
-    const claim = await this.claimsModel.findById(claimId);
+  async generateClaimRefund(claimId: string, financeStaffId: string, amount: number, description: string, employeeId: string) {
+    // Try to find by custom claimId field first, then by MongoDB _id
+    let claim = await this.claimsModel.findOne({ claimId: claimId });
     if (!claim) {
-      throw new NotFoundException('Claim not found');
+      // Try MongoDB ObjectId if it's a valid ObjectId
+      if (Types.ObjectId.isValid(claimId)) {
+        claim = await this.claimsModel.findById(claimId);
+      }
+    }
+    
+    if (!claim) {
+      throw new NotFoundException(`Claim not found with ID: ${claimId}`);
     }
     
     if (claim.status !== ClaimStatus.APPROVED) {
       throw new BadRequestException('Only approved claims can generate refunds');
     }
     
-    // Check if refund already exists
-    const existingRefund = await this.refundsModel.findOne({ claimId: new Types.ObjectId(claimId) });
+    // Check if refund already exists using the claim's MongoDB _id
+    const existingRefund = await this.refundsModel.findOne({ claimId: claim._id });
     if (existingRefund) {
       throw new BadRequestException('Refund already exists for this claim');
     }
     
     const refund = new this.refundsModel({
-      claimId: new Types.ObjectId(claimId),
+      claimId: claim._id, // Use the claim's MongoDB _id
       employeeId: claim.employeeId,
       financeStaffId: new Types.ObjectId(financeStaffId),
       refundDetails: {
@@ -1503,6 +1649,11 @@ async getLeaveCompensation(employeeId: string) {
       },
       status: RefundStatus.PENDING
     });
+    
+    // Update claim refund status
+    claim.refundStatus = 'processed';
+    claim.refundId = refund._id;
+    await claim.save();
     
     return refund.save();
   }
@@ -1668,14 +1819,34 @@ async getLeaveCompensation(employeeId: string) {
 
   // ========== CRUD Methods for Claims ==========
 
-  async getAllClaims(status?: string, employeeId?: string) {
+  async getAllClaims(filters?: {
+    status?: string;
+    claimType?: string;
+    employeeId?: string;
+    startDate?: string;
+    endDate?: string;
+    minAmount?: number;
+    maxAmount?: number;
+  }) {
     const query: any = {};
-    if (status) query.status = status;
-    if (employeeId) query.employeeId = new Types.ObjectId(employeeId);
+    if (filters?.status && filters.status !== 'all') query.status = filters.status;
+    if (filters?.claimType && filters.claimType !== 'all') query.claimType = filters.claimType;
+    if (filters?.employeeId) query.employeeId = new Types.ObjectId(filters.employeeId);
+    if (filters?.startDate || filters?.endDate) {
+      query.createdAt = {};
+      if (filters.startDate) query.createdAt.$gte = new Date(filters.startDate);
+      if (filters.endDate) query.createdAt.$lte = new Date(filters.endDate);
+    }
+    if (filters?.minAmount !== undefined || filters?.maxAmount !== undefined) {
+      query.amount = {};
+      if (filters.minAmount !== undefined) query.amount.$gte = filters.minAmount;
+      if (filters.maxAmount !== undefined) query.amount.$lte = filters.maxAmount;
+    }
     
     return this.claimsModel.find(query)
       .populate('employeeId', 'firstName lastName employeeId')
       .populate('financeStaffId', 'firstName lastName employeeId')
+      .sort({ createdAt: -1 })
       .exec();
   }
 
@@ -1718,14 +1889,21 @@ async getLeaveCompensation(employeeId: string) {
 
   async getAllDisputes(status?: string, employeeId?: string) {
     const query: any = {};
-    if (status) query.status = status;
+    if (status && status !== 'all') query.status = status;
     if (employeeId) query.employeeId = new Types.ObjectId(employeeId);
     
-    return this.disputesModel.find(query)
+    const disputes = await this.disputesModel.find(query)
       .populate('employeeId', 'firstName lastName employeeId')
       .populate('payslipId', 'payPeriod netSalary')
       .populate('financeStaffId', 'firstName lastName employeeId')
+      .sort({ createdAt: -1 })
       .exec();
+    
+    return {
+      success: true,
+      data: disputes,
+      count: disputes.length
+    };
   }
 
   async getDisputeById(id: string) {
