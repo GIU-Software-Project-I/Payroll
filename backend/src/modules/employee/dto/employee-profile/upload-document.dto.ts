@@ -1,7 +1,7 @@
 import { IsEnum, IsNotEmpty, IsOptional, IsString, IsDateString } from 'class-validator';
 import { DocumentType } from '../../models/employee/employee-document.schema';
 
-export class UploadDocumentDto {
+export class EmployeeProfileUploadDocumentDto {
     @IsNotEmpty()
     @IsString()
     fileName: string;

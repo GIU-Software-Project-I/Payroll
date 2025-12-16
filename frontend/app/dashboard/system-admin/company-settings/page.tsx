@@ -7,6 +7,7 @@ type CompanySettingsForm = {
   currency: string;
   timeZone: string;
   payDate: string;
+  status?: string;
 };
 
 export default function CompanySettingsPage() {
@@ -14,11 +15,14 @@ export default function CompanySettingsPage() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [errorSettings, setErrorSettings] = useState<string | null>(null);
   const [successSettings, setSuccessSettings] = useState<string | null>(null);
+  const [approving, setApproving] = useState(false);
+  const [lastSavedSnapshot, setLastSavedSnapshot] = useState<string>("");
 
   const [form, setForm] = useState<CompanySettingsForm>({
     currency: "EGP",
     timeZone: "Africa/Cairo",
     payDate: new Date().toISOString().split('T')[0],
+    status: "DRAFT",
   });
 
   const loadSettings = async () => {
@@ -32,7 +36,16 @@ export default function CompanySettingsPage() {
           currency: data.currency ?? "EGP",
           timeZone: data.timeZone ?? "Africa/Cairo",
           payDate: data.payDate ? new Date(data.payDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          // Frontend-only status persisted in localStorage
+          status: (typeof window !== 'undefined' && localStorage.getItem('companySettingsStatus')) || "DRAFT",
         });
+        // Initialize last saved snapshot based on loaded data
+        const snapshot = JSON.stringify({
+          currency: data.currency ?? "EGP",
+          timeZone: data.timeZone ?? "Africa/Cairo",
+          payDate: data.payDate ? new Date(data.payDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        });
+        setLastSavedSnapshot(snapshot);
       }
     } catch (e: any) {
       setErrorSettings(e?.message || "Failed to load settings");
@@ -57,12 +70,73 @@ export default function CompanySettingsPage() {
         payDate: form.payDate,
       };
       await payrollConfigurationService.updateCompanyWideSettings(payload);
-      setSuccessSettings("Company settings saved successfully");
+      // After final change, mark status as DRAFT locally (Step 1)
+      const snapshot = JSON.stringify(payload);
+      setLastSavedSnapshot(snapshot);
+      if (typeof window !== 'undefined') localStorage.setItem('companySettingsStatus', 'DRAFT');
+      setForm((f) => ({ ...f, status: 'DRAFT' }));
+      setSuccessSettings("Step 1 complete: Changes saved. Review then Approve (Step 2).");
     } catch (e: any) {
       setErrorSettings(e?.message || "Failed to save settings");
     } finally {
       setSavingSettings(false);
     }
+  };
+
+  const handleApprove = async () => {
+    // Frontend-only: toggle status locally and persist in localStorage
+    setApproving(true);
+    setErrorSettings(null);
+    setSuccessSettings(null);
+    try {
+      setForm((f) => {
+        const next = { ...f, status: 'APPROVED' };
+        if (typeof window !== 'undefined') localStorage.setItem('companySettingsStatus', next.status || 'APPROVED');
+        return next;
+      });
+      setSuccessSettings("Step 2 complete: Draft approved.");
+    } catch (e: any) {
+      setErrorSettings(e?.message || "Failed to approve settings locally");
+    } finally {
+      setApproving(false);
+    }
+  };
+
+  const handleReject = async () => {
+    // Frontend-only: toggle status locally and persist in localStorage
+    setApproving(true);
+    setErrorSettings(null);
+    setSuccessSettings(null);
+    try {
+      setForm((f) => {
+        const next = { ...f, status: 'REJECTED' };
+        if (typeof window !== 'undefined') localStorage.setItem('companySettingsStatus', next.status || 'REJECTED');
+        return next;
+      });
+      setSuccessSettings("Company settings rejected locally");
+    } catch (e: any) {
+      setErrorSettings(e?.message || "Failed to reject settings locally");
+    } finally {
+      setApproving(false);
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch(status) {
+      case 'DRAFT':
+        return <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800">DRAFT</span>;
+      case 'APPROVED':
+        return <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">APPROVED</span>;
+      case 'REJECTED':
+        return <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">REJECTED</span>;
+      default:
+        return <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">{status}</span>;
+    }
+  };
+
+  const isFormEqualToLastSaved = () => {
+    const current = JSON.stringify({ currency: form.currency, timeZone: form.timeZone, payDate: form.payDate });
+    return current === lastSavedSnapshot;
   };
 
   return (
@@ -75,10 +149,7 @@ export default function CompanySettingsPage() {
 
       {/* Main Settings Card */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-        <div className="p-6 border-b border-slate-100">
-          <h2 className="text-lg font-semibold text-slate-900">REQ-PY-15: Company Settings</h2>
-          <p className="text-xs text-slate-600 mt-1">Configure global company settings, payroll execution date, and timezone</p>
-        </div>
+    
 
   
 
@@ -99,6 +170,16 @@ export default function CompanySettingsPage() {
             <p className="text-slate-600">Loading settings...</p>
           ) : (
             <div className="space-y-4">
+              {/* Status Badge */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-slate-700">Status:</span>
+                {getStatusBadge(form.status || 'DRAFT')}
+              </div>
+              {/* Step guidance */}
+              <div className="text-xs text-slate-600">
+                <span className="font-medium">Step 1:</span> Save changes to create a draft. <span className="font-medium">Step 2:</span> Approve the draft to finalize.
+              </div>
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Currency</label>
@@ -163,6 +244,26 @@ export default function CompanySettingsPage() {
                 >
                   Reset
                 </button>
+
+                {/* Approve/Reject buttons - only show for DRAFT */}
+                {form.status === 'DRAFT' && (
+                  <>
+                    <button
+                      onClick={handleApprove}
+                      disabled={approving || !isFormEqualToLastSaved()}
+                      className="ml-auto px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm font-medium"
+                    >
+                      {approving ? "Processing..." : (isFormEqualToLastSaved() ? "Approve" : "Save first to approve")}
+                    </button>
+                    <button
+                      onClick={handleReject}
+                      disabled={approving}
+                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 text-sm font-medium"
+                    >
+                      {approving ? "Processing..." : "Reject"}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           )}

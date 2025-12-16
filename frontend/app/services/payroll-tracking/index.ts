@@ -49,8 +49,9 @@ export const payrollTrackingService = {
   },
 
   // GET /payroll/tracking/payslip/:payslipId/employee/:employeeId/download
+  // Returns a file blob for download
   downloadPayslip: async (payslipId: string, employeeId: string) => {
-    return apiService.get(`/payroll/tracking/payslip/${payslipId}/employee/${employeeId}/download`);
+    return apiService.downloadFile(`/payroll/tracking/payslip/${payslipId}/employee/${employeeId}/download`);
   },
 
   // GET /payroll/tracking/employee/:employeeId/base-salary
@@ -131,7 +132,7 @@ export const payrollTrackingService = {
 
   // GET /payroll/tracking/employee/:employeeId/tax-documents/:year/download
   downloadAnnualTaxStatement: async (employeeId: string, year: number) => {
-    return apiService.get(`/payroll/tracking/employee/${employeeId}/tax-documents/${year}/download`);
+    return apiService.downloadFile(`/payroll/tracking/employee/${employeeId}/tax-documents/${year}/download`);
   },
 
   // POST /payroll/tracking/employee/:employeeId/disputes

@@ -16,7 +16,6 @@ import { CurrentUser } from '../../../auth/decorators/current-user';
 import { SystemRole } from '../../../employee/enums/employee-profile.enums';
 import type { JwtPayload } from '../../../auth/token/jwt-payload';
 import { TerminationBenefitEditDto } from '../dto/termination-benefit-edit.dto';
-import { Query as NestQuery } from '@nestjs/common';
 
 @Controller('payroll-execution')
 @ApiTags('Payroll Execution')
@@ -294,7 +293,7 @@ export class PayrollExecutionController {
 	}
 
 	@UseGuards(AuthenticationGuard, AuthorizationGuard)
-	@Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.HR_MANAGER, SystemRole.FINANCE_STAFF, SystemRole.PAYROLL_MANAGER)
+	@Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.HR_MANAGER, SystemRole.FINANCE_STAFF, SystemRole.PAYROLL_MANAGER, SystemRole.HR_ADMIN)
 	@Get('runs')
 	@ApiOperation({ summary: 'List payroll runs with optional filters' })
 	@ApiQuery({ name: 'status', required: false })
@@ -303,16 +302,21 @@ export class PayrollExecutionController {
 	@ApiQuery({ name: 'limit', required: false, description: 'Items per page', type: Number })
 	@ApiResponse({ status: 200, description: 'List of payroll runs' })
 	async listRuns(
-		@NestQuery('status') status?: string,
-		@NestQuery('period') period?: string,
-		@NestQuery('page') page?: string,
-		@NestQuery('limit') limit?: string,
+		@Query('status') status?: string,
+		@Query('period') period?: string,
+		@Query('page') page?: string,
+		@Query('limit') limit?: string,
 		@CurrentUser() user?: JwtPayload,
 	) {
-		const pg = page ? Number(page) : 1;
-		const lm = limit ? Number(limit) : 10;
-		const result = await this.payrollService.listPayrollRuns({ status, period, page: pg, limit: lm }, user?.sub);
-		return result;
+		try {
+			const pg = page ? Number(page) : 1;
+			const lm = limit ? Number(limit) : 10;
+			const result = await this.payrollService.listPayrollRuns({ status, period, page: pg, limit: lm }, user?.sub);
+			return result;
+		} catch (error) {
+			console.error('[PayrollExecution] Error listing runs:', error);
+			throw error;
+		}
 	}
 
 	// ============ PAYSLIP ENDPOINTS (REQ-PY-8, BR 17) ============

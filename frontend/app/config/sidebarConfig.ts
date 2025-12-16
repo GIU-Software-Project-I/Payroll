@@ -99,6 +99,19 @@ const DEPARTMENT_HEAD_NAV: NavItem[] = [
     icon: 'clock',
   },
   {
+    label: 'Payroll Tracking',
+    href: '/dashboard/department-head/payroll-tracking',
+    icon: 'dollar-sign',
+    children: [
+      { label: 'My Payslips', href: '/dashboard/department-head/payroll-tracking/payslips', icon: 'file-text' },
+      { label: 'Salary History', href: '/dashboard/department-head/payroll-tracking/salary-history', icon: 'trending-up' },
+      { label: 'Deductions', href: '/dashboard/department-head/payroll-tracking/deductions', icon: 'credit-card' },
+      { label: 'Employer Contributions', href: '/dashboard/department-head/payroll-tracking/contributions', icon: 'briefcase' },
+      { label: 'Tax Documents', href: '/dashboard/department-head/payroll-tracking/tax-documents', icon: 'folder' },
+      { label: 'Claims & Disputes', href: '/dashboard/department-head/payroll-tracking/claims-disputes', icon: 'alert-circle' },
+    ],
+  },
+  {
     label: 'My Profile',
     href: '/dashboard/department-employee/employee-profile',
     icon: 'user',
@@ -160,6 +173,19 @@ const HR_MANAGER_NAV: NavItem[] = [
     icon: 'log-out',
   },
   {
+    label: 'Payroll Tracking',
+    href: '/dashboard/hr-manager/payroll-tracking',
+    icon: 'dollar-sign',
+    children: [
+      { label: 'My Payslips', href: '/dashboard/hr-manager/payroll-tracking/payslips', icon: 'file-text' },
+      { label: 'Salary History', href: '/dashboard/hr-manager/payroll-tracking/salary-history', icon: 'trending-up' },
+      { label: 'Deductions', href: '/dashboard/hr-manager/payroll-tracking/deductions', icon: 'credit-card' },
+      { label: 'Employer Contributions', href: '/dashboard/hr-manager/payroll-tracking/contributions', icon: 'briefcase' },
+      { label: 'Tax Documents', href: '/dashboard/hr-manager/payroll-tracking/tax-documents', icon: 'folder' },
+      { label: 'Claims & Disputes', href: '/dashboard/hr-manager/payroll-tracking/claims-disputes', icon: 'alert-circle' },
+    ],
+  },
+  {
     label: 'My Profile',
     href: '/dashboard/department-employee/employee-profile',
     icon: 'user',
@@ -203,6 +229,19 @@ const HR_EMPLOYEE_NAV: NavItem[] = [
     label: 'Leaves',
     href: '/dashboard/hr-employee/leaves',
     icon: 'calendar',
+  },
+  {
+    label: 'Payroll Tracking',
+    href: '/dashboard/hr-employee/payroll-tracking',
+    icon: 'dollar-sign',
+    children: [
+      { label: 'My Payslips', href: '/dashboard/hr-employee/payroll-tracking/payslips', icon: 'file-text' },
+      { label: 'Salary History', href: '/dashboard/hr-employee/payroll-tracking/salary-history', icon: 'trending-up' },
+      { label: 'Deductions', href: '/dashboard/hr-employee/payroll-tracking/deductions', icon: 'credit-card' },
+      { label: 'Employer Contributions', href: '/dashboard/hr-employee/payroll-tracking/contributions', icon: 'briefcase' },
+      { label: 'Tax Documents', href: '/dashboard/hr-employee/payroll-tracking/tax-documents', icon: 'folder' },
+      { label: 'Claims & Disputes', href: '/dashboard/hr-employee/payroll-tracking/claims-disputes', icon: 'alert-circle' },
+    ],
   },
   {
     label: 'My Profile',
@@ -271,6 +310,19 @@ const HR_ADMIN_NAV: NavItem[] = [
     href: '/dashboard/offboarding',
     icon: 'log-out',
   },
+  {
+    label: 'Payroll Tracking',
+    href: '/dashboard/hr-admin/payroll-tracking',
+    icon: 'dollar-sign',
+    children: [
+      { label: 'My Payslips', href: '/dashboard/hr-admin/payroll-tracking/payslips', icon: 'file-text' },
+      { label: 'Salary History', href: '/dashboard/hr-admin/payroll-tracking/salary-history', icon: 'trending-up' },
+      { label: 'Deductions', href: '/dashboard/hr-admin/payroll-tracking/deductions', icon: 'credit-card' },
+      { label: 'Employer Contributions', href: '/dashboard/hr-admin/payroll-tracking/contributions', icon: 'briefcase' },
+      { label: 'Tax Documents', href: '/dashboard/hr-admin/payroll-tracking/tax-documents', icon: 'folder' },
+      { label: 'Claims & Disputes', href: '/dashboard/hr-admin/payroll-tracking/claims-disputes', icon: 'alert-circle' },
+    ],
+  },
 ];
 
 // =====================================================
@@ -317,6 +369,19 @@ const SYSTEM_ADMIN_NAV: NavItem[] = [
     href: '/dashboard/system-admin/integrations',
     icon: 'link',
   },
+  {
+    label: 'Payroll Tracking',
+    href: '/dashboard/system-admin/payroll-tracking',
+    icon: 'dollar-sign',
+    children: [
+      { label: 'My Payslips', href: '/dashboard/system-admin/payroll-tracking/payslips', icon: 'file-text' },
+      { label: 'Salary History', href: '/dashboard/system-admin/payroll-tracking/salary-history', icon: 'trending-up' },
+      { label: 'Deductions', href: '/dashboard/system-admin/payroll-tracking/deductions', icon: 'credit-card' },
+      { label: 'Employer Contributions', href: '/dashboard/system-admin/payroll-tracking/contributions', icon: 'briefcase' },
+      { label: 'Tax Documents', href: '/dashboard/system-admin/payroll-tracking/tax-documents', icon: 'folder' },
+      { label: 'Claims & Disputes', href: '/dashboard/system-admin/payroll-tracking/claims-disputes', icon: 'alert-circle' },
+    ],
+  },
 ];
 
 // =====================================================
@@ -336,10 +401,9 @@ const PAYROLL_SPECIALIST_NAV: NavItem[] = [
       { label: 'Pay Grades', href: '/dashboard/payroll-specialist/pay-grades', icon: 'briefcase' },
       { label: 'Payroll Policies', href: '/dashboard/payroll-specialist/payroll-policies', icon: 'file-text' },
       { label: 'Pay Types', href: '/dashboard/payroll-specialist/pay-types', icon: 'credit-card' },
-      { label: 'Allowances', href: '/dashboard/payroll-specialist/allowances', icon: 'gift' },
-      { label: 'Signing Bonuses', href: '/dashboard/payroll-specialist/signing-bonuses', icon: 'award' },
-      { label: 'Termination Benefits', href: '/dashboard/payroll-specialist/termination-benefits', icon: 'package' },
-      { label: 'Tax Rules', href: '/dashboard/payroll-specialist/tax-rules', icon: 'percent' },
+      { label: 'Allowances', href: '/dashboard/payroll-specialist/allowances', icon: 'dollar-sign' },
+      { label: 'Signing Bonuses', href: '/dashboard/payroll-specialist/signing-bonuses', icon: 'dollar-sign' },
+      { label: 'Termination Benefits', href: '/dashboard/payroll-specialist/termination-benefits', icon: 'log-out' },
       { label: 'Insurance Brackets', href: '/dashboard/payroll-specialist/insurance-brackets', icon: 'shield' },
     ],
   },
@@ -369,6 +433,19 @@ const PAYROLL_SPECIALIST_NAV: NavItem[] = [
     label: 'Departmental Reports',
     href: '/dashboard/payroll-specialist/reports/departmental',
     icon: 'trending-up',
+  },
+  {
+    label: 'Payroll Tracking',
+    href: '/dashboard/payroll-specialist/payroll-tracking',
+    icon: 'dollar-sign',
+    children: [
+      { label: 'My Payslips', href: '/dashboard/payroll-specialist/payroll-tracking/payslips', icon: 'file-text' },
+      { label: 'Salary History', href: '/dashboard/payroll-specialist/payroll-tracking/salary-history', icon: 'trending-up' },
+      { label: 'Deductions', href: '/dashboard/payroll-specialist/payroll-tracking/deductions', icon: 'credit-card' },
+      { label: 'Employer Contributions', href: '/dashboard/payroll-specialist/payroll-tracking/contributions', icon: 'briefcase' },
+      { label: 'Tax Documents', href: '/dashboard/payroll-specialist/payroll-tracking/tax-documents', icon: 'folder' },
+      { label: 'Claims & Disputes', href: '/dashboard/payroll-specialist/payroll-tracking/claims-disputes', icon: 'alert-circle' },
+    ],
   },
   {
     label: 'My Profile',
@@ -418,6 +495,19 @@ const PAYROLL_MANAGER_NAV: NavItem[] = [
     icon: 'check-circle',
   },
   {
+    label: 'Payroll Tracking',
+    href: '/dashboard/payroll-manager/payroll-tracking',
+    icon: 'dollar-sign',
+    children: [
+      { label: 'My Payslips', href: '/dashboard/payroll-manager/payroll-tracking/payslips', icon: 'file-text' },
+      { label: 'Salary History', href: '/dashboard/payroll-manager/payroll-tracking/salary-history', icon: 'trending-up' },
+      { label: 'Deductions', href: '/dashboard/payroll-manager/payroll-tracking/deductions', icon: 'credit-card' },
+      { label: 'Employer Contributions', href: '/dashboard/payroll-manager/payroll-tracking/contributions', icon: 'briefcase' },
+      { label: 'Tax Documents', href: '/dashboard/payroll-manager/payroll-tracking/tax-documents', icon: 'folder' },
+      { label: 'Claims & Disputes', href: '/dashboard/payroll-manager/payroll-tracking/claims-disputes', icon: 'alert-circle' },
+    ],
+  },
+  {
     label: 'My Profile',
     href: '/dashboard/department-employee/employee-profile',
     icon: 'user',
@@ -457,6 +547,19 @@ const RECRUITER_NAV: NavItem[] = [
     label: 'Reports',
     href: '/dashboard/recruiter/reports',
     icon: 'file-text',
+  },
+  {
+    label: 'Payroll Tracking',
+    href: '/dashboard/recruiter/payroll-tracking',
+    icon: 'dollar-sign',
+    children: [
+      { label: 'My Payslips', href: '/dashboard/recruiter/payroll-tracking/payslips', icon: 'file-text' },
+      { label: 'Salary History', href: '/dashboard/recruiter/payroll-tracking/salary-history', icon: 'trending-up' },
+      { label: 'Deductions', href: '/dashboard/recruiter/payroll-tracking/deductions', icon: 'credit-card' },
+      { label: 'Employer Contributions', href: '/dashboard/recruiter/payroll-tracking/contributions', icon: 'briefcase' },
+      { label: 'Tax Documents', href: '/dashboard/recruiter/payroll-tracking/tax-documents', icon: 'folder' },
+      { label: 'Claims & Disputes', href: '/dashboard/recruiter/payroll-tracking/claims-disputes', icon: 'alert-circle' },
+    ],
   },
   {
     label: 'My Profile',
@@ -503,6 +606,19 @@ const FINANCE_STAFF_NAV: NavItem[] = [
     label: 'Refund Generation',
     href: '/dashboard/finance-staff/refunds',
     icon: 'dollar-sign',
+  },
+  {
+    label: 'Payroll Tracking',
+    href: '/dashboard/finance-staff/payroll-tracking',
+    icon: 'dollar-sign',
+    children: [
+      { label: 'My Payslips', href: '/dashboard/finance-staff/payroll-tracking/payslips', icon: 'file-text' },
+      { label: 'Salary History', href: '/dashboard/finance-staff/payroll-tracking/salary-history', icon: 'trending-up' },
+      { label: 'Deductions', href: '/dashboard/finance-staff/payroll-tracking/deductions', icon: 'credit-card' },
+      { label: 'Employer Contributions', href: '/dashboard/finance-staff/payroll-tracking/contributions', icon: 'briefcase' },
+      { label: 'Tax Documents', href: '/dashboard/finance-staff/payroll-tracking/tax-documents', icon: 'folder' },
+      { label: 'Claims & Disputes', href: '/dashboard/finance-staff/payroll-tracking/claims-disputes', icon: 'alert-circle' },
+    ],
   },
   {
     label: 'My Profile',
@@ -569,12 +685,24 @@ const LEGAL_POLICY_ADMIN_NAV: NavItem[] = [
     label: 'Documents',
     href: '/dashboard/legal-policy-admin/documents',
     icon: 'folder',
-  },{
+  },  {
     label: 'Tax Rules',
     href: '/dashboard/legal-policy-admin/tax-rule',
     icon: 'document-text',
   },
-  
+  {
+    label: 'Payroll Tracking',
+    href: '/dashboard/legal-policy-admin/payroll-tracking',
+    icon: 'dollar-sign',
+    children: [
+      { label: 'My Payslips', href: '/dashboard/legal-policy-admin/payroll-tracking/payslips', icon: 'file-text' },
+      { label: 'Salary History', href: '/dashboard/legal-policy-admin/payroll-tracking/salary-history', icon: 'trending-up' },
+      { label: 'Deductions', href: '/dashboard/legal-policy-admin/payroll-tracking/deductions', icon: 'credit-card' },
+      { label: 'Employer Contributions', href: '/dashboard/legal-policy-admin/payroll-tracking/contributions', icon: 'briefcase' },
+      { label: 'Tax Documents', href: '/dashboard/legal-policy-admin/payroll-tracking/tax-documents', icon: 'folder' },
+      { label: 'Claims & Disputes', href: '/dashboard/legal-policy-admin/payroll-tracking/claims-disputes', icon: 'alert-circle' },
+    ],
+  },
   {
     label: 'My Profile',
     href: '/dashboard/department-employee/employee-profile',

@@ -28,6 +28,8 @@ async function bootstrap() {
             'http://localhost:3000',
             'http://127.0.0.1:3000',
             'http://localhost:4000',
+            'http://127.0.0.1:4000',
+            'http://192.168.1.20:4000',
             'http://localhost:500',
             'http://localhost:8000',
             'http://192.168.100.4:4000',
@@ -53,10 +55,15 @@ async function bootstrap() {
 
     await app.listen(port);
 
-    console.log(`Application running on http://localhost:${port}`);
-
-    console.log(`Swagger running on http://localhost:${port}/api`);
+    console.log(`\n========================================`);
+    console.log(`✅ Application running on http://localhost:${port}`);
+    console.log(`✅ Swagger running on http://localhost:${port}/api`);
+    console.log(`✅ Health check: http://localhost:${port}/auth/health`);
+    console.log(`========================================\n`);
 }
-bootstrap()
+bootstrap().catch((error) => {
+    console.error('Failed to start application:', error);
+    process.exit(1);
+});
 
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { payrollConfigurationService } from '@/app/services/payroll-configuration';
+import { useAuth } from '@/app/context/AuthContext';
 
 // Type definitions
 interface InsuranceBracket {
@@ -36,6 +37,7 @@ const insuranceTypeOptions = [
   { value: 'Unemployment Insurance', label: 'Unemployment Insurance' },
   { value: 'Disability Insurance', label: 'Disability Insurance' },
   { value: 'Life Insurance', label: 'Life Insurance' },
+  { value: 'custom', label: 'Custom Insurance Type' },
 ];
 
 const statusColors = {
@@ -51,6 +53,7 @@ const statusLabels = {
 };
 
 export default function InsuranceBracketsPage() {
+  const { user } = useAuth();
   const [brackets, setBrackets] = useState<InsuranceBracket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +68,7 @@ export default function InsuranceBracketsPage() {
   // Form state
   const [formData, setFormData] = useState({
     name: '',
+    customName: '',
     amount: '',
     minSalary: '',
     maxSalary: '',
@@ -123,8 +127,30 @@ export default function InsuranceBracketsPage() {
   const validateForm = () => {
     const errors: string[] = [];
 
-    // Required fields
-    if (!formData.name) errors.push('Insurance name is required');
+    // Determine the final name
+    const finalName = formData.name === 'custom' ? formData.customName : formData.name;
+
+    // Required fields validation
+    if (!selectedBracket) {
+      // Only validate name for new creation
+      if (!formData.name) {
+        errors.push('Please select an insurance type');
+      } else if (formData.name === 'custom' && !formData.customName.trim()) {
+        errors.push('Custom insurance name is required');
+      }
+
+      // Check for duplicate name only when creating new
+      if (finalName) {
+        const isDuplicate = brackets.some(bracket => 
+          bracket.name.toLowerCase() === finalName.toLowerCase()
+        );
+        if (isDuplicate) {
+          errors.push(`Insurance name "${finalName}" already exists. Please use a different name.`);
+        }
+      }
+    }
+
+    // Required numeric fields
     if (!formData.amount) errors.push('Amount is required');
     if (!formData.minSalary) errors.push('Minimum salary is required');
     if (!formData.maxSalary) errors.push('Maximum salary is required');
@@ -159,18 +185,31 @@ export default function InsuranceBracketsPage() {
         return;
       }
 
+      // Determine the final name
+      const finalName = formData.name === 'custom' ? formData.customName : formData.name;
+
+      // Check if user is authenticated and has an ID
+      if (!user?.id) {
+        setError('You must be logged in to create an insurance bracket');
+        return;
+      }
+
+      console.log('Current user ID:', user.id); // Debug log
+      console.log('User object:', user); // Debug log
+
       setActionLoading(true);
       
       const apiData = {
-        name: formData.name,
+        name: finalName,
         amount: parseFloat(formData.amount),
         minSalary: parseFloat(formData.minSalary),
         maxSalary: parseFloat(formData.maxSalary),
         employeeRate: parseFloat(formData.employeeRate),
         employerRate: parseFloat(formData.employerRate),
+        createdByEmployeeId: user.id, // Make sure this is the employee ID, not user ID
       };
       
-      console.log('Creating insurance bracket with data:', apiData);
+      console.log('Sending API data:', apiData); // Debug log
       
       const response = await payrollConfigurationService.createInsuranceBracket(apiData);
       
@@ -217,53 +256,53 @@ export default function InsuranceBracketsPage() {
   };
 
   const handleUpdateInsurance = async () => {
-  if (!selectedBracket) return;
+    if (!selectedBracket) return;
 
-  try {
-    const validationErrors = validateForm();
-    if (validationErrors.length > 0) {
-      setError(validationErrors.join('. '));
-      return;
+    try {
+      const validationErrors = validateForm();
+      if (validationErrors.length > 0) {
+        setError(validationErrors.join('. '));
+        return;
+      }
+
+      if (selectedBracket.status !== 'draft') {
+        setError('Only DRAFT insurance brackets can be edited.');
+        return;
+      }
+
+      setActionLoading(true);
+      setError(null);
+
+      const updateData = {
+        // Name is NOT included here - cannot be changed after creation
+        amount: parseFloat(formData.amount),
+        minSalary: parseFloat(formData.minSalary),
+        maxSalary: parseFloat(formData.maxSalary),
+        employeeRate: parseFloat(formData.employeeRate),
+        employerRate: parseFloat(formData.employerRate),
+      };
+
+      const response = await payrollConfigurationService.updateInsuranceBracket(
+        selectedBracket._id,
+        updateData
+      );
+      
+      if (response.error) {
+        setError(response.error);
+        return;
+      }
+
+      setSuccess('Insurance bracket updated successfully');
+      setShowModal(false);
+      resetForm();
+      fetchInsuranceBrackets();
+
+    } catch (err: any) {
+      setError(err.message || 'Failed to update insurance bracket');
+    } finally {
+      setActionLoading(false);
     }
-
-    if (selectedBracket.status !== 'draft') {
-      setError('Only DRAFT insurance brackets can be edited.');
-      return;
-    }
-
-    setActionLoading(true);
-    setError(null);
-
-    const updateData = {
-      amount: parseFloat(formData.amount),
-      minSalary: parseFloat(formData.minSalary),
-      maxSalary: parseFloat(formData.maxSalary),
-      employeeRate: parseFloat(formData.employeeRate),
-      employerRate: parseFloat(formData.employerRate),
-    };
-
-    const response = await payrollConfigurationService.updateInsuranceBracket(
-      selectedBracket._id,
-      updateData
-    );
-    
-    if (response.error) {
-      setError(response.error);
-      return;
-    }
-
-    setSuccess('Insurance bracket updated successfully');
-    setShowModal(false);
-    resetForm();
-    fetchInsuranceBrackets();
-
-  } catch (err: any) {
-    setError(err.message || 'Failed to update insurance bracket');
-  } finally {
-    setActionLoading(false);
-  }
-};
-
+  };
 
   const handleDeleteInsurance = async (id: string) => {
     if (!confirm('Are you sure you want to delete this insurance bracket? This action cannot be undone.')) {
@@ -287,51 +326,50 @@ export default function InsuranceBracketsPage() {
     }
   };
 
-const handleCalculateContributions = async () => {
-  if (!selectedBracket) return;
+  const handleCalculateContributions = async () => {
+    if (!selectedBracket) return;
 
-  try {
-    const salary = parseFloat(calculationData.salary);
-    if (isNaN(salary) || salary < 0) {
-      setError('Please enter a valid positive salary amount');
-      setCalculationResult(null);
-      return;
-    }
-
-    setActionLoading(true);
-    setCalculationResult(null); // Clear previous results
-    setError(null); // Clear previous errors
-
-    const response = await payrollConfigurationService.calculateContributions(
-      selectedBracket._id,
-      salary
-    );
-
-    if (response.error) {
-      throw new Error(response.error);
-    }
-
-    if (response.data) {
-      const result = response.data as ContributionCalculation;
-
-      // Set calculation result
-      setCalculationResult(result);
-
-      // Show error only if salary is invalid
-      if (!result.isValid) {
-        setError(
-          `Salary does not fall within this insurance bracket range (${selectedBracket.minSalary} - ${selectedBracket.maxSalary})`
-        );
+    try {
+      const salary = parseFloat(calculationData.salary);
+      if (isNaN(salary) || salary < 0) {
+        setError('Please enter a valid positive salary amount');
+        setCalculationResult(null);
+        return;
       }
-    }
-  } catch (err: any) {
-    setError(err.message || 'Failed to calculate contributions');
-    setCalculationResult(null);
-  } finally {
-    setActionLoading(false);
-  }
-};
 
+      setActionLoading(true);
+      setCalculationResult(null); // Clear previous results
+      setError(null); // Clear previous errors
+
+      const response = await payrollConfigurationService.calculateContributions(
+        selectedBracket._id,
+        salary
+      );
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
+      if (response.data) {
+        const result = response.data as ContributionCalculation;
+
+        // Set calculation result
+        setCalculationResult(result);
+
+        // Show error only if salary is invalid
+        if (!result.isValid) {
+          setError(
+            `Salary does not fall within this insurance bracket range (${selectedBracket.minSalary} - ${selectedBracket.maxSalary})`
+          );
+        }
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to calculate contributions');
+      setCalculationResult(null);
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const handleEditClick = (bracket: InsuranceBracket) => {
     // Check if bracket can be edited (only draft status)
@@ -342,7 +380,8 @@ const handleCalculateContributions = async () => {
     
     setSelectedBracket(bracket);
     setFormData({
-      name: bracket.name,
+      name: '', // Not used for editing - display only
+      customName: '', // Not used for editing - display only
       amount: bracket.amount.toString(),
       minSalary: bracket.minSalary.toString(),
       maxSalary: bracket.maxSalary.toString(),
@@ -369,6 +408,7 @@ const handleCalculateContributions = async () => {
   const resetForm = () => {
     setFormData({
       name: '',
+      customName: '',
       amount: '',
       minSalary: '',
       maxSalary: '',
@@ -623,6 +663,7 @@ const handleCalculateContributions = async () => {
           <li>• You can <span className="font-semibold">view all</span> insurance brackets (draft, approved, rejected)</li>
           <li>• You can <span className="font-semibold">calculate contributions</span> for any insurance bracket</li>
           <li>• <span className="font-semibold">Approved</span> and <span className="font-semibold">rejected</span> brackets cannot be modified</li>
+          <li>• <span className="font-semibold">Note:</span> Insurance type/name cannot be changed after creation</li>
           <li>• Insurance brackets define salary ranges and contribution percentages for automatic payroll deductions</li>
           <li>• <span className="font-semibold">Compliance:</span> Configurations must follow Social Insurance and Pensions Law</li>
           <li>• <span className="font-semibold">Note:</span> HR Manager has exclusive approval authority for insurance configurations</li>
@@ -641,28 +682,71 @@ const handleCalculateContributions = async () => {
             <div className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Insurance Type *
+                  Insurance Type {selectedBracket && <span className="text-slate-400">(Cannot be changed)</span>}
                 </label>
-                <select
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                  disabled={!!selectedBracket} // Cannot change name when editing
-                >
-                  <option value="">Select insurance type</option>
-                  {insuranceTypeOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-slate-500 mt-1">Select the type of insurance (e.g., Health, Social, etc.)</p>
-                {selectedBracket && (
-                  <p className="text-xs text-amber-600 mt-1">Insurance type cannot be changed after creation</p>
+                {selectedBracket ? (
+                  // Show as read-only display when editing
+                  <div className="w-full px-4 py-3 border border-slate-300 rounded-lg bg-slate-50 text-slate-900 font-medium">
+                    {selectedBracket.name}
+                  </div>
+                ) : (
+                  // Show normal dropdown when creating
+                  <>
+                    <select
+                      name="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    >
+                      <option value="">Select insurance type</option>
+                      {insuranceTypeOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {formData.name === 'custom' 
+                        ? 'Enter a custom insurance name below' 
+                        : 'Select a predefined insurance type or choose "Custom Insurance Type"'}
+                    </p>
+                  </>
                 )}
               </div>
+              
+              {/* Custom Name Input - Only shown when creating and "Custom Insurance Type" is selected */}
+              {formData.name === 'custom' && !selectedBracket && (
+                <div className="animate-fadeIn">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Custom Insurance Name *
+                  </label>
+                  <input
+                    type="text"
+                    name="customName"
+                    value={formData.customName}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required={formData.name === 'custom'}
+                    placeholder="e.g., Vision Insurance, Dental Insurance, etc."
+                    maxLength={100}
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    Enter a unique name for your custom insurance type. 
+                    {formData.customName && (
+                      <span className="ml-1">
+                        {brackets.some(bracket => 
+                          bracket.name.toLowerCase() === formData.customName.toLowerCase()
+                        ) ? (
+                          <span className="text-red-600 font-medium">⚠️ This name already exists!</span>
+                        ) : (
+                          <span className="text-green-600">✓ Available</span>
+                        )}
+                      </span>
+                    )}
+                  </p>
+                </div>
+              )}
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -791,7 +875,8 @@ const handleCalculateContributions = async () => {
                   <li>• Maximum salary must be greater than minimum salary</li>
                   <li>• Contribution rates must be between 0% and 100%</li>
                   <li>• Total contribution rate (employee + employer) cannot exceed 100%</li>
-                  <li>• Once created, insurance type cannot be changed</li>
+                  <li>• Insurance name must be unique - duplicates are not allowed</li>
+                  <li>• <span className="font-semibold">Insurance type/name cannot be changed after creation</span></li>
                   <li>• All brackets start in DRAFT status and require HR Manager approval</li>
                 </ul>
               </div>

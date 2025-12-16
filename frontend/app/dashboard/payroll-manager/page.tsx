@@ -25,8 +25,21 @@ export default function PayrollManagerPage() {
   }, []);
 
   const fetchStats = async () => {
+    setLoading(true);
     try {
       const res = await payrollExecutionService.listRuns({ page: 1, limit: 100 });
+      
+      if (res?.error) {
+        console.error('Failed to fetch stats:', res.error);
+        setStats({
+          pendingApprovals: 0,
+          totalPayroll: 0,
+          exceptions: 0,
+          frozenRuns: 0,
+        });
+        return;
+      }
+      
       const data = (res?.data || res) as any;
       const items = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
       
@@ -36,7 +49,7 @@ export default function PayrollManagerPage() {
       // Pending manager approval: status is 'under_review' (submitted by specialist for manager review)
       const pending = items.filter((r: any) => {
         const status = normalizeStatus(r.status);
-        return status === 'under_review';
+        return status === 'under_review' || status === 'under review';
       }).length;
       
       const totalPay = items.reduce((sum: number, r: any) => sum + (r.totalnetpay || r.totalNetPay || 0), 0);
@@ -54,8 +67,14 @@ export default function PayrollManagerPage() {
         exceptions: totalExceptions,
         frozenRuns: frozen,
       });
-    } catch (e) {
+    } catch (e: any) {
       console.error('Failed to fetch stats:', e);
+      setStats({
+        pendingApprovals: 0,
+        totalPayroll: 0,
+        exceptions: 0,
+        frozenRuns: 0,
+      });
     } finally {
       setLoading(false);
     }

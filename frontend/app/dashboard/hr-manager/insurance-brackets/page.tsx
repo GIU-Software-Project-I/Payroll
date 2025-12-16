@@ -8,7 +8,6 @@ import { useAuth } from "@/app/context/AuthContext";
 interface InsuranceBracket {
   id: string;
   name: string;
-  amount: number;
   minSalary: number;
   maxSalary: number;
   employeeRate: number;
@@ -22,8 +21,6 @@ interface InsuranceBracket {
 
 type EditState = {
   id: string;
-  name: string;
-  amount: string;
   minSalary: string;
   maxSalary: string;
   employeeRate: string;
@@ -48,7 +45,6 @@ export default function InsuranceBracketsPage() {
     return {
       id: raw.id || raw._id,
       name: raw.name || raw.insuranceName || "",
-      amount: Number(raw.amount || 0),
       minSalary: Number(raw.minSalary || raw.min_salary || 0),
       maxSalary: Number(raw.maxSalary || raw.max_salary || 0),
       employeeRate: Number(raw.employeeRate || raw.employee_rate || 0),
@@ -82,8 +78,6 @@ export default function InsuranceBracketsPage() {
   const beginEdit = (bracket: InsuranceBracket) => {
     setEdit({
       id: bracket.id,
-      name: bracket.name,
-      amount: String(bracket.amount),
       minSalary: String(bracket.minSalary),
       maxSalary: String(bracket.maxSalary),
       employeeRate: String(bracket.employeeRate),
@@ -103,15 +97,17 @@ export default function InsuranceBracketsPage() {
 
     try {
       const payload = {
-        name: edit.name.trim(),
-        amount: Number(edit.amount),
         minSalary: Number(edit.minSalary),
         maxSalary: Number(edit.maxSalary),
         employeeRate: Number(edit.employeeRate),
         employerRate: Number(edit.employerRate),
       };
 
-      await payrollConfigurationService.updateInsuranceBracket(edit.id, payload);
+      const res = await payrollConfigurationService.updateInsuranceBracket(edit.id, payload);
+      if ((res as any)?.error) {
+        setError((res as any).error || "Failed to update insurance bracket");
+        return;
+      }
       setSuccess("Insurance bracket updated successfully");
       setEdit(null);
       await load();
@@ -130,7 +126,11 @@ export default function InsuranceBracketsPage() {
     setSuccess(null);
 
     try {
-      await payrollConfigurationService.approveInsuranceBracket(id, { approvedBy: user.id });
+      const res = await payrollConfigurationService.approveInsuranceBracket(id, { approvedBy: user.id });
+      if ((res as any)?.error) {
+        setError((res as any).error || "Failed to approve");
+        return;
+      }
       setSuccess("Insurance bracket approved successfully");
       await load();
     } catch (e: any) {
@@ -148,7 +148,11 @@ export default function InsuranceBracketsPage() {
     setSuccess(null);
 
     try {
-      await payrollConfigurationService.rejectInsuranceBracket(id, { approvedBy: user.id });
+      const res = await payrollConfigurationService.rejectInsuranceBracket(id, { approvedBy: user.id });
+      if ((res as any)?.error) {
+        setError((res as any).error || "Failed to reject");
+        return;
+      }
       setSuccess("Insurance bracket rejected");
       await load();
     } catch (e: any) {
@@ -163,7 +167,11 @@ export default function InsuranceBracketsPage() {
     setSuccess(null);
 
     try {
-      await payrollConfigurationService.deleteInsuranceBracket(id);
+      const res = await payrollConfigurationService.deleteInsuranceBracket(id);
+      if ((res as any)?.error) {
+        setError((res as any).error || "Failed to delete");
+        return;
+      }
       setSuccess("Insurance bracket deleted successfully");
       await load();
     } catch (e: any) {
@@ -231,7 +239,6 @@ export default function InsuranceBracketsPage() {
               <thead>
                 <tr className="text-left border-b bg-slate-50">
                   <th className="py-2 px-3">Bracket Name</th>
-                  <th className="py-2 px-3">Amount</th>
                   <th className="py-2 px-3">Salary Range</th>
                   <th className="py-2 px-3">Employee%</th>
                   <th className="py-2 px-3">Employer%</th>
@@ -244,27 +251,7 @@ export default function InsuranceBracketsPage() {
                 {filtered.map((b) => (
                   <tr key={b.id} className="border-b hover:bg-slate-50">
                     <td className="py-2 px-3">
-                      {edit?.id === b.id ? (
-                        <input
-                          className="border rounded px-2 py-1 w-full"
-                          value={edit.name}
-                          onChange={(e) => setEdit((s) => (s ? { ...s, name: e.target.value } : s))}
-                        />
-                      ) : (
-                        <span className="font-medium text-slate-900">{b.name}</span>
-                      )}
-                    </td>
-                    <td className="py-2 px-3">
-                      {edit?.id === b.id ? (
-                        <input
-                          className="border rounded px-2 py-1 w-20"
-                          type="number"
-                          value={edit.amount}
-                          onChange={(e) => setEdit((s) => (s ? { ...s, amount: e.target.value } : s))}
-                        />
-                      ) : (
-                        <span className="tabular-nums">{b.amount}</span>
-                      )}
+                      <span className="font-medium text-slate-900">{b.name}</span>
                     </td>
                     <td className="py-2 px-3">
                       {edit?.id === b.id ? (
@@ -365,20 +352,20 @@ export default function InsuranceBracketsPage() {
                               >
                                 ✗ Reject
                               </button>
+                              <button
+                                className="px-3 py-1 border rounded hover:bg-blue-50 text-xs"
+                                onClick={() => beginEdit(b)}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                className="px-3 py-1 border rounded hover:bg-red-50 text-xs"
+                                onClick={() => deleteItem(b.id)}
+                              >
+                                Delete
+                              </button>
                             </>
                           )}
-                          <button
-                            className="px-3 py-1 border rounded hover:bg-blue-50 text-xs"
-                            onClick={() => beginEdit(b)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="px-3 py-1 border rounded hover:bg-red-50 text-xs"
-                            onClick={() => deleteItem(b.id)}
-                          >
-                            Delete
-                          </button>
                         </div>
                       )}
                     </td>

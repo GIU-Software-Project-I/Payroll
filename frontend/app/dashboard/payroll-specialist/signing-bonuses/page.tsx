@@ -184,40 +184,22 @@ export default function SigningBonusesPage() {
 
     setActionLoading(true);
     
-    // Get the employee ID - this is REQUIRED by the backend DTO
-    let createdByEmployeeId = '';
+    // Get the employee ID - REQUIRED by backend DTO
+    let createdByEmployeeId = user?.id || '';
     
-    // First, try to get it from localStorage
-    const storedUser = localStorage.getItem('hr_system_user');
-    if (storedUser) {
+    // Fallback to localStorage if user.id is not available
+    if (!createdByEmployeeId) {
       try {
-        const userData = JSON.parse(storedUser);
-        console.log('User data from localStorage:', userData);
-        
-        // The backend expects a string for createdByEmployeeId
-        // We should use the user's MongoDB _id as this is likely what the backend expects
-        if (userData.id) {
-          createdByEmployeeId = userData.id; // This should be the MongoDB ObjectId string
-        } else if (userData._id) {
-          createdByEmployeeId = userData._id; // Alternative field name
+        const storedUser = localStorage.getItem('hr_system_user');
+        if (storedUser) {
+          const userData = JSON.parse(storedUser);
+          createdByEmployeeId = userData.id || userData._id || '';
         }
-        
-        console.log('Using employee ID for signing bonus:', createdByEmployeeId);
       } catch (e) {
-        console.error('Failed to parse user data:', e);
+        console.error('Failed to get user from localStorage:', e);
       }
     }
     
-    // If still empty, try from useAuth hook
-    if (!createdByEmployeeId && user) {
-      console.log('User from useAuth:', user);
-      
-      if (user.id) {
-        createdByEmployeeId = user.id;
-      }
-    }
-    
-    // If still empty, show error
     if (!createdByEmployeeId) {
       setError('Unable to identify user. Please make sure you are logged in.');
       setActionLoading(false);
@@ -935,34 +917,21 @@ export default function SigningBonusesPage() {
                 </ul>
               </div>
             </div>
-            <div className="p-6 border-t border-slate-200 flex justify-between">
+            <div className="p-6 border-t border-slate-200 flex justify-end gap-3">
               <button
-                onClick={() => {
-                  if (confirm('Are you sure you want to delete this signing bonus?')) {
-                    handleDeleteSigningBonus(selectedSigningBonus);
-                    setShowEditModal(false);
-                  }
-                }}
-                className="px-4 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors font-medium"
+                onClick={() => setShowEditModal(false)}
+                disabled={actionLoading}
+                className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors font-medium"
               >
-                Delete
+                Cancel
               </button>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowEditModal(false)}
-                  disabled={actionLoading}
-                  className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleUpdateSigningBonus}
-                  disabled={actionLoading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-400 transition-colors font-medium"
-                >
-                  {actionLoading ? 'Updating...' : 'Update Signing Bonus'}
-                </button>
-              </div>
+              <button
+                onClick={handleUpdateSigningBonus}
+                disabled={actionLoading}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-400 transition-colors font-medium"
+              >
+                {actionLoading ? 'Updating...' : 'Update Signing Bonus'}
+              </button>
             </div>
           </div>
         </div>
@@ -1032,21 +1001,10 @@ export default function SigningBonusesPage() {
                 </code>
               </div>
             </div>
-            <div className="p-6 border-t border-slate-200 flex justify-between">
-              {selectedSigningBonus.status === 'draft' && (
-                <button
-                  onClick={() => {
-                    handleEditClick(selectedSigningBonus);
-                    setShowViewModal(false);
-                  }}
-                  className="px-4 py-2 border border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 transition-colors font-medium"
-                >
-                  Edit Signing Bonus
-                </button>
-              )}
+            <div className="p-6 border-t border-slate-200 flex justify-end">
               <button
                 onClick={() => setShowViewModal(false)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium ml-auto"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
               >
                 Close
               </button>

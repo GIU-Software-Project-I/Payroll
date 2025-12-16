@@ -56,6 +56,10 @@ class ApiService {
       (defaultHeaders as Record<string, string>)['Authorization'] = `Bearer ${token}`;
     }
 
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
     const config: RequestInit = {
       ...options,
       headers: {
@@ -63,20 +67,35 @@ class ApiService {
         ...options.headers,
       },
       credentials: 'include',
+      signal: controller.signal,
     };
 
     try {
       const response = await fetch(url, config);
+      clearTimeout(timeoutId); // Clear timeout on successful response
 
       let data;
       const contentType = response.headers.get('content-type');
       if (contentType && contentType.includes('application/json')) {
-        data = await response.json();
+        try {
+          data = await response.json();
+        } catch {
+          // If JSON parsing fails, try to get text
+          const text = await response.text();
+          console.error('[API] Failed to parse JSON response:', text);
+          return {
+            error: `Invalid JSON response: ${text.substring(0, 100)}`,
+            status: response.status,
+          };
+        }
+      } else if (response.ok) {
+        // If response is OK but not JSON, return empty data
+        data = null;
       }
 
       if (!response.ok) {
         return {
-          error: data?.message || `HTTP error! status: ${response.status}`,
+          error: data?.message || data?.error || `HTTP error! status: ${response.status}`,
           status: response.status,
         };
       }
@@ -86,10 +105,27 @@ class ApiService {
         status: response.status,
       };
     } catch (error) {
+      clearTimeout(timeoutId); // Clear timeout on error
       console.error('[API] Request failed:', url);
       console.error('[API] Error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      // Check if it's a network error or timeout
+      if (errorMessage.includes('Failed to fetch') || 
+          errorMessage.includes('NetworkError') ||
+          errorMessage.includes('aborted') ||
+          errorMessage.includes('timeout')) {
+        return {
+          error: `Cannot connect to server at ${this.baseUrl}. Please ensure:
+1. The backend server is running (check terminal/console)
+2. The backend is running on port 9000
+3. No firewall is blocking the connection
+4. Try accessing http://localhost:9000/auth/health in your browser`,
+          status: 0,
+        };
+      }
       return {
-        error: error instanceof Error ? error.message : 'Network error - Is the backend running?',
+        error: errorMessage,
         status: 0,
       };
     }
@@ -125,6 +161,46 @@ class ApiService {
 
   async delete<T>(endpoint: string, headers?: HeadersInit): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { method: 'DELETE', headers });
+  }
+
+  // Special method for downloading files (returns blob)
+  async downloadFile(endpoint: string): Promise<{ blob?: Blob; filename?: string; error?: string }> {
+    const url = `${this.baseUrl}${endpoint}`;
+
+    const headers: HeadersInit = {};
+    const token = getAccessToken();
+    if (token) {
+      (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+    }
+
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers,
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        return { error: `Download failed: ${response.status}` };
+      }
+
+      const blob = await response.blob();
+      
+      // Try to get filename from Content-Disposition header
+      const contentDisposition = response.headers.get('content-disposition');
+      let filename = 'download';
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?([^";\n]+)"?/);
+        if (match) {
+          filename = match[1];
+        }
+      }
+
+      return { blob, filename };
+    } catch (error) {
+      console.error('[API] Download failed:', error);
+      return { error: error instanceof Error ? error.message : 'Download failed' };
+    }
   }
 }
 

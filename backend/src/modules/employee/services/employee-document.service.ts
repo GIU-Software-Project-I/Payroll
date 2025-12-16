@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { EmployeeDocument } from '../models/employee/employee-document.schema';
 import { EmployeeProfile, EmployeeProfileDocument as EmployeeProfileDoc } from '../models/employee/employee-profile.schema';
-import { UploadDocumentDto } from '../dto/employee-profile/upload-document.dto';
+import { EmployeeProfileUploadDocumentDto } from '../dto/employee-profile/upload-document.dto';
 
 @Injectable()
 export class EmployeeDocumentService {
@@ -23,7 +23,7 @@ export class EmployeeDocumentService {
     /**
      * Upload a new document for an employee
      */
-    async uploadDocument(userId: string, dto: UploadDocumentDto): Promise<EmployeeDocument> {
+    async uploadDocument(userId: string, dto: EmployeeProfileUploadDocumentDto): Promise<EmployeeDocument> {
         this.validateObjectId(userId, 'userId');
 
         // Verify employee exists

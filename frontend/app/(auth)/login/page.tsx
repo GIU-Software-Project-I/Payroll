@@ -39,10 +39,10 @@ export default function LoginPage() {
       return;
     }
 
-    const success = await login(email, password);
-    if (success) {
-      const dashboardRoute = getDashboardRoute();
-      router.push(dashboardRoute);
+    const result = await login(email, password);
+    if (result.success && result.dashboardRoute) {
+      console.log('[Login] Redirecting to:', result.dashboardRoute);
+      router.push(result.dashboardRoute);
     }
   };
 
@@ -79,6 +79,7 @@ export default function LoginPage() {
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent"
                 placeholder="you@company.com"
                 disabled={isLoading}
+                suppressHydrationWarning
               />
             </div>
 
@@ -94,6 +95,7 @@ export default function LoginPage() {
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent"
                 placeholder="Enter your password"
                 disabled={isLoading}
+                suppressHydrationWarning
               />
             </div>
 

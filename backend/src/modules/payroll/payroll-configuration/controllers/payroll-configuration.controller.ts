@@ -63,7 +63,7 @@ export class PayrollConfigurationController {
 
     // ========== LAMA'S TAX RULES ENDPOINTS ==========
     @Post('tax-rules')
-    @Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.LEGAL_POLICY_ADMIN)
+    @Roles(SystemRole.LEGAL_POLICY_ADMIN)
     @HttpCode(HttpStatus.CREATED)
     createTaxRule(@Body() dto: CreateTaxRuleDto) {
         return this.payrollConfigService.createTaxRule(dto);
@@ -82,7 +82,7 @@ export class PayrollConfigurationController {
     }
 
     @Patch('tax-rules/:id')
-    @Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.LEGAL_POLICY_ADMIN)
+    @Roles(SystemRole.PAYROLL_MANAGER , SystemRole.LEGAL_POLICY_ADMIN)
     @HttpCode(HttpStatus.OK)
     updateLegalRule(@Param('id') id: string, @Body() dto: UpdateTaxRuleDto) {
         return this.payrollConfigService.updateLegalRule(id, dto);
@@ -96,7 +96,7 @@ export class PayrollConfigurationController {
     }
 
     @Delete('tax-rules/:id')
-    @Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.LEGAL_POLICY_ADMIN)
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     deleteTaxRule(@Param('id') id: string) {
         return this.payrollConfigService.deleteTaxRule(id);
@@ -130,7 +130,6 @@ export class PayrollConfigurationController {
     }
 
     @Patch('insurance-brackets/:id')
-    @Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.HR_MANAGER)
     @HttpCode(HttpStatus.OK)
     updateInsurance(@Param('id') id: string, @Body() dto: UpdateInsuranceDto) {
         return this.payrollConfigService.updateInsuranceBracket(id, dto);
@@ -247,7 +246,7 @@ async calculateContributions(
     }
 
     @Patch('policies/:id')
-    @Roles(SystemRole.PAYROLL_SPECIALIST)
+    @Roles(SystemRole.PAYROLL_MANAGER, SystemRole.PAYROLL_SPECIALIST)
     @HttpCode(HttpStatus.OK)
     async update(
         @Param('id') id: string,
@@ -262,7 +261,7 @@ async calculateContributions(
     }
 
     @Delete('policies/:id')
-    @Roles(SystemRole.PAYROLL_SPECIALIST)
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     async remove(@Param('id') id: string) {
         const result = await this.payrollConfigService.remove(id);
@@ -338,7 +337,7 @@ async calculateContributions(
     }
 
     @Patch('pay-types/:id')
-    @Roles(SystemRole.PAYROLL_SPECIALIST)
+    @Roles(SystemRole.PAYROLL_MANAGER, SystemRole.PAYROLL_SPECIALIST)
     @HttpCode(HttpStatus.OK)
     async updatePayType(
         @Param('id') id: string,
@@ -353,7 +352,7 @@ async calculateContributions(
     }
 
     @Delete('pay-types/:id')
-    @Roles(SystemRole.PAYROLL_SPECIALIST)
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     async removePayType(@Param('id') id: string) {
         const result = await this.payrollConfigService.removePayType(id);
@@ -429,7 +428,7 @@ async calculateContributions(
     }
 
     @Patch('allowances/:id')
-    @Roles(SystemRole.PAYROLL_SPECIALIST)
+    @Roles(SystemRole.PAYROLL_MANAGER, SystemRole.PAYROLL_SPECIALIST)
     @HttpCode(HttpStatus.OK)
     async updateAllowance(
         @Param('id') id: string,
@@ -444,7 +443,7 @@ async calculateContributions(
     }
 
     @Delete('allowances/:id')
-    @Roles(SystemRole.PAYROLL_SPECIALIST)
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     async removeAllowance(@Param('id') id: string) {
         const result = await this.payrollConfigService.removeAllowance(id);
@@ -520,7 +519,7 @@ async calculateContributions(
     }
 
     @Patch('signing-bonuses/:id')
-    @Roles(SystemRole.PAYROLL_SPECIALIST)
+    @Roles(SystemRole.PAYROLL_MANAGER, SystemRole.PAYROLL_SPECIALIST)
     @HttpCode(HttpStatus.OK)
     async updateSigningBonus(
         @Param('id') id: string,
@@ -535,7 +534,7 @@ async calculateContributions(
     }
 
     @Delete('signing-bonuses/:id')
-    @Roles(SystemRole.PAYROLL_SPECIALIST)
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     async removeSigningBonus(@Param('id') id: string) {
         const result = await this.payrollConfigService.removeSigningBonus(id);
@@ -611,7 +610,7 @@ async calculateContributions(
     }
 
     @Patch('termination-benefits/:id')
-    @Roles(SystemRole.PAYROLL_SPECIALIST)
+    @Roles(SystemRole.PAYROLL_MANAGER, SystemRole.PAYROLL_SPECIALIST)
     @HttpCode(HttpStatus.OK)
     async updateTerminationBenefit(
         @Param('id') id: string,
@@ -626,7 +625,7 @@ async calculateContributions(
     }
 
     @Delete('termination-benefits/:id')
-    @Roles(SystemRole.PAYROLL_SPECIALIST)
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     async removeTerminationBenefit(@Param('id') id: string) {
         const result = await this.payrollConfigService.removeTerminationBenefit(id);
@@ -702,7 +701,7 @@ async calculateContributions(
     }
 
     @Patch('pay-grades/:id')
-    @Roles(SystemRole.PAYROLL_SPECIALIST)
+    @Roles(SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER)
     updatePayGrade(
         @Param('id') id: string,
         @Body() updateDto: UpdatePayGradeDto,
@@ -711,7 +710,7 @@ async calculateContributions(
     }
 
     @Delete('pay-grades/:id')
-    @Roles(SystemRole.PAYROLL_SPECIALIST)
+    @Roles(SystemRole.PAYROLL_MANAGER)
     @HttpCode(HttpStatus.OK)
     async deletePayGrade(@Param('id') id: string) {
         const result = await this.payrollConfigService.deletePayGrade(id);
@@ -759,6 +758,18 @@ async calculateContributions(
     @Roles(SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_MANAGER)
     updateCompanyWideSettings(@Body() updateDto: UpdateCompanyWideSettingsDto) {
         return this.payrollConfigService.updateCompanyWideSettings(updateDto);
+    }
+
+    @Patch('company-settings/approve')
+    @Roles(SystemRole.SYSTEM_ADMIN)
+    approveCompanyWideSettings() {
+        return this.payrollConfigService.approveCompanyWideSettings();
+    }
+
+    @Patch('company-settings/reject')
+    @Roles(SystemRole.SYSTEM_ADMIN)
+    rejectCompanyWideSettings() {
+        return this.payrollConfigService.rejectCompanyWideSettings();
     }
 
     // ========== MANOS' BACKUP ENDPOINTS ==========

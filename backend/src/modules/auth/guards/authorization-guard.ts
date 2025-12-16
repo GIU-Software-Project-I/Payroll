@@ -17,6 +17,13 @@ export class AuthorizationGuard implements CanActivate {
 
         const req = context.switchToHttp().getRequest();
         const user = req.user as { roles?: SystemRole[] } | undefined;
+        
+        // Debug logging
+        console.log('Authorization Check:');
+        console.log('Required roles:', requiredRoles);
+        console.log('User roles:', user?.roles);
+        console.log('Has required role:', !!user?.roles && user.roles.some(role => requiredRoles.includes(role)));
+        
         // Check if user has at least one of the required roles
         return !!user?.roles && user.roles.some(role => requiredRoles.includes(role));
     }

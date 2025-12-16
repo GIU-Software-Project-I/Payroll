@@ -309,4 +309,5 @@ export const payrollConfigurationService = {
   updateCompanyWideSettings: async (data: any) => {
     return apiService.put('/payroll-configuration-requirements/company-settings', data);
   },
+
 };
