@@ -131,30 +131,22 @@ export default function InsuranceBracketsPage() {
     const finalName = formData.name === 'custom' ? formData.customName : formData.name;
 
     // Required fields validation
-    if (!formData.name) {
-      errors.push('Please select an insurance type');
-    } else if (formData.name === 'custom' && !formData.customName.trim()) {
-      errors.push('Custom insurance name is required');
-    }
-
-    // Check for duplicate name
-    if (finalName && !selectedBracket) {
-      const isDuplicate = brackets.some(bracket => 
-        bracket.name.toLowerCase() === finalName.toLowerCase()
-      );
-      if (isDuplicate) {
-        errors.push(`Insurance name "${finalName}" already exists. Please use a different name.`);
+    if (!selectedBracket) {
+      // Only validate name for new creation
+      if (!formData.name) {
+        errors.push('Please select an insurance type');
+      } else if (formData.name === 'custom' && !formData.customName.trim()) {
+        errors.push('Custom insurance name is required');
       }
-    }
 
-    // If editing, check if name is changed and if it's duplicate
-    if (selectedBracket && finalName !== selectedBracket.name) {
-      const isDuplicate = brackets.some(bracket => 
-        bracket._id !== selectedBracket._id && 
-        bracket.name.toLowerCase() === finalName.toLowerCase()
-      );
-      if (isDuplicate) {
-        errors.push(`Insurance name "${finalName}" already exists. Please use a different name.`);
+      // Check for duplicate name only when creating new
+      if (finalName) {
+        const isDuplicate = brackets.some(bracket => 
+          bracket.name.toLowerCase() === finalName.toLowerCase()
+        );
+        if (isDuplicate) {
+          errors.push(`Insurance name "${finalName}" already exists. Please use a different name.`);
+        }
       }
     }
 
@@ -273,9 +265,6 @@ export default function InsuranceBracketsPage() {
         return;
       }
 
-      // Determine the final name
-      const finalName = formData.name === 'custom' ? formData.customName : formData.name;
-
       if (selectedBracket.status !== 'draft') {
         setError('Only DRAFT insurance brackets can be edited.');
         return;
@@ -285,7 +274,7 @@ export default function InsuranceBracketsPage() {
       setError(null);
 
       const updateData = {
-        name: finalName,
+        // Name is NOT included here - cannot be changed after creation
         amount: parseFloat(formData.amount),
         minSalary: parseFloat(formData.minSalary),
         maxSalary: parseFloat(formData.maxSalary),
@@ -389,15 +378,10 @@ export default function InsuranceBracketsPage() {
       return;
     }
     
-    // Check if the name is in the predefined list
-    const isPredefined = insuranceTypeOptions.some(option => 
-      option.value !== 'custom' && option.value === bracket.name
-    );
-    
     setSelectedBracket(bracket);
     setFormData({
-      name: isPredefined ? bracket.name : 'custom',
-      customName: isPredefined ? '' : bracket.name,
+      name: '', // Not used for editing - display only
+      customName: '', // Not used for editing - display only
       amount: bracket.amount.toString(),
       minSalary: bracket.minSalary.toString(),
       maxSalary: bracket.maxSalary.toString(),
@@ -679,6 +663,7 @@ export default function InsuranceBracketsPage() {
           <li>• You can <span className="font-semibold">view all</span> insurance brackets (draft, approved, rejected)</li>
           <li>• You can <span className="font-semibold">calculate contributions</span> for any insurance bracket</li>
           <li>• <span className="font-semibold">Approved</span> and <span className="font-semibold">rejected</span> brackets cannot be modified</li>
+          <li>• <span className="font-semibold">Note:</span> Insurance type/name cannot be changed after creation</li>
           <li>• Insurance brackets define salary ranges and contribution percentages for automatic payroll deductions</li>
           <li>• <span className="font-semibold">Compliance:</span> Configurations must follow Social Insurance and Pensions Law</li>
           <li>• <span className="font-semibold">Note:</span> HR Manager has exclusive approval authority for insurance configurations</li>
@@ -697,31 +682,41 @@ export default function InsuranceBracketsPage() {
             <div className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Insurance Type *
+                  Insurance Type {selectedBracket && <span className="text-slate-400">(Cannot be changed)</span>}
                 </label>
-                <select
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                >
-                  <option value="">Select insurance type</option>
-                  {insuranceTypeOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-slate-500 mt-1">
-                  {formData.name === 'custom' 
-                    ? 'Enter a custom insurance name below'
-                    : 'Select a predefined insurance type or choose "Custom Insurance Type"'}
-                </p>
+                {selectedBracket ? (
+                  // Show as read-only display when editing
+                  <div className="w-full px-4 py-3 border border-slate-300 rounded-lg bg-slate-50 text-slate-900 font-medium">
+                    {selectedBracket.name}
+                  </div>
+                ) : (
+                  // Show normal dropdown when creating
+                  <>
+                    <select
+                      name="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    >
+                      <option value="">Select insurance type</option>
+                      {insuranceTypeOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {formData.name === 'custom' 
+                        ? 'Enter a custom insurance name below' 
+                        : 'Select a predefined insurance type or choose "Custom Insurance Type"'}
+                    </p>
+                  </>
+                )}
               </div>
               
-              {/* Custom Name Input - Only shown when "Custom Insurance Type" is selected */}
-              {formData.name === 'custom' && (
+              {/* Custom Name Input - Only shown when creating and "Custom Insurance Type" is selected */}
+              {formData.name === 'custom' && !selectedBracket && (
                 <div className="animate-fadeIn">
                   <label className="block text-sm font-medium text-slate-700 mb-2">
                     Custom Insurance Name *
@@ -741,8 +736,7 @@ export default function InsuranceBracketsPage() {
                     {formData.customName && (
                       <span className="ml-1">
                         {brackets.some(bracket => 
-                          bracket.name.toLowerCase() === formData.customName.toLowerCase() &&
-                          (!selectedBracket || bracket._id !== selectedBracket._id)
+                          bracket.name.toLowerCase() === formData.customName.toLowerCase()
                         ) ? (
                           <span className="text-red-600 font-medium">⚠️ This name already exists!</span>
                         ) : (
@@ -882,6 +876,7 @@ export default function InsuranceBracketsPage() {
                   <li>• Contribution rates must be between 0% and 100%</li>
                   <li>• Total contribution rate (employee + employer) cannot exceed 100%</li>
                   <li>• Insurance name must be unique - duplicates are not allowed</li>
+                  <li>• <span className="font-semibold">Insurance type/name cannot be changed after creation</span></li>
                   <li>• All brackets start in DRAFT status and require HR Manager approval</li>
                 </ul>
               </div>

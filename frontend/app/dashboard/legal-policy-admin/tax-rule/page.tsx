@@ -1269,7 +1269,7 @@ export default function TaxConfigurationPage() {
             <ul className="text-blue-800 text-sm space-y-2">
               <li>• Define tax rules by selecting from existing components or creating new ones</li>
               <li>• All rules start in DRAFT status and require approval</li>
-              <li>• <span className="font-semibold">Business Rule BR 6:</span> System must support multiple tax components</li>
+              <li>• System must support multiple tax components</li>
               <li>• Only DRAFT rules can be edited</li>
               <li>• Manage components separately in the Components tab</li>
             </ul>
@@ -1285,7 +1285,7 @@ export default function TaxConfigurationPage() {
           <ul className="text-blue-800 text-sm space-y-2">
             <li>• Define progressive tax brackets for income tax calculation</li>
             <li>• Each bracket has income range, tax rate, and base amount</li>
-            <li>• <span className="font-semibold">Business Rule BR 5:</span> Must reference Local Tax Law</li>
+            <li>• Must reference Local Tax Law</li>
             <li>• Used for progressive income tax calculations</li>
             <li>• Brackets should not overlap (e.g., 0-50K, 50,001-100K)</li>
             <li>• Only DRAFT brackets can be edited</li>
