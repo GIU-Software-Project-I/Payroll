@@ -1,0 +1,68 @@
+import { Injectable } from '@nestjs/common';
+
+// Input structure for payroll calculation
+export interface CalcInput {
+  baseSalary: number; // The employee's monthly/base salary
+  daysInPeriod?: number; // Total days in the payroll period (default: 30)
+  daysWorked?: number; // Actual days worked (default: all days in period)
+  taxRatePct?: number; // Tax percentage (e.g., 10 for 10%)
+  pensionPct?: number; // Pension deduction percentage
+  insurancePct?: number; // Insurance deduction percentage
+  penalties?: number; // Any penalties to deduct
+  refunds?: number; // Any refunds to add
+  bonus?: number; // Any bonuses to add
+  benefit?: number; // Any additional benefits to add
+}
+
+// Output/result of payroll calculation
+export interface CalcResult {
+  gross: number; // Full base salary before deductions
+  proratedGross: number; // Salary adjusted for days worked
+  taxes: number; // Tax amount deducted
+  pension: number; // Pension amount deducted
+  insurance: number; // Insurance amount deducted
+  deductions: number; // Total deductions (tax + pension + insurance + penalties)
+  netPay: number; // Final salary after deductions + refunds + bonus + benefits
+}
+
+@Injectable()
+export class PayCalculatorService {
+  calculate(input: CalcInput): CalcResult {
+    // Set defaults for days
+    const daysInPeriod = input.daysInPeriod ?? 30; // default to 30 if not provided
+    const daysWorked = input.daysWorked ?? daysInPeriod; // default to full period if not provided
+
+    // Base gross salary
+    const gross = input.baseSalary;
+
+    // Prorated gross salary based on days worked
+    const proratedGross = gross * (daysWorked / daysInPeriod);
+
+    // Calculate deductions
+    const taxes = proratedGross * ((input.taxRatePct ?? 0) / 100);
+    const pension = proratedGross * ((input.pensionPct ?? 0) / 100);
+    const insurance = proratedGross * ((input.insurancePct ?? 0) / 100);
+
+    const penalties = input.penalties ?? 0; // Optional penalties
+    const refunds = input.refunds ?? 0; // Optional refunds
+    const bonus = input.bonus ?? 0; // Optional bonus
+    const benefit = input.benefit ?? 0; // Optional benefit
+
+    // Total deductions
+    const deductions = taxes + pension + insurance + penalties;
+
+    // Net pay = prorated gross - deductions + any additions
+    const netPay = proratedGross - deductions + refunds + bonus + benefit;
+
+    // Return the full calculation breakdown
+    return {
+      gross,
+      proratedGross,
+      taxes,
+      pension,
+      insurance,
+      deductions,
+      netPay,
+    };
+  }
+}
