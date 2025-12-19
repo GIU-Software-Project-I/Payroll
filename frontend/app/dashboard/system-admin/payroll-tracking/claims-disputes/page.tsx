@@ -318,7 +318,11 @@ export default function ClaimsDisputesPage() {
         </div>
         <Link href="/dashboard/department-employee/payroll-tracking">
           <button className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50">
+<<<<<<< HEAD
             Back to Payroll Tracking
+=======
+            ← Back to Payroll Tracking
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
           </button>
         </Link>
       </div>
@@ -330,7 +334,11 @@ export default function ClaimsDisputesPage() {
             <h2 className="text-xl font-bold">Request Tracking</h2>
             <p className="text-orange-100 mt-1">Manage your payroll-related requests</p>
           </div>
+<<<<<<< HEAD
           <div className="text-6xl"></div>
+=======
+          <div className="text-6xl">⚠️</div>
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
         </div>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
@@ -357,6 +365,7 @@ export default function ClaimsDisputesPage() {
       <div className="flex gap-4 flex-wrap">
         <button
           onClick={() => setShowDisputeForm(true)}
+<<<<<<< HEAD
           className="px-6 py-3 bg-white border border-slate-200 rounded-lg shadow-sm font-medium flex items-center gap-2 text-slate-900 hover:shadow-md"
         >
           File a Dispute
@@ -366,6 +375,17 @@ export default function ClaimsDisputesPage() {
           className="px-6 py-3 bg-white border border-slate-200 rounded-lg shadow-sm font-medium flex items-center gap-2 text-slate-900 hover:shadow-md"
         >
           Submit a Claim
+=======
+          className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium flex items-center gap-2"
+        >
+          ⚠️ File a Dispute
+        </button>
+        <button
+          onClick={() => setShowClaimForm(true)}
+          className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium flex items-center gap-2"
+        >
+          💰 Submit a Claim
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
         </button>
       </div>
 
@@ -379,7 +399,11 @@ export default function ClaimsDisputesPage() {
               : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
+<<<<<<< HEAD
           Overview
+=======
+          📊 Overview
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
         </button>
         <button
           onClick={() => setActiveTab('disputes')}
@@ -389,7 +413,11 @@ export default function ClaimsDisputesPage() {
               : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
+<<<<<<< HEAD
           My Disputes
+=======
+          ⚠️ My Disputes
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
           {disputes.length > 0 && (
             <span className={`px-2 py-0.5 rounded-full text-xs ${
               activeTab === 'disputes' ? 'bg-orange-200' : 'bg-slate-200'
@@ -406,7 +434,11 @@ export default function ClaimsDisputesPage() {
               : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
+<<<<<<< HEAD
           My Claims
+=======
+          💰 My Claims
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
           {claims.length > 0 && (
             <span className={`px-2 py-0.5 rounded-full text-xs ${
               activeTab === 'claims' ? 'bg-orange-200' : 'bg-slate-200'
@@ -428,13 +460,21 @@ export default function ClaimsDisputesPage() {
                 onClick={() => setActiveTab('disputes')}
                 className="text-sm text-orange-600 hover:underline"
               >
+<<<<<<< HEAD
                 View All
+=======
+                View All →
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
               </button>
             </div>
             
             {disputes.length === 0 ? (
               <div className="text-center py-6 text-slate-500">
+<<<<<<< HEAD
                 <div className="text-3xl mb-2"></div>
+=======
+                <div className="text-3xl mb-2">✅</div>
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
                 <p>No disputes filed</p>
               </div>
             ) : (
@@ -462,13 +502,21 @@ export default function ClaimsDisputesPage() {
                 onClick={() => setActiveTab('claims')}
                 className="text-sm text-orange-600 hover:underline"
               >
+<<<<<<< HEAD
                 View All
+=======
+                View All →
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
               </button>
             </div>
             
             {claims.length === 0 ? (
               <div className="text-center py-6 text-slate-500">
+<<<<<<< HEAD
                 <div className="text-3xl mb-2"></div>
+=======
+                <div className="text-3xl mb-2">📋</div>
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
                 <p>No claims submitted</p>
               </div>
             ) : (
@@ -497,7 +545,11 @@ export default function ClaimsDisputesPage() {
             <h3 className="text-lg font-bold text-slate-900">My Disputes</h3>
             <button
               onClick={() => setShowDisputeForm(true)}
+<<<<<<< HEAD
               className="px-4 py-2 bg-white border border-slate-200 rounded-lg shadow-sm text-sm font-medium text-slate-900 hover:shadow-md"
+=======
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium"
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
             >
               + File New Dispute
             </button>
@@ -505,7 +557,11 @@ export default function ClaimsDisputesPage() {
           
           {disputes.length === 0 ? (
             <div className="p-8 text-center">
+<<<<<<< HEAD
               <div className="text-6xl mb-4"></div>
+=======
+              <div className="text-6xl mb-4">✅</div>
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
               <h3 className="text-xl font-semibold text-slate-900 mb-2">No Disputes</h3>
               <p className="text-slate-600">You haven&apos;t filed any payroll disputes.</p>
             </div>
@@ -558,7 +614,11 @@ export default function ClaimsDisputesPage() {
             <h3 className="text-lg font-bold text-slate-900">My Claims</h3>
             <button
               onClick={() => setShowClaimForm(true)}
+<<<<<<< HEAD
               className="px-4 py-2 bg-white border border-slate-200 rounded-lg shadow-sm text-sm font-medium text-slate-900 hover:shadow-md"
+=======
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
             >
               + Submit New Claim
             </button>
@@ -566,7 +626,11 @@ export default function ClaimsDisputesPage() {
           
           {claims.length === 0 ? (
             <div className="p-8 text-center">
+<<<<<<< HEAD
               <div className="text-6xl mb-4"></div>
+=======
+              <div className="text-6xl mb-4">📋</div>
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
               <h3 className="text-xl font-semibold text-slate-900 mb-2">No Claims</h3>
               <p className="text-slate-600">You haven&apos;t submitted any expense claims.</p>
             </div>
@@ -629,9 +693,15 @@ export default function ClaimsDisputesPage() {
                 <h3 className="text-xl font-bold text-slate-900">File a Payroll Dispute</h3>
                 <button
                   onClick={() => setShowDisputeForm(false)}
+<<<<<<< HEAD
                   className="text-slate-400 hover:text-slate-600 text-sm"
                 >
                   Close
+=======
+                  className="text-slate-400 hover:text-slate-600 text-2xl"
+                >
+                  ×
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
                 </button>
               </div>
             </div>
@@ -714,9 +784,15 @@ export default function ClaimsDisputesPage() {
                 <h3 className="text-xl font-bold text-slate-900">Submit Expense Claim</h3>
                 <button
                   onClick={() => setShowClaimForm(false)}
+<<<<<<< HEAD
                   className="text-slate-400 hover:text-slate-600 text-sm"
                 >
                   Close
+=======
+                  className="text-slate-400 hover:text-slate-600 text-2xl"
+                >
+                  ×
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
                 </button>
               </div>
             </div>
@@ -772,7 +848,11 @@ export default function ClaimsDisputesPage() {
               </div>
 
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-700">
+<<<<<<< HEAD
                 Please attach receipts or supporting documents when prompted after submission.
+=======
+                💡 Please attach receipts or supporting documents when prompted after submission.
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
               </div>
 
               <div className="flex gap-3 pt-4">
@@ -800,7 +880,11 @@ export default function ClaimsDisputesPage() {
       {/* Help Section */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div className="flex items-start gap-3">
+<<<<<<< HEAD
           <span className="text-2xl"></span>
+=======
+          <span className="text-2xl">💡</span>
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
           <div>
             <h4 className="font-semibold text-blue-900">Need Help?</h4>
             <p className="text-sm text-blue-700 mt-1">

@@ -169,7 +169,11 @@ export default function TaxDeductionsPage() {
               Across {taxData.length} payslip{taxData.length !== 1 ? 's' : ''}
             </p>
           </div>
+<<<<<<< HEAD
           <div className="text-6xl"></div>
+=======
+          <div className="text-6xl">🏛️</div>
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
         </div>
       </div>
 
@@ -197,7 +201,11 @@ export default function TaxDeductionsPage() {
       {/* Tax Deductions List */}
       {filteredData.length === 0 ? (
         <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-12 text-center">
+<<<<<<< HEAD
           <div className="text-6xl mb-4"></div>
+=======
+          <div className="text-6xl mb-4">📋</div>
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
           <p className="text-slate-700 font-medium text-lg">No tax deductions found</p>
           <p className="text-slate-500 text-sm mt-2">
             Tax deductions will appear here once payroll has been processed
@@ -250,7 +258,11 @@ export default function TaxDeductionsPage() {
                         )}
                         {tax.lawReference && (
                           <p className="text-xs text-amber-600 font-medium flex items-center gap-1">
+<<<<<<< HEAD
                             <span></span>
+=======
+                            <span>📜</span>
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
                             <span>Law Reference: {tax.lawReference}</span>
                           </p>
                         )}
@@ -324,7 +336,11 @@ export default function TaxDeductionsPage() {
       {/* Information Panel */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
         <div className="flex items-start gap-3">
+<<<<<<< HEAD
           <span className="text-2xl"></span>
+=======
+          <span className="text-2xl">💡</span>
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
           <div>
             <h4 className="font-semibold text-blue-900 mb-2">Understanding Your Tax Deductions</h4>
             <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">

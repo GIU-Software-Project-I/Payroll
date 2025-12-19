@@ -17,6 +17,7 @@ import { payrollTrackingService } from '@/app/services/payroll-tracking';
  * REQ-PY-17: Submit expense reimbursement claims
  * REQ-PY-18: Track claims and disputes
  */
+<<<<<<< HEAD
 
 interface Payslip {
   periodEnd: string;
@@ -35,6 +36,8 @@ interface TrackingResponse {
   claims: Claim[];
   disputes: Dispute[];
 }
+=======
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
 export default function PayrollTrackingPage() {
   const { user } = useAuth();
   const [stats, setStats] = useState({
@@ -56,11 +59,19 @@ export default function PayrollTrackingPage() {
       try {
         // Fetch payslips to get stats
         const payslipsResponse = await payrollTrackingService.getEmployeePayslips(user.id);
+<<<<<<< HEAD
         const payslips = (payslipsResponse?.data as Payslip[]) || [];
         
         // Fetch claims/disputes tracking
         const trackingResponse = await payrollTrackingService.trackClaimsAndDisputes(user.id);
         const tracking = (trackingResponse?.data as TrackingResponse) || { claims: [], disputes: [] };
+=======
+        const payslips = payslipsResponse?.data || [];
+        
+        // Fetch claims/disputes tracking
+        const trackingResponse = await payrollTrackingService.trackClaimsAndDisputes(user.id);
+        const tracking = trackingResponse?.data || { claims: [], disputes: [] };
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
         
         const pendingClaims = tracking.claims?.filter((c: any) => c.status === 'PENDING' || c.status === 'IN_REVIEW')?.length || 0;
         const pendingDisputes = tracking.disputes?.filter((d: any) => d.status === 'PENDING' || d.status === 'IN_REVIEW')?.length || 0;
@@ -89,7 +100,11 @@ export default function PayrollTrackingPage() {
       title: 'My Payslips',
       description: 'View and download your monthly payslips with detailed breakdown of earnings and deductions.',
       href: '/dashboard/department-employee/payroll-tracking/payslips',
+<<<<<<< HEAD
       icon: '',
+=======
+      icon: '📄',
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
       color: 'blue',
       features: ['View monthly payslips', 'Download PDF', 'See payment status'],
       requirement: 'REQ-PY-1, REQ-PY-2'
@@ -98,7 +113,11 @@ export default function PayrollTrackingPage() {
       title: 'Salary History',
       description: 'Track your salary changes over time including base salary, bonuses, and adjustments.',
       href: '/dashboard/department-employee/payroll-tracking/salary-history',
+<<<<<<< HEAD
       icon: '',
+=======
+      icon: '📈',
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
       color: 'green',
       features: ['Base salary info', 'Historical records', 'Contract details'],
       requirement: 'REQ-PY-3, REQ-PY-13'
@@ -107,7 +126,11 @@ export default function PayrollTrackingPage() {
       title: 'Tax Deductions',
       description: 'View detailed tax deductions with law references and tax brackets (BR 5, BR 6).',
       href: '/dashboard/department-employee/payroll-tracking/tax-deductions',
+<<<<<<< HEAD
       icon: '',
+=======
+      icon: '🏛️',
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
       color: 'blue',
       features: ['Income tax breakdown', 'Law references', 'Tax brackets'],
       requirement: 'REQ-PY-8'
@@ -116,7 +139,11 @@ export default function PayrollTrackingPage() {
       title: 'Insurance Deductions',
       description: 'View itemized insurance deductions (health, pension, unemployment, etc.).',
       href: '/dashboard/department-employee/payroll-tracking/insurance-deductions',
+<<<<<<< HEAD
       icon: '',
+=======
+      icon: '🏥',
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
       color: 'green',
       features: ['Health insurance', 'Pension contributions', 'Unemployment'],
       requirement: 'REQ-PY-9'
@@ -125,7 +152,11 @@ export default function PayrollTrackingPage() {
       title: 'Misconduct & Absenteeism',
       description: 'View salary deductions due to misconduct or unapproved absenteeism.',
       href: '/dashboard/department-employee/payroll-tracking/misconduct-deductions',
+<<<<<<< HEAD
       icon: '',
+=======
+      icon: '⚠️',
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
       color: 'red',
       features: ['Absenteeism records', 'Policy violations', 'Time management integration'],
       requirement: 'REQ-PY-10'
@@ -134,7 +165,11 @@ export default function PayrollTrackingPage() {
       title: 'Unpaid Leave Deductions',
       description: 'View deductions for unpaid leave days with daily/hourly calculations (BR 11).',
       href: '/dashboard/department-employee/payroll-tracking/unpaid-leave-deductions',
+<<<<<<< HEAD
       icon: '',
+=======
+      icon: '📅',
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
       color: 'orange',
       features: ['Daily rate calculations', 'Leave integration', 'Period filtering'],
       requirement: 'REQ-PY-11'
@@ -143,7 +178,11 @@ export default function PayrollTrackingPage() {
       title: 'Compensation & Benefits',
       description: 'View leave compensation, transportation allowance, and employer contributions.',
       href: '/dashboard/department-employee/payroll-tracking/contributions',
+<<<<<<< HEAD
       icon: '',
+=======
+      icon: '🎁',
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
       color: 'purple',
       features: ['Leave encashment', 'Transportation', 'Employer contributions'],
       requirement: 'REQ-PY-5, REQ-PY-7, REQ-PY-14'
@@ -152,7 +191,11 @@ export default function PayrollTrackingPage() {
       title: 'Tax Documents',
       description: 'Download annual tax statements and other tax-related documents for official purposes.',
       href: '/dashboard/department-employee/payroll-tracking/tax-documents',
+<<<<<<< HEAD
       icon: '',
+=======
+      icon: '📋',
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
       color: 'amber',
       features: ['Annual statements', 'Tax certificates', 'Download documents'],
       requirement: 'REQ-PY-15'
@@ -161,7 +204,11 @@ export default function PayrollTrackingPage() {
       title: 'Claims & Disputes',
       description: 'Submit expense claims, dispute payroll errors, and track request status.',
       href: '/dashboard/department-employee/payroll-tracking/claims-disputes',
+<<<<<<< HEAD
       icon: '',
+=======
+      icon: '⚠️',
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
       color: 'orange',
       features: ['Submit claims', 'File disputes', 'Track status'],
       requirement: 'REQ-PY-16, REQ-PY-17, REQ-PY-18'
@@ -178,6 +225,7 @@ export default function PayrollTrackingPage() {
   };
 
   return (
+<<<<<<< HEAD
     <div
       className="space-y-8"
       style={{
@@ -190,6 +238,9 @@ export default function PayrollTrackingPage() {
         ['--border' as any]: '#e5e7eb',
       } as any}
     >
+=======
+    <div className="space-y-8">
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-slate-900">Payroll Tracking</h1>
@@ -197,13 +248,21 @@ export default function PayrollTrackingPage() {
       </div>
 
       {/* Overview Stats */}
+<<<<<<< HEAD
       <div className="bg-white rounded-lg border border-slate-200 p-8 text-slate-900 shadow-sm">
+=======
+      <div className="bg-gradient-to-r from-amber-600 to-amber-700 rounded-lg p-8 text-white">
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold">Payroll Tracking Overview</h2>
             <p className="text-amber-100 mt-2">Your payroll information at a glance</p>
           </div>
+<<<<<<< HEAD
           <div className="text-6xl"></div>
+=======
+          <div className="text-6xl">💰</div>
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
         </div>
         
         {loading ? (
@@ -246,7 +305,11 @@ export default function PayrollTrackingPage() {
                 <div className="space-y-2 mb-4">
                   {feature.features.map((f, idx) => (
                     <div key={idx} className="flex items-center text-sm text-slate-700">
+<<<<<<< HEAD
                       {f}
+=======
+                      <span className="mr-2 text-green-500">✓</span> {f}
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
                     </div>
                   ))}
                 </div>
@@ -264,6 +327,7 @@ export default function PayrollTrackingPage() {
         <h2 className="text-xl font-bold text-slate-900 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Link href="/dashboard/department-employee/payroll-tracking/payslips">
+<<<<<<< HEAD
             <button className="w-full p-4 bg-white border border-slate-200 rounded-lg shadow-sm hover:shadow-md transition-colors text-center group">
               <div className="text-2xl mb-2"></div>
               <p className="font-medium text-slate-900 text-sm">Download Latest Payslip</p>
@@ -285,6 +349,29 @@ export default function PayrollTrackingPage() {
             <button className="w-full p-4 bg-white border border-slate-200 rounded-lg shadow-sm hover:shadow-md transition-colors text-center group">
               <div className="text-2xl mb-2"></div>
               <p className="font-medium text-slate-900 text-sm">Report Issue</p>
+=======
+            <button className="w-full p-4 border border-slate-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors text-center group">
+              <div className="text-2xl mb-2">📥</div>
+              <p className="font-medium text-slate-900 group-hover:text-blue-700 text-sm">Download Latest Payslip</p>
+            </button>
+          </Link>
+          <Link href="/dashboard/department-employee/payroll-tracking/claims-disputes">
+            <button className="w-full p-4 border border-slate-300 rounded-lg hover:border-orange-400 hover:bg-orange-50 transition-colors text-center group">
+              <div className="text-2xl mb-2">📝</div>
+              <p className="font-medium text-slate-900 group-hover:text-orange-700 text-sm">Submit New Claim</p>
+            </button>
+          </Link>
+          <Link href="/dashboard/department-employee/payroll-tracking/tax-documents">
+            <button className="w-full p-4 border border-slate-300 rounded-lg hover:border-amber-400 hover:bg-amber-50 transition-colors text-center group">
+              <div className="text-2xl mb-2">📋</div>
+              <p className="font-medium text-slate-900 group-hover:text-amber-700 text-sm">Tax Documents</p>
+            </button>
+          </Link>
+          <Link href="/dashboard/department-employee/payroll-tracking/claims-disputes">
+            <button className="w-full p-4 border border-slate-300 rounded-lg hover:border-red-400 hover:bg-red-50 transition-colors text-center group">
+              <div className="text-2xl mb-2">⚠️</div>
+              <p className="font-medium text-slate-900 group-hover:text-red-700 text-sm">Report Issue</p>
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
             </button>
           </Link>
         </div>

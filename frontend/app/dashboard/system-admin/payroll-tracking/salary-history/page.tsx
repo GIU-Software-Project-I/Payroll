@@ -19,8 +19,11 @@ interface BackendSalaryRecord {
   netSalary: number;
   status: string;
   totalDeductions: number;
+<<<<<<< HEAD
   earningsDetails?: any;
   deductionsDetails?: any;
+=======
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
   createdAt: string;
 }
 
@@ -32,11 +35,16 @@ interface SalaryRecord {
   grossSalary: number;
   netSalary: number;
   totalDeductions: number;
+<<<<<<< HEAD
   taxesTotal?: number;
   insurancesTotal?: number;
   penaltiesTotal?: number;
   currency: string;
   contractType?: string;
+=======
+  currency: string;
+  contractType: string;
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
   payGrade?: string;
   reason?: string;
   status: string;
@@ -60,6 +68,7 @@ function safeNumber(value: unknown): number {
 }
 
 // Map backend salary record to frontend format
+<<<<<<< HEAD
 function mapSalaryRecord(record: BackendSalaryRecord, currency: string = 'EGP'): SalaryRecord {
   const taxes = Array.isArray(record.deductionsDetails?.taxes) ? record.deductionsDetails.taxes : [];
   const insurances = Array.isArray(record.deductionsDetails?.insurances) ? record.deductionsDetails.insurances : [];
@@ -84,6 +93,18 @@ function mapSalaryRecord(record: BackendSalaryRecord, currency: string = 'EGP'):
     insurancesTotal: Math.round(insurancesTotal * 100) / 100,
     penaltiesTotal: Math.round(penaltiesTotal * 100) / 100,
     currency,
+=======
+function mapSalaryRecord(record: BackendSalaryRecord): SalaryRecord {
+  return {
+    id: record.payslipId,
+    effectiveDate: record.createdAt,
+    baseSalary: safeNumber(record.grossSalary),
+    grossSalary: safeNumber(record.grossSalary),
+    netSalary: safeNumber(record.netSalary),
+    totalDeductions: safeNumber(record.totalDeductions),
+    currency: 'USD',
+    contractType: 'Full-Time',
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
     status: record.status || 'N/A',
   };
 }
@@ -108,11 +129,16 @@ export default function SalaryHistoryPage() {
         
         // Fetch current base salary
         const baseSalaryResponse = await payrollTrackingService.getBaseSalary(user.id);
+<<<<<<< HEAD
         let derivedCurrency = 'EGP';
         if (baseSalaryResponse?.data) {
           const data = baseSalaryResponse.data as BaseSalaryInfo;
           // Derive currency immediately from API response (don't rely on state update timing)
           derivedCurrency = data.currency || 'EGP';
+=======
+        if (baseSalaryResponse?.data) {
+          const data = baseSalaryResponse.data as BaseSalaryInfo;
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
           // Ensure numeric fields are safe
           setBaseSalaryInfo({
             ...data,
@@ -122,12 +148,20 @@ export default function SalaryHistoryPage() {
         } else {
           setBaseSalaryInfo(null);
         }
+<<<<<<< HEAD
 
         // Fetch salary history
         const historyResponse = await payrollTrackingService.getSalaryHistory(user.id);
         const historyData = (historyResponse?.data || []) as BackendSalaryRecord[];
         // Use the derived currency from the base salary response instead of stale state
         setSalaryHistory(historyData.map(r => mapSalaryRecord(r, derivedCurrency)));
+=======
+        
+        // Fetch salary history
+        const historyResponse = await payrollTrackingService.getSalaryHistory(user.id);
+        const historyData = (historyResponse?.data || []) as BackendSalaryRecord[];
+        setSalaryHistory(historyData.map(mapSalaryRecord));
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load salary information';
         setError(errorMessage);
@@ -213,7 +247,11 @@ export default function SalaryHistoryPage() {
         </div>
         <Link href="/dashboard/department-employee/payroll-tracking">
           <button className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50">
+<<<<<<< HEAD
             Back to Payroll Tracking
+=======
+            ← Back to Payroll Tracking
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
           </button>
         </Link>
       </div>
@@ -236,7 +274,11 @@ export default function SalaryHistoryPage() {
               <p className="text-green-100 mt-2">No salary information available</p>
             )}
           </div>
+<<<<<<< HEAD
           <div className="text-6xl"></div>
+=======
+          <div className="text-6xl">💵</div>
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
         </div>
       </div>
 
@@ -269,7 +311,11 @@ export default function SalaryHistoryPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Salary Details */}
           <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
+<<<<<<< HEAD
             <h3 className="text-lg font-bold text-slate-900 mb-6">Salary Information</h3>
+=======
+            <h3 className="text-lg font-bold text-slate-900 mb-6">💰 Salary Information</h3>
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
             <div className="space-y-4">
               <div className="flex justify-between py-3 border-b border-slate-100">
                 <span className="text-slate-600">Base Salary</span>
@@ -294,7 +340,11 @@ export default function SalaryHistoryPage() {
 
           {/* Contract Details */}
           <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
+<<<<<<< HEAD
             <h3 className="text-lg font-bold text-slate-900 mb-6">Contract Information</h3>
+=======
+            <h3 className="text-lg font-bold text-slate-900 mb-6">📋 Contract Information</h3>
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
             <div className="space-y-4">
               <div className="flex justify-between items-center py-3 border-b border-slate-100">
                 <span className="text-slate-600">Contract Type</span>
@@ -315,7 +365,11 @@ export default function SalaryHistoryPage() {
 
           {/* Salary Breakdown */}
           <div className="lg:col-span-2 bg-white rounded-lg border border-slate-200 shadow-sm p-6">
+<<<<<<< HEAD
             <h3 className="text-lg font-bold text-slate-900 mb-6">Salary Breakdown (Based on Contract)</h3>
+=======
+            <h3 className="text-lg font-bold text-slate-900 mb-6">📊 Salary Breakdown (Based on Contract)</h3>
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-green-50 rounded-lg p-4 text-center">
                 <p className="text-sm text-green-600">Annual Salary</p>
@@ -351,7 +405,11 @@ export default function SalaryHistoryPage() {
         <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
           {salaryHistory.length === 0 ? (
             <div className="p-8 text-center">
+<<<<<<< HEAD
               <div className="text-6xl mb-4"></div>
+=======
+              <div className="text-6xl mb-4">📊</div>
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
               <h3 className="text-xl font-semibold text-slate-900 mb-2">No Salary History</h3>
               <p className="text-slate-600">Your salary change history will appear here once you have payslips.</p>
             </div>
@@ -390,10 +448,16 @@ export default function SalaryHistoryPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4">
+<<<<<<< HEAD
                           <div className="font-medium text-red-600">-{formatCurrency(record.totalDeductions, record.currency)}</div>
                           <div className="text-xs text-slate-500 mt-1">
                             Taxes: {formatCurrency(record.taxesTotal || 0, record.currency)} • Ins: {formatCurrency(record.insurancesTotal || 0, record.currency)} • Pen: {formatCurrency(record.penaltiesTotal || 0, record.currency)}
                           </div>
+=======
+                          <span className="font-medium text-red-600">
+                            -{formatCurrency(record.totalDeductions, record.currency)}
+                          </span>
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
                         </td>
                         <td className="px-6 py-4">
                           <span className="font-bold text-blue-600">
@@ -434,7 +498,11 @@ export default function SalaryHistoryPage() {
       {/* No Data State */}
       {!baseSalaryInfo && activeTab === 'current' && (
         <div className="bg-slate-50 border border-slate-200 rounded-lg p-8 text-center">
+<<<<<<< HEAD
           <div className="text-6xl mb-4"></div>
+=======
+          <div className="text-6xl mb-4">📋</div>
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
           <h3 className="text-xl font-semibold text-slate-900 mb-2">No Salary Information Available</h3>
           <p className="text-slate-600">Your salary details will appear here once they are configured.</p>
         </div>

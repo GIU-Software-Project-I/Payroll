@@ -89,6 +89,7 @@ export default function InsuranceDeductionsPage() {
   };
 
   const getInsuranceTypeIcon = (type?: string) => {
+<<<<<<< HEAD
     if (!type) return '';
     const lowerType = type.toLowerCase();
     if (lowerType.includes('health')) return '';
@@ -97,6 +98,16 @@ export default function InsuranceDeductionsPage() {
     if (lowerType.includes('disability')) return '';
     if (lowerType.includes('life')) return '';
     return '';
+=======
+    if (!type) return '🏥';
+    const lowerType = type.toLowerCase();
+    if (lowerType.includes('health')) return '🏥';
+    if (lowerType.includes('pension') || lowerType.includes('retirement')) return '👴';
+    if (lowerType.includes('unemployment')) return '💼';
+    if (lowerType.includes('disability')) return '♿';
+    if (lowerType.includes('life')) return '🛡️';
+    return '🏥';
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
   };
 
   const getInsuranceTypeColor = (type?: string) => {
@@ -164,7 +175,11 @@ export default function InsuranceDeductionsPage() {
               Across {insuranceData.length} payslip{insuranceData.length !== 1 ? 's' : ''}
             </p>
           </div>
+<<<<<<< HEAD
           <div className="text-6xl"></div>
+=======
+          <div className="text-6xl">🏥</div>
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
         </div>
       </div>
 
@@ -192,7 +207,11 @@ export default function InsuranceDeductionsPage() {
       {/* Insurance Deductions List */}
       {filteredData.length === 0 ? (
         <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-12 text-center">
+<<<<<<< HEAD
           <div className="text-6xl mb-4"></div>
+=======
+          <div className="text-6xl mb-4">🏥</div>
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
           <p className="text-slate-700 font-medium text-lg">No insurance deductions found</p>
           <p className="text-slate-500 text-sm mt-2">
             Insurance deductions will appear here once payroll has been processed
@@ -304,7 +323,11 @@ export default function InsuranceDeductionsPage() {
       {/* Information Panel */}
       <div className="bg-green-50 border border-green-200 rounded-lg p-6">
         <div className="flex items-start gap-3">
+<<<<<<< HEAD
           <span className="text-2xl"></span>
+=======
+          <span className="text-2xl">💡</span>
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
           <div>
             <h4 className="font-semibold text-green-900 mb-2">Understanding Your Insurance Contributions</h4>
             <ul className="text-sm text-green-800 space-y-1 list-disc list-inside">

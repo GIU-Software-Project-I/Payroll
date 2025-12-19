@@ -130,6 +130,7 @@ export default function PayslipsPage() {
       try {
         setLoading(true);
         const response = await payrollTrackingService.getEmployeePayslips(user.id);
+<<<<<<< HEAD
         // Map backend payslips to frontend format and normalize
         const backendPayslips = (response?.data || []) as BackendPayslip[];
         const mappedPayslips = backendPayslips.map(mapPayslip);
@@ -148,6 +149,12 @@ export default function PayslipsPage() {
           deductions: Array.isArray(p.deductions) ? p.deductions : [],
         });
         setPayslips(mappedPayslips.map(normalizePayslip));
+=======
+        // Map backend payslips to frontend format
+        const backendPayslips = (response?.data || []) as BackendPayslip[];
+        const mappedPayslips = backendPayslips.map(mapPayslip);
+        setPayslips(mappedPayslips);
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load payslips';
         setError(errorMessage);
@@ -222,6 +229,7 @@ export default function PayslipsPage() {
     }
   };
 
+<<<<<<< HEAD
   const formatCurrency = (amount: number | undefined | null, currency: string = 'USD') => {
     const safeAmount = Number(amount ?? 0);
     const value = isNaN(safeAmount) ? 0 : safeAmount;
@@ -229,6 +237,13 @@ export default function PayslipsPage() {
       style: 'currency',
       currency: currency,
     }).format(value);
+=======
+  const formatCurrency = (amount: number, currency: string = 'USD') => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+    }).format(amount);
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
   };
 
   const formatDate = (dateString: string) => {
@@ -280,7 +295,11 @@ export default function PayslipsPage() {
         </div>
         <Link href="/dashboard/department-employee/payroll-tracking">
           <button className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50">
+<<<<<<< HEAD
             Back to Payroll Tracking
+=======
+            ← Back to Payroll Tracking
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
           </button>
         </Link>
       </div>
@@ -292,14 +311,22 @@ export default function PayslipsPage() {
             <h2 className="text-xl font-bold">Payslip Overview</h2>
             <p className="text-blue-100 mt-1">{payslips.length} payslips available</p>
           </div>
+<<<<<<< HEAD
           <div className="text-5xl"></div>
+=======
+          <div className="text-5xl">📄</div>
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
         </div>
       </div>
 
       {/* Payslips List */}
       {payslips.length === 0 ? (
         <div className="bg-slate-50 border border-slate-200 rounded-lg p-8 text-center">
+<<<<<<< HEAD
           <div className="text-6xl mb-4"></div>
+=======
+          <div className="text-6xl mb-4">📭</div>
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
           <h3 className="text-xl font-semibold text-slate-900 mb-2">No Payslips Available</h3>
           <p className="text-slate-600">Your payslips will appear here once they are generated.</p>
         </div>
@@ -357,7 +384,11 @@ export default function PayslipsPage() {
                           disabled={downloading === payslip.id}
                           className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
                         >
+<<<<<<< HEAD
                           {downloading === payslip.id ? '...' : 'PDF'}
+=======
+                          {downloading === payslip.id ? '...' : '⬇️ PDF'}
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
                         </button>
                       </div>
                     </td>
@@ -423,7 +454,11 @@ export default function PayslipsPage() {
 
               {/* Earnings Breakdown */}
               <div className="border border-slate-200 rounded-lg p-4">
+<<<<<<< HEAD
                 <h4 className="font-semibold text-slate-900 mb-4">Earnings</h4>
+=======
+                <h4 className="font-semibold text-slate-900 mb-4">💰 Earnings</h4>
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
                 <div className="space-y-2">
                   <div className="flex justify-between py-2 border-b border-slate-100">
                     <span className="text-slate-700">Base Salary</span>
@@ -450,7 +485,11 @@ export default function PayslipsPage() {
 
               {/* Deductions Breakdown */}
               <div className="border border-slate-200 rounded-lg p-4">
+<<<<<<< HEAD
                 <h4 className="font-semibold text-slate-900 mb-4">Deductions</h4>
+=======
+                <h4 className="font-semibold text-slate-900 mb-4">💸 Deductions</h4>
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
                 <div className="space-y-2">
                   {selectedPayslip.deductions?.map((deduction, idx) => (
                     <div key={idx} className="flex justify-between py-2 border-b border-slate-100">
@@ -491,11 +530,19 @@ export default function PayslipsPage() {
                     disabled={downloading === selectedPayslip.id}
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                   >
+<<<<<<< HEAD
                     {downloading === selectedPayslip.id ? 'Downloading...' : 'Download PDF'}
                   </button>
                   <Link href="/dashboard/department-employee/payroll-tracking/claims-disputes">
                     <button className="px-4 py-2 border border-orange-300 text-orange-600 rounded-lg hover:bg-orange-50">
                       Dispute
+=======
+                    {downloading === selectedPayslip.id ? 'Downloading...' : '⬇️ Download PDF'}
+                  </button>
+                  <Link href="/dashboard/department-employee/payroll-tracking/claims-disputes">
+                    <button className="px-4 py-2 border border-orange-300 text-orange-600 rounded-lg hover:bg-orange-50">
+                      ⚠️ Dispute
+>>>>>>> 626a6affb28aaa75f443f4fe5e4c381ab3ccff66
                     </button>
                   </Link>
                 </div>
