@@ -5,7 +5,7 @@ import { EmployeeProfile as Employee } from '../../../employee/models/employee/e
 import { TerminationRequest } from '../../../recruitment/models/termination-request.schema';
 import { BenefitStatus } from '../enums/payroll-execution-enum';
 
-// Type for a Mongoose document of EmployeeTerminationResignation
+// Type for a Mongoose document of EmployeeTerminationResignationnn
 export type EmployeeTerminationResignationDocument = HydratedDocument<EmployeeTerminationResignation>;
 
 @Schema({ timestamps: true }) // Automatically add createdAt and updatedAt

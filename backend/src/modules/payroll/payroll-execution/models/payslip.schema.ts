@@ -5,10 +5,10 @@ import { signingBonus, signingBonusSchema } from '../../payroll-configuration/mo
 import { terminationAndResignationBenefits, terminationAndResignationBenefitsSchema } from '../../payroll-configuration/models/terminationAndResignationBenefits';
 import { taxRules, taxRulesSchema } from '../../payroll-configuration/models/taxRules.schema';
 import { insuranceBrackets, insuranceBracketsSchema } from '../../payroll-configuration/models/insuranceBrackets.schema';
-import { employeePenalties, employeePenaltiesSchema } from './employeePenalties.schema';
+import { employeePenalties, employeePenaltiesSchema } from './employeePenaltiesDocument';
 import {  EmployeeProfile as Employee} from '../../../employee/models/employee/employee-profile.schema';
 import { refundDetails, refundDetailsSchema } from '../../payroll-tracking/models/refunds.schema';
-import { payrollRuns } from './payrollRuns.schema';
+import { payrollRuns } from './payrollruns';
 import { PaySlipPaymentStatus } from '../enums/payroll-execution-enum';
 
 
