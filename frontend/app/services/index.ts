@@ -1,3 +1,4 @@
+// filepath: d:\WebstormProjects\HR System\Main\frontend\app\services\index.ts
 export { default as api } from './api';
 export { authService } from './auth';
 export { employeeProfileService } from './employee-profile';

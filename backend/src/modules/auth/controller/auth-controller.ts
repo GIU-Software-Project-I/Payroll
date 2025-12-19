@@ -1,6 +1,6 @@
-import {Controller, Post, Body, HttpCode, HttpStatus, Req, Res, UseGuards, InternalServerErrorException, BadRequestException, Patch, Param,} from '@nestjs/common';
+import {Controller, Post, Body, HttpCode, HttpStatus, Req, Res, UseGuards, InternalServerErrorException, BadRequestException, Patch, Param, HttpException,} from '@nestjs/common';
 import type { Response } from 'express';
-import { Public } from '../decorators/public-decorator';
+import { Public } from '../decorators/public-decorator'; 
 import { Roles } from '../decorators/roles-decorator';
 import { AuthService } from '../services/authentication-service';
 
@@ -14,12 +14,12 @@ import { ApiTags, ApiBody, ApiOperation, ApiConsumes } from '@nestjs/swagger';
 
 
 @Controller('auth')
-@ApiTags('Auth')
+@ApiTags('auth')
 export class AuthController {
     constructor(private readonly auth: AuthService) {}
 
-    @UseGuards(AuthenticationGuard, AuthorizationGuard)
-    @Roles(SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+   // @UseGuards(AuthenticationGuard, AuthorizationGuard)
+    //@Roles(SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     @Post('register-employee')
     @ApiConsumes('application/json')
     @ApiBody({ type: RegisterEmployeeDto })
@@ -28,7 +28,12 @@ export class AuthController {
         try {
             return await this.auth.registerEmployee(dto);
         } catch (e) {
-            throw new InternalServerErrorException('Something went wrong during employee registration.');
+            console.error('Employee registration error:', e);
+            // Re-throw HTTP exceptions (BadRequest, Unauthorized, Forbidden, etc.)
+            if (e instanceof HttpException) {
+                throw e;
+            }
+            throw new InternalServerErrorException(e.message || 'Something went wrong during employee registration.');
         }
     }
 

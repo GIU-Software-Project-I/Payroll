@@ -1,17 +1,17 @@
 // Note: In a real application, you would implement proper guards
 // @UseGuards(JwtAuthGuard, RolesGuard)
 
-import {Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put, Query, Res, UseGuards} from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put, Query, Res, UseGuards } from "@nestjs/common";
 import type { Response } from 'express';
 
-import {PayrollTrackingService} from "../services/payroll-tracking.service";
+import { PayrollTrackingService } from "../services/payroll-tracking.service";
 import {
-    CreateClaimDto,
-    CreateDisputeDto,
-    CreateRefundDto,
-    UpdateClaimDto,
-    UpdateDisputeDto,
-    UpdateRefundDto
+  CreateClaimDto,
+  CreateDisputeDto,
+  CreateRefundDto,
+  UpdateClaimDto,
+  UpdateDisputeDto,
+  UpdateRefundDto
 } from "../dtos";
 // Authentication commented out for testing
 // import { AuthenticationGuard } from '../../../auth/guards/authentication-guard';
@@ -22,7 +22,7 @@ import {
 @Controller('payroll/tracking')
 // @UseGuards(AuthenticationGuard, AuthorizationGuard)
 export class PayrollTrackingController {
-  constructor(private readonly payrollTrackingService: PayrollTrackingService) {}
+  constructor(private readonly payrollTrackingService: PayrollTrackingService) { }
 
   // ========== Employee Self-Service Endpoints ==========
 
@@ -344,10 +344,10 @@ export class PayrollTrackingController {
     @Body() body: { approvedAmount?: number; reason?: string }
   ) {
     return this.payrollTrackingService.reviewClaim(
-      claimId, 
-      specialistId, 
-      action, 
-      body.approvedAmount, 
+      claimId,
+      specialistId,
+      action,
+      body.approvedAmount,
       body.reason
     );
   }
@@ -382,8 +382,9 @@ export class PayrollTrackingController {
     return this.payrollTrackingService.generateDisputeRefund(
       disputeId,
       financeStaffId,
-      createRefundDto.amount,
-      createRefundDto.description
+      createRefundDto.refundDetails?.amount,
+      createRefundDto.refundDetails?.description,
+      createRefundDto.employeeId
     );
   }
 
@@ -398,8 +399,9 @@ export class PayrollTrackingController {
     return this.payrollTrackingService.generateClaimRefund(
       claimId,
       financeStaffId,
-      createRefundDto.amount,
-      createRefundDto.description
+      createRefundDto.refundDetails?.amount,
+      createRefundDto.refundDetails?.description,
+      createRefundDto.employeeId
     );
   }
 
@@ -424,9 +426,22 @@ export class PayrollTrackingController {
   // @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN, SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER)
   async getAllClaims(
     @Query('status') status?: string,
-    @Query('employeeId') employeeId?: string
+    @Query('employeeId') employeeId?: string,
+    @Query('claimType') claimType?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('minAmount') minAmount?: number,
+    @Query('maxAmount') maxAmount?: number
   ) {
-    return this.payrollTrackingService.getAllClaims(status, employeeId);
+    return this.payrollTrackingService.getAllClaims({
+      status,
+      employeeId,
+      claimType,
+      startDate,
+      endDate,
+      minAmount,
+      maxAmount
+    });
   }
 
   @Get('claims/:id')
@@ -512,5 +527,5 @@ export class PayrollTrackingController {
   async deleteRefund(@Param('id') id: string) {
     await this.payrollTrackingService.deleteRefundById(id);
   }
-  
+
 }

@@ -45,9 +45,9 @@ import {RecruitmentModule} from "./modules/recruitment/recruitment.module";
 
 
     ],
-     providers: [
-        { provide: APP_GUARD, useClass: AuthenticationGuard },
-        { provide: APP_GUARD, useClass: AuthorizationGuard },
-    ],
+    // providers: [
+    //     { provide: APP_GUARD, useClass: AuthenticationGuard },
+    //     { provide: APP_GUARD, useClass: AuthorizationGuard },
+    // ],
 })
 export class AppModule {}

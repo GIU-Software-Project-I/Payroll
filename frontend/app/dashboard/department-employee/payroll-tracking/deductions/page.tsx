@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/app/context/AuthContext';
 import { payrollTrackingService } from '@/app/services/payroll-tracking';
-
+import { payrollExecutionService } from '@/app/services';
 /**
  * Deductions Page - Department Employee
  * REQ-PY-8: View detailed tax deductions with law/rule applied
@@ -70,6 +70,7 @@ export default function DeductionsPage() {
   const [misconductDeductions, setMisconductDeductions] = useState<MisconductDeduction[]>([]);
   const [unpaidLeaveDeductions, setUnpaidLeaveDeductions] = useState<UnpaidLeaveDeduction[]>([]);
   const [attendanceDeductions, setAttendanceDeductions] = useState<AttendanceDeduction[]>([]);
+  const [unpaidLeaveTotal, setUnpaidLeaveTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'tax' | 'insurance' | 'misconduct' | 'unpaid' | 'attendance'>('tax');
@@ -84,20 +85,152 @@ export default function DeductionsPage() {
       try {
         setLoading(true);
         
-        // Fetch all types of deductions in parallel
-        const [taxRes, insuranceRes, misconductRes, unpaidRes, attendanceRes] = await Promise.all([
-          payrollTrackingService.getTaxDeductions(user.id).catch(() => ({ data: [] })),
-          payrollTrackingService.getInsuranceDeductions(user.id).catch(() => ({ data: [] })),
-          payrollTrackingService.getMisconductDeductions(user.id).catch(() => ({ data: [] })),
-          payrollTrackingService.getUnpaidLeaveDeductions(user.id).catch(() => ({ data: [] })),
-          payrollTrackingService.getAttendanceBasedDeductions(user.id).catch(() => ({ data: [] })),
+        // Fetch payslips for the current employee from payroll execution service
+        const payslipsRes = await payrollTrackingService.getEmployeePayslips(user.id).catch(() => ({ data: [] }));
+        const payslips: any[] = Array.isArray(payslipsRes?.data) ? payslipsRes.data : [];
+
+        // Extract deduction data directly from payslip schema
+        const taxList: TaxDeduction[] = [];
+        const insuranceList: InsuranceDeduction[] = [];
+        const misconductList: MisconductDeduction[] = [];
+
+        payslips.forEach((payslip: any) => {
+          const payslipId = payslip._id || payslip.id;
+          const baseSalary = payslip.earningsDetails?.baseSalary || 0;
+          const payrollPeriod = payslip.payrollPeriod || payslip.createdAt || new Date().toISOString();
+
+          // Process tax deductions from payslip.deductionsDetails.taxes (array of taxRules)
+          if (payslip.deductionsDetails?.taxes && Array.isArray(payslip.deductionsDetails.taxes)) {
+            payslip.deductionsDetails.taxes.forEach((tax: any, idx: number) => {
+              // Calculate amount from rate × baseSalary (taxRules schema has rate, not amount)
+              const taxRate = tax.rate || 0;
+              const calculatedAmount = (baseSalary * taxRate) / 100;
+              
+              taxList.push({
+                id: `${payslipId}-tax-${idx}`,
+                type: tax.name || 'Tax',
+                amount: Math.round(calculatedAmount * 100) / 100,
+                percentage: taxRate,
+                taxBracket: tax.minSalary && tax.maxSalary 
+                  ? `${tax.minSalary} - ${tax.maxSalary}` 
+                  : undefined,
+                lawReference: tax.lawReference,
+                description: tax.description,
+              });
+            });
+          }
+
+          // Process insurance deductions from payslip.deductionsDetails.insurances (array of insuranceBrackets)
+          if (payslip.deductionsDetails?.insurances && Array.isArray(payslip.deductionsDetails.insurances)) {
+            payslip.deductionsDetails.insurances.forEach((insurance: any, idx: number) => {
+              // Calculate amount from employeeRate × baseSalary (insuranceBrackets schema has employeeRate, not amount)
+              const employeeRate = insurance.employeeRate || 0;
+              const calculatedAmount = (baseSalary * employeeRate) / 100;
+              
+              insuranceList.push({
+                id: `${payslipId}-insurance-${idx}`,
+                type: insurance.name || 'Insurance',
+                amount: Math.round(calculatedAmount * 100) / 100,
+                percentage: employeeRate,
+                provider: insurance.provider,
+                description: insurance.description,
+              });
+            });
+          }
+
+          // Process misconduct deductions from payslip.deductionsDetails.penalties (employeePenalties object)
+          if (payslip.deductionsDetails?.penalties) {
+            const penaltiesObj = payslip.deductionsDetails.penalties;
+            // employeePenalties schema has a penalties array with {reason, amount}
+            if (penaltiesObj.penalties && Array.isArray(penaltiesObj.penalties)) {
+              let totalPenalties = 0;
+              penaltiesObj.penalties.forEach((penalty: any) => {
+                totalPenalties += penalty.amount || 0;
+              });
+              
+              if (totalPenalties > 0) {
+                misconductList.push({
+                  id: `${payslipId}-misconduct`,
+                  type: 'Misconduct/Absenteeism',
+                  amount: totalPenalties,
+                  date: payrollPeriod,
+                  reason: penaltiesObj.penalties.map((p: any) => p.reason).join(', ') || 'Deduction from payslip',
+                  description: `Misconduct deduction from payslip ${payslipId}`,
+                });
+              }
+            }
+          }
+        });
+
+        setTaxDeductions(taxList);
+        setInsuranceDeductions(insuranceList);
+        setMisconductDeductions(misconductList);
+
+        // Fetch unpaid leave and attendance deductions from tracking service (these come from leaves module)
+        const [unpaidRes, attendanceRes] = await Promise.all([
+          payrollTrackingService.getUnpaidLeaveDeductions(user.id).catch(() => ({ data: null })),
+          payrollTrackingService.getAttendanceBasedDeductions(user.id).catch(() => ({ data: null })),
         ]);
 
-        setTaxDeductions(taxRes?.data || []);
-        setInsuranceDeductions(insuranceRes?.data || []);
-        setMisconductDeductions(misconductRes?.data || []);
-        setUnpaidLeaveDeductions(unpaidRes?.data || []);
-        setAttendanceDeductions(attendanceRes?.data || []);
+        // Process unpaid leave deductions - response is an object with unpaidLeaveRequests and payslipDeductions
+        const unpaidData: any = (unpaidRes as any)?.data;
+        const unpaidList: UnpaidLeaveDeduction[] = [];
+        let unpaidTotal = 0;
+        if (unpaidData && typeof unpaidData === 'object') {
+          unpaidTotal = unpaidData.totalDeductionAmount || 0;
+          
+          // Process unpaid leave requests
+          if (unpaidData.unpaidLeaveRequests && Array.isArray(unpaidData.unpaidLeaveRequests)) {
+            unpaidData.unpaidLeaveRequests.forEach((request: any, idx: number) => {
+              const deductionAmount = (request.days || 0) * (unpaidData.dailyRate || 0);
+              unpaidList.push({
+                id: `${request.leaveRequestId}-request-${idx}`,
+                leaveType: request.leaveTypeName || 'Unpaid Leave',
+                days: request.days || 0,
+                dailyRate: unpaidData.dailyRate || 0,
+                totalAmount: deductionAmount,
+                startDate: request.startDate,
+                endDate: request.endDate,
+              });
+            });
+          }
+          
+          // Process payslip deductions
+          if (unpaidData.payslipDeductions && Array.isArray(unpaidData.payslipDeductions)) {
+            unpaidData.payslipDeductions.forEach((deduction: any, idx: number) => {
+              unpaidList.push({
+                id: `${deduction.payslipId}-payslip-${idx}`,
+                leaveType: deduction.leaveTypeName || 'Unpaid Leave',
+                days: deduction.daysDeducted || 0,
+                dailyRate: deduction.dailyRate || 0,
+                totalAmount: deduction.deductionAmount || 0,
+                startDate: deduction.period?.from || '',
+                endDate: deduction.period?.to || '',
+              });
+            });
+          }
+        }
+        setUnpaidLeaveDeductions(unpaidList);
+        setUnpaidLeaveTotal(unpaidTotal);
+
+        // Process attendance-based deductions - response is an object with deductions array
+        const attendanceData: any = (attendanceRes as any)?.data;
+        const attendanceList: AttendanceDeduction[] = [];
+        if (attendanceData && typeof attendanceData === 'object') {
+          if (attendanceData.deductions && Array.isArray(attendanceData.deductions)) {
+            attendanceData.deductions.forEach((deduction: any, idx: number) => {
+              attendanceList.push({
+                id: `attendance-${idx}`,
+                type: deduction.type || 'Attendance Deduction',
+                date: deduction.date,
+                amount: deduction.amount || 0,
+                hours: deduction.hoursDeducted,
+                reason: deduction.reason || deduction.description,
+              });
+            });
+          }
+        }
+        setAttendanceDeductions(attendanceList);
       } catch (err: any) {
         setError(err.message || 'Failed to load deductions');
       } finally {
@@ -124,20 +257,20 @@ export default function DeductionsPage() {
   };
 
   const getTotalDeductions = () => {
-    const taxTotal = taxDeductions.reduce((sum, d) => sum + d.amount, 0);
-    const insuranceTotal = insuranceDeductions.reduce((sum, d) => sum + d.amount, 0);
-    const misconductTotal = misconductDeductions.reduce((sum, d) => sum + d.amount, 0);
-    const unpaidTotal = unpaidLeaveDeductions.reduce((sum, d) => sum + d.totalAmount, 0);
-    const attendanceTotal = attendanceDeductions.reduce((sum, d) => sum + d.amount, 0);
+    const taxTotal = Array.isArray(taxDeductions) ? taxDeductions.reduce((sum, d) => sum + (d.amount || 0), 0) : 0;
+    const insuranceTotal = Array.isArray(insuranceDeductions) ? insuranceDeductions.reduce((sum, d) => sum + (d.amount || 0), 0) : 0;
+    const misconductTotal = Array.isArray(misconductDeductions) ? misconductDeductions.reduce((sum, d) => sum + (d.amount || 0), 0) : 0;
+    const unpaidTotal = Array.isArray(unpaidLeaveDeductions) ? unpaidLeaveDeductions.reduce((sum, d) => sum + (d.totalAmount || 0), 0) : unpaidLeaveTotal;
+    const attendanceTotal = Array.isArray(attendanceDeductions) ? attendanceDeductions.reduce((sum, d) => sum + (d.amount || 0), 0) : 0;
     return taxTotal + insuranceTotal + misconductTotal + unpaidTotal + attendanceTotal;
   };
 
   const tabs = [
-    { id: 'tax', label: 'Tax Deductions', icon: '🏛️', count: taxDeductions.length },
-    { id: 'insurance', label: 'Insurance', icon: '🏥', count: insuranceDeductions.length },
-    { id: 'misconduct', label: 'Misconduct', icon: '⚠️', count: misconductDeductions.length },
-    { id: 'unpaid', label: 'Unpaid Leave', icon: '📅', count: unpaidLeaveDeductions.length },
-    { id: 'attendance', label: 'Attendance', icon: '⏰', count: attendanceDeductions.length },
+    { id: 'tax', label: 'Tax Deductions', icon: '', count: taxDeductions.length },
+    { id: 'insurance', label: 'Insurance', icon: '', count: insuranceDeductions.length },
+    { id: 'misconduct', label: 'Misconduct', icon: '', count: misconductDeductions.length },
+    { id: 'unpaid', label: 'Unpaid Leave', icon: '', count: unpaidLeaveDeductions.length },
+    { id: 'attendance', label: 'Attendance', icon: '', count: attendanceDeductions.length },
   ];
 
   if (loading) {
@@ -175,7 +308,7 @@ export default function DeductionsPage() {
         </div>
         <Link href="/dashboard/department-employee/payroll-tracking">
           <button className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50">
-            ← Back to Payroll Tracking
+            Back to Payroll Tracking
           </button>
         </Link>
       </div>
@@ -188,7 +321,7 @@ export default function DeductionsPage() {
             <p className="text-4xl font-bold mt-2">{formatCurrency(getTotalDeductions())}</p>
             <p className="text-red-100 mt-1">Combined deductions from all categories</p>
           </div>
-          <div className="text-6xl">💸</div>
+          <div className="text-6xl"></div>
         </div>
         
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-6">
@@ -206,7 +339,9 @@ export default function DeductionsPage() {
           </div>
           <div className="bg-white/20 rounded-lg p-3 text-center">
             <p className="text-red-100 text-xs">Unpaid Leave</p>
-            <p className="text-lg font-bold mt-1">{formatCurrency(unpaidLeaveDeductions.reduce((s, d) => s + d.totalAmount, 0))}</p>
+            <p className="text-lg font-bold mt-1">
+              {formatCurrency(Array.isArray(unpaidLeaveDeductions) ? unpaidLeaveDeductions.reduce((s, d) => s + (d.totalAmount || 0), 0) : unpaidLeaveTotal)}
+            </p>
           </div>
           <div className="bg-white/20 rounded-lg p-3 text-center">
             <p className="text-red-100 text-xs">Attendance</p>
@@ -243,14 +378,14 @@ export default function DeductionsPage() {
       {/* Tax Deductions Tab */}
       {activeTab === 'tax' && (
         <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
-          <h3 className="text-lg font-bold text-slate-900 mb-4">🏛️ Tax Deductions</h3>
+          <h3 className="text-lg font-bold text-slate-900 mb-4">Tax Deductions</h3>
           <p className="text-slate-600 text-sm mb-6">
             Detailed breakdown of tax deductions including income tax and social contributions.
           </p>
           
           {taxDeductions.length === 0 ? (
             <div className="text-center py-8 text-slate-500">
-              <div className="text-4xl mb-2">📋</div>
+              <div className="text-4xl mb-2"></div>
               No tax deductions recorded
             </div>
           ) : (
@@ -270,7 +405,7 @@ export default function DeductionsPage() {
                       )}
                       {deduction.lawReference && (
                         <p className="text-xs text-amber-600 mt-1">
-                          📜 Law Reference: {deduction.lawReference}
+                          Law Reference: {deduction.lawReference}
                         </p>
                       )}
                     </div>
@@ -299,14 +434,14 @@ export default function DeductionsPage() {
       {/* Insurance Deductions Tab */}
       {activeTab === 'insurance' && (
         <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
-          <h3 className="text-lg font-bold text-slate-900 mb-4">🏥 Insurance Deductions</h3>
+          <h3 className="text-lg font-bold text-slate-900 mb-4">Insurance Deductions</h3>
           <p className="text-slate-600 text-sm mb-6">
             Health, pension, unemployment, and other insurance contributions.
           </p>
           
           {insuranceDeductions.length === 0 ? (
             <div className="text-center py-8 text-slate-500">
-              <div className="text-4xl mb-2">🏥</div>
+              <div className="text-4xl mb-2"></div>
               No insurance deductions recorded
             </div>
           ) : (
@@ -348,14 +483,14 @@ export default function DeductionsPage() {
       {/* Misconduct Deductions Tab */}
       {activeTab === 'misconduct' && (
         <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
-          <h3 className="text-lg font-bold text-slate-900 mb-4">⚠️ Misconduct / Absenteeism Deductions</h3>
+          <h3 className="text-lg font-bold text-slate-900 mb-4">Misconduct / Absenteeism Deductions</h3>
           <p className="text-slate-600 text-sm mb-6">
             Salary deductions due to misconduct or unapproved absenteeism.
           </p>
           
           {misconductDeductions.length === 0 ? (
             <div className="text-center py-8 text-slate-500">
-              <div className="text-4xl mb-2">✅</div>
+              <div className="text-4xl mb-2"></div>
               No misconduct deductions - Great job!
             </div>
           ) : (
@@ -390,14 +525,14 @@ export default function DeductionsPage() {
       {/* Unpaid Leave Tab */}
       {activeTab === 'unpaid' && (
         <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
-          <h3 className="text-lg font-bold text-slate-900 mb-4">📅 Unpaid Leave Deductions</h3>
+          <h3 className="text-lg font-bold text-slate-900 mb-4">Unpaid Leave Deductions</h3>
           <p className="text-slate-600 text-sm mb-6">
             Deductions for unpaid leave days based on daily/hourly salary calculations.
           </p>
           
           {unpaidLeaveDeductions.length === 0 ? (
             <div className="text-center py-8 text-slate-500">
-              <div className="text-4xl mb-2">📅</div>
+              <div className="text-4xl mb-2"></div>
               No unpaid leave deductions
             </div>
           ) : (
@@ -425,7 +560,7 @@ export default function DeductionsPage() {
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-slate-900">Total Unpaid Leave Deductions</span>
                   <span className="text-xl font-bold text-red-600">
-                    -{formatCurrency(unpaidLeaveDeductions.reduce((s, d) => s + d.totalAmount, 0))}
+                    -{formatCurrency(Array.isArray(unpaidLeaveDeductions) ? unpaidLeaveDeductions.reduce((s, d) => s + (d.totalAmount || 0), 0) : unpaidLeaveTotal)}
                   </span>
                 </div>
               </div>
@@ -437,14 +572,14 @@ export default function DeductionsPage() {
       {/* Attendance Deductions Tab */}
       {activeTab === 'attendance' && (
         <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
-          <h3 className="text-lg font-bold text-slate-900 mb-4">⏰ Attendance-Based Deductions</h3>
+          <h3 className="text-lg font-bold text-slate-900 mb-4">Attendance-Based Deductions</h3>
           <p className="text-slate-600 text-sm mb-6">
             Deductions based on attendance records such as late arrivals or early departures.
           </p>
           
           {attendanceDeductions.length === 0 ? (
             <div className="text-center py-8 text-slate-500">
-              <div className="text-4xl mb-2">✅</div>
+              <div className="text-4xl mb-2"></div>
               No attendance-based deductions - Excellent attendance!
             </div>
           ) : (
@@ -484,7 +619,7 @@ export default function DeductionsPage() {
       {/* Help Section */}
       <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
         <div className="flex items-start gap-3">
-          <span className="text-2xl">💡</span>
+          <span className="text-2xl"></span>
           <div>
             <h4 className="font-semibold text-amber-900">Have questions about your deductions?</h4>
             <p className="text-sm text-amber-700 mt-1">
