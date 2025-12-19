@@ -1,36 +1,177 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { payrollSpecialistService, PayrollDispute, DisputeReviewAction } from '@/app/services/payroll-specialist';
+import { payrollSpecialistService, PayrollDispute, DisputeFilters } from '@/app/services/payroll-specialist';
 import { useAuth } from '@/app/context/AuthContext';
 import { SystemRole } from '@/app/types';
 
 export default function DisputesPage() {
-  const { hasRole } = useAuth();
+  const { user } = useAuth();
   const [disputes, setDisputes] = useState<PayrollDispute[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDispute, setSelectedDispute] = useState<PayrollDispute | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewAction, setReviewAction] = useState<'approve' | 'reject'>('approve');
   const [reviewNotes, setReviewNotes] = useState('');
-  const [escalateToManager, setEscalateToManager] = useState(false);
-  const [filter, setFilter] = useState<PayrollDispute['status'] | 'all'>('pending');
+  const [rejectionRemarks, setRejectionRemarks] = useState('');
+  const [filters, setFilters] = useState<DisputeFilters>({
+    status: 'all'
+  });
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const allowedRoles = [SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER, SystemRole.HR_ADMIN];
+  const hasAccess = user && allowedRoles.includes(user.role);
 
   useEffect(() => {
-    if (!hasRole([SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER, SystemRole.HR_ADMIN])) return;
+    if (!hasAccess) return;
     loadDisputes();
-  }, [hasRole, filter]);
+  }, [user, filters]);
 
   const loadDisputes = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const response = filter === 'all' 
-        ? await payrollSpecialistService.getAllDisputes()
-        : await payrollSpecialistService.getAllDisputes(filter);
-      
-      if (response.data) setDisputes(response.data);
+      const response = await payrollSpecialistService.getAllDisputes(filters);
+      console.log('Disputes response:', response);
+
+      // Determine the array source based on response structure
+      const disputesList = Array.isArray(response)
+        ? response
+        : (Array.isArray(response.data) ? response.data : []);
+
+      // Map backend data to frontend format
+      if (disputesList) {
+        const mappedDisputes: PayrollDispute[] = disputesList.map((dispute: any) => {
+          // Safe mapping with error handling per item
+          try {
+            console.log('Mapping dispute:', dispute.disputeId, 'Status:', dispute.status);
+
+            // Extract payslipId - could be:
+            // 1. A populated object with _id and payrollRunId
+            // 2. A raw ObjectId string
+            // 3. An ObjectId object with toString()
+            // 4. null if population failed (referenced document doesn't exist)
+            // Robust extraction for Payslip ID and Pay Period
+            let payslipIdForDisplay = 'N/A';
+            let payPeriodForDisplay = 'N/A';
+
+            // Check the raw payslipId field from the dispute
+            const payslipData = dispute.payslipId ?? dispute.paySlipId ?? null;
+
+            console.log(`[DEBUG] Dispute ${dispute.disputeId} - payslipId raw:`, dispute.payslipId, 'type:', typeof dispute.payslipId);
+
+            if (payslipData !== null && payslipData !== undefined) {
+              if (typeof payslipData === 'object') {
+                // Populated object - extract _id
+                // Mongoose populated objects have _id as the document's ObjectId
+                const rawId = payslipData._id ?? payslipData.id ?? payslipData.$oid ?? null;
+                if (rawId) {
+                  payslipIdForDisplay = typeof rawId === 'string' ? rawId : (rawId.toString ? rawId.toString() : String(rawId));
+                } else {
+                  // If no _id found in object, try to stringify the whole object's toString
+                  const objStr = payslipData.toString ? payslipData.toString() : null;
+                  if (objStr && objStr !== '[object Object]' && objStr.length === 24) {
+                    // Looks like a MongoDB ObjectId string
+                    payslipIdForDisplay = objStr;
+                  }
+                }
+
+                if (payslipIdForDisplay === '[object Object]') payslipIdForDisplay = 'N/A';
+
+                // Try to get payPeriod from multiple possible sources
+                console.log(`[DEBUG] ${dispute.disputeId} payslipData keys:`, Object.keys(payslipData));
+
+                if (payslipData.payPeriod) {
+                  payPeriodForDisplay = payslipData.payPeriod;
+                } else if (payslipData.payrollRunId) {
+                  const payrollRun = payslipData.payrollRunId;
+                  console.log(`[DEBUG] ${dispute.disputeId} payrollRunId:`, payrollRun, 'type:', typeof payrollRun);
+                  if (typeof payrollRun === 'object' && payrollRun !== null) {
+                    const periodDate = payrollRun.payrollPeriod ? new Date(payrollRun.payrollPeriod) : null;
+                    if (periodDate && !isNaN(periodDate.getTime())) {
+                      payPeriodForDisplay = periodDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+                    } else if (payrollRun.runId) {
+                      payPeriodForDisplay = payrollRun.runId;
+                    } else if (payrollRun.startDate || payrollRun.endDate) {
+                      const startDate = payrollRun.startDate ? new Date(payrollRun.startDate) : null;
+                      if (startDate && !isNaN(startDate.getTime())) {
+                        payPeriodForDisplay = startDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+                      }
+                    }
+                  } else if (typeof payrollRun === 'string') {
+                    // payrollRunId not populated, just an ObjectId string
+                    payPeriodForDisplay = 'N/A';
+                  }
+                } else if (payslipData.periodStart || payslipData.periodEnd) {
+                  // Try payslip's own period fields
+                  const periodDate = payslipData.periodStart ? new Date(payslipData.periodStart) :
+                    payslipData.periodEnd ? new Date(payslipData.periodEnd) : null;
+                  if (periodDate && !isNaN(periodDate.getTime())) {
+                    payPeriodForDisplay = periodDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+                  }
+                } else if (payslipData.startDate || payslipData.endDate) {
+                  // Fallback to startDate/endDate
+                  const periodDate = payslipData.startDate ? new Date(payslipData.startDate) :
+                    payslipData.endDate ? new Date(payslipData.endDate) : null;
+                  if (periodDate && !isNaN(periodDate.getTime())) {
+                    payPeriodForDisplay = periodDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+                  }
+                }
+              } else if (typeof payslipData === 'string') {
+                // Raw ObjectId string (not populated)
+                payslipIdForDisplay = payslipData;
+              }
+            }
+            console.log(`[Dispute Mapping] ${dispute.disputeId} -> Payslip: ${payslipIdForDisplay}, PayPeriod: ${payPeriodForDisplay}`);
+
+            return {
+              id: dispute._id,
+              disputeId: dispute.disputeId,
+              employeeId: dispute.employeeId?._id || dispute.employeeId,
+              employeeName: dispute.employeeId?.firstName && dispute.employeeId?.lastName
+                ? `${dispute.employeeId.firstName} ${dispute.employeeId.lastName}`
+                : 'Unknown',
+              employeeNumber: dispute.employeeId?.employeeId || 'N/A',
+              description: dispute.description,
+              payslipId: payslipIdForDisplay,
+              payPeriod: payPeriodForDisplay,
+              status: dispute.status,
+              submittedAt: dispute.createdAt,
+              reviewedAt: dispute.updatedAt,
+              notes: dispute.resolutionComment,
+              rejectionRemarks: dispute.rejectionReason,
+              refundId: dispute.refundId?.toString() || dispute.refundId || 'N/A',
+              refundStatus: dispute.refundStatus || 'N/A',
+            } as PayrollDispute;
+          } catch (err) {
+            console.error('Error mapping individual dispute:', err, dispute);
+            return null; // Will filter these out
+          }
+        }).filter(Boolean) as PayrollDispute[]; // Filter out failed mappings
+
+        console.log('Mapped disputes count:', mappedDisputes.length);
+
+        // Filter by period if needed (Client-side filtering as requested)
+        let finalDisputes = mappedDisputes;
+        if (filters.period) {
+          const [yearStr, monthStr] = filters.period.split('-');
+          const filterYear = parseInt(yearStr);
+          const filterMonth = parseInt(monthStr); // 1-12
+
+          finalDisputes = finalDisputes.filter(d => {
+            if (!d.submittedAt) return false;
+            const date = new Date(d.submittedAt);
+            return date.getFullYear() === filterYear && (date.getMonth() + 1) === filterMonth;
+          });
+        }
+
+        // Show all disputes to specialists (including escalated for visibility)
+        setDisputes(finalDisputes);
+      }
     } catch (error) {
       console.error('Failed to load disputes:', error);
+      setError('Failed to load disputes');
     } finally {
       setLoading(false);
     }
@@ -38,27 +179,51 @@ export default function DisputesPage() {
 
   const handleReviewDispute = async () => {
     if (!selectedDispute) return;
+    if (!isUnderReview(selectedDispute.status)) {
+      setError('Only disputes with "Under Review" status can be acted upon');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setSuccessMessage(null);
 
     try {
-      const action: DisputeReviewAction = {
-        disputeId: selectedDispute.id,
-        action: reviewAction,
-        notes: reviewNotes,
-        escalateToManager: reviewAction === 'approve' && escalateToManager,
-      };
+      console.log('Reviewing dispute:', selectedDispute.id, 'Action:', reviewAction);
+      let response;
 
-      const response = await payrollSpecialistService.reviewDispute(action);
-      if (response.data) {
-        setDisputes(prev => prev.map(d => 
-          d.id === selectedDispute.id ? response.data! : d
-        ));
+      if (reviewAction === 'approve') {
+        response = await payrollSpecialistService.approveDispute(
+          selectedDispute.id,
+          false,
+          reviewNotes
+        );
+      } else {
+        response = await payrollSpecialistService.rejectDispute(
+          selectedDispute.id,
+          rejectionRemarks
+        );
+      }
+
+      console.log('Review response:', response);
+      const updatedDispute = response.data || response;
+      console.log('Updated dispute status:', updatedDispute?.status);
+
+      if (updatedDispute) {
+        setSuccessMessage(`Dispute ${reviewAction === 'approve' ? 'approved and escalated to payroll manager' : 'rejected'} successfully`);
         setShowReviewModal(false);
         setSelectedDispute(null);
         setReviewNotes('');
-        setEscalateToManager(false);
+        setRejectionRemarks('');
+
+        // Reload disputes to get fresh data
+        await loadDisputes();
       }
     } catch (error) {
       console.error('Failed to review dispute:', error);
+      setError(`Failed to ${reviewAction} dispute`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -66,32 +231,28 @@ export default function DisputesPage() {
     setSelectedDispute(dispute);
     setReviewAction(action);
     setReviewNotes('');
-    setEscalateToManager(false);
     setShowReviewModal(true);
-  };
-
-  const getPriorityColor = (priority: PayrollDispute['priority']) => {
-    switch (priority) {
-      case 'critical': return 'bg-red-100 text-red-800';
-      case 'high': return 'bg-orange-100 text-orange-800';
-      case 'medium': return 'bg-yellow-100 text-yellow-800';
-      case 'low': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
   };
 
   const getStatusColor = (status: PayrollDispute['status']) => {
     switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'under_review': return 'bg-blue-100 text-blue-800';
+      case 'under review': return 'bg-blue-100 text-blue-800';
+      case 'pending payroll Manager approval': return 'bg-orange-100 text-orange-800';
       case 'approved': return 'bg-green-100 text-green-800';
       case 'rejected': return 'bg-red-100 text-red-800';
-      case 'escalated': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  if (!hasRole([SystemRole.PAYROLL_SPECIALIST, SystemRole.PAYROLL_MANAGER, SystemRole.HR_ADMIN])) {
+  const isUnderReview = (status?: string) => {
+    if (!status) return false;
+    // Normalize status: lowercase, trim, replace underscores with spaces
+    // This handles variations like 'UNDER_REVIEW', 'under_review', 'Under Review '
+    const normalized = status.toLowerCase().trim().replace(/_/g, ' ');
+    return normalized === 'under review';
+  };
+
+  if (!hasAccess) {
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-slate-500">Access denied. Payroll Specialist role required.</p>
@@ -103,32 +264,59 @@ export default function DisputesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Dispute Review and Approval</h1>
-          <p className="text-slate-600 mt-1">Review and approve/reject payroll disputes</p>
+          <h1 className="text-2xl font-bold text-white">Dispute Review and Approval</h1>
+          <p className="text-white mt-1">Review and approve/reject payroll disputes</p>
         </div>
       </div>
 
       {/* Filters */}
       <div className="bg-white rounded-lg border border-slate-200 p-4">
-        <div className="flex items-center space-x-4">
-          <label className="text-sm font-medium text-slate-700">Status:</label>
-          <div className="flex space-x-2">
-            {['all', 'pending', 'under_review', 'approved', 'rejected', 'escalated'].map((status) => (
-              <button
-                key={status}
-                onClick={() => setFilter(status as any)}
-                className={`px-3 py-1 text-sm rounded-lg transition-colors ${
-                  filter === status
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {status === 'all' ? 'All' : status.replace('_', ' ').charAt(0).toUpperCase() + status.slice(1).replace('_', ' ')}
-              </button>
-            ))}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+            <select
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white"
+              value={filters.status || 'all'}
+              onChange={(e) => setFilters((prev: DisputeFilters) => ({ ...prev, status: e.target.value as DisputeFilters['status'] }))}
+            >
+              <option value="all">All Status</option>
+              <option value="under review">Under Review</option>
+              <option value="pending payroll Manager approval">Pending Manager Approval</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Payroll Period</label>
+            <input
+              type="month"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white"
+              value={filters.period || ''}
+              onChange={(e) => setFilters((prev: DisputeFilters) => ({ ...prev, period: e.target.value }))}
+            />
           </div>
         </div>
+        <div className="flex items-end mt-4">
+          <button
+            onClick={loadDisputes}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Apply Filters
+          </button>
+        </div>
       </div>
+
+      {/* Success/Error Messages */}
+      {successMessage && (
+        <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4">
+          <p>{successMessage}</p>
+        </div>
+      )}
+      {error && (
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4">
+          <p>{error}</p>
+        </div>
+      )}
 
       {/* Disputes List */}
       <div className="bg-white rounded-lg border border-slate-200">
@@ -145,11 +333,10 @@ export default function DisputesPage() {
             <table className="w-full">
               <thead className="bg-slate-50">
                 <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Dispute ID</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Employee</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Type</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Description</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Amount</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Priority</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Pay Period</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Submitted</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
@@ -159,31 +346,23 @@ export default function DisputesPage() {
                 {disputes.map((dispute) => (
                   <tr key={dispute.id} className="hover:bg-slate-50">
                     <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm font-medium text-slate-900">{dispute.disputeId}</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <div>
                         <div className="text-sm font-medium text-slate-900">{dispute.employeeName}</div>
                         <div className="text-xs text-slate-500">{dispute.employeeNumber}</div>
-                        <div className="text-xs text-slate-500">{dispute.department}</div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-slate-600 capitalize">{dispute.type}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-slate-600 max-w-xs truncate">
-                        {dispute.description}
-                      </div>
+                    <td className="px-6 py-4 min-w-[300px]">
+                      <span className="text-sm text-slate-600">{dispute.description}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                      {dispute.amount ? `$${dispute.amount.toLocaleString()}` : 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(dispute.priority)}`}>
-                        {dispute.priority}
-                      </span>
+                      {dispute.payPeriod || 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(dispute.status)}`}>
-                        {dispute.status.replace('_', ' ')}
+                        {dispute.status}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
@@ -197,7 +376,7 @@ export default function DisputesPage() {
                         >
                           View
                         </button>
-                        {dispute.status === 'pending' && (
+                        {isUnderReview(dispute.status) && (
                           <>
                             <button
                               onClick={() => openReviewModal(dispute, 'approve')}
@@ -244,44 +423,55 @@ export default function DisputesPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
+                  <label className="text-sm font-medium text-slate-500">Dispute ID</label>
+                  <p className="text-slate-900 font-medium">{selectedDispute.disputeId}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-slate-500">Status</label>
+                  <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(selectedDispute.status)}`}>
+                    {selectedDispute.status}
+                  </span>
+                </div>
+                <div>
                   <label className="text-sm font-medium text-slate-500">Employee</label>
                   <p className="text-slate-900">{selectedDispute.employeeName}</p>
                   <p className="text-sm text-slate-600">{selectedDispute.employeeNumber}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-slate-500">Department</label>
-                  <p className="text-slate-900">{selectedDispute.department}</p>
+                  <label className="text-sm font-medium text-slate-500">Employee ID</label>
+                  <p className="text-slate-900 text-sm font-mono">{selectedDispute.employeeId}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-slate-500">Type</label>
-                  <p className="capitalize text-slate-900">{selectedDispute.type}</p>
+                  <label className="text-sm font-medium text-slate-500">Pay Period</label>
+                  <p className="text-slate-900">{selectedDispute.payPeriod || 'N/A'}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-slate-500">Amount</label>
-                  <p className="text-slate-900">
-                    {selectedDispute.amount ? `$${selectedDispute.amount.toLocaleString()}` : 'N/A'}
-                  </p>
+                  <label className="text-sm font-medium text-slate-500">Payslip ID</label>
+                  <p className="text-slate-900 text-sm font-mono bg-slate-50 px-2 py-1 rounded inline-block mt-1">{selectedDispute.payslipId || 'N/A'}</p>
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-slate-500">Priority</label>
-                  <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(selectedDispute.priority)}`}>
-                    {selectedDispute.priority}
-                  </span>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-slate-500">Status</label>
-                  <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(selectedDispute.status)}`}>
-                    {selectedDispute.status.replace('_', ' ')}
-                  </span>
-                </div>
+                {(selectedDispute.refundId || selectedDispute.refundStatus) && selectedDispute.refundId !== 'N/A' && (
+                  <>
+                    <div className="col-span-2 mt-2 pt-2 border-t">
+                      <h4 className="font-semibold text-slate-900">Refund Information</h4>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-slate-500">Refund ID</label>
+                      <p className="text-slate-900 text-sm font-mono bg-slate-50 px-2 py-1 rounded inline-block mt-1">{selectedDispute.refundId}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-slate-500">Refund Status</label>
+                      <div className="mt-1">
+                        <span className="inline-block px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+                          {selectedDispute.refundStatus}
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
               <div>
                 <label className="text-sm font-medium text-slate-500">Description</label>
                 <p className="text-slate-900 mt-1">{selectedDispute.description}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-slate-500">Period</label>
-                <p className="text-slate-900">{selectedDispute.period}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-slate-500">Submitted</label>
@@ -289,24 +479,18 @@ export default function DisputesPage() {
               </div>
               {selectedDispute.notes && (
                 <div>
-                  <label className="text-sm font-medium text-slate-500">Notes</label>
+                  <label className="text-sm font-medium text-slate-500">Resolution Comment</label>
                   <p className="text-slate-900 mt-1">{selectedDispute.notes}</p>
                 </div>
               )}
-              {selectedDispute.attachments && selectedDispute.attachments.length > 0 && (
+              {selectedDispute.status === 'rejected' && selectedDispute.rejectionRemarks && (
                 <div>
-                  <label className="text-sm font-medium text-slate-500">Attachments</label>
-                  <div className="mt-1 space-y-1">
-                    {selectedDispute.attachments.map((attachment, index) => (
-                      <div key={index} className="text-sm text-blue-600 hover:text-blue-800 cursor-pointer">
-                        {attachment}
-                      </div>
-                    ))}
-                  </div>
+                  <label className="text-sm font-medium text-slate-500">Rejection Reason</label>
+                  <p className="text-red-600 mt-1">{selectedDispute.rejectionRemarks}</p>
                 </div>
               )}
             </div>
-            {selectedDispute.status === 'pending' && (
+            {isUnderReview(selectedDispute.status) && (
               <div className="flex justify-end space-x-3 mt-6">
                 <button
                   onClick={() => openReviewModal(selectedDispute, 'reject')}
@@ -340,29 +524,17 @@ export default function DisputesPage() {
                 <p className="text-sm text-slate-600">{selectedDispute.employeeName}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Review Notes</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  {reviewAction === 'approve' ? 'Review Notes' : 'Rejection Remarks'}
+                </label>
                 <textarea
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 bg-white"
                   rows={3}
-                  placeholder="Add your review notes..."
-                  value={reviewNotes}
-                  onChange={(e) => setReviewNotes(e.target.value)}
+                  placeholder={reviewAction === 'approve' ? "Add your review notes..." : "Provide rejection remarks..."}
+                  value={reviewAction === 'approve' ? reviewNotes : rejectionRemarks}
+                  onChange={(e) => reviewAction === 'approve' ? setReviewNotes(e.target.value) : setRejectionRemarks(e.target.value)}
                 />
               </div>
-              {reviewAction === 'approve' && (
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="escalate"
-                    className="mr-2"
-                    checked={escalateToManager}
-                    onChange={(e) => setEscalateToManager(e.target.checked)}
-                  />
-                  <label htmlFor="escalate" className="text-sm text-slate-700">
-                    Escalate to Payroll Manager
-                  </label>
-                </div>
-              )}
             </div>
             <div className="flex justify-end space-x-3 mt-6">
               <button
@@ -373,9 +545,8 @@ export default function DisputesPage() {
               </button>
               <button
                 onClick={handleReviewDispute}
-                className={`px-4 py-2 text-white rounded-lg hover:opacity-90 ${
-                  reviewAction === 'approve' ? 'bg-green-600' : 'bg-red-600'
-                }`}
+                className={`px-4 py-2 text-white rounded-lg hover:opacity-90 ${reviewAction === 'approve' ? 'bg-green-600' : 'bg-red-600'
+                  }`}
               >
                 {reviewAction === 'approve' ? 'Approve' : 'Reject'}
               </button>

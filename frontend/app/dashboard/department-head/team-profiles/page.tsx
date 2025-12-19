@@ -1,132 +1,275 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { employeeProfileService } from '@/app/services/employee-profile';
+import {
+  TeamMemberCard,
+  TeamStats,
+  TeamMemberDetailModal,
+  TeamSearchFilter,
+  TeamMember,
+} from '@/app/components/team-management';
 
-/**
- * Team Profiles Page - Department Head
- * US-E4-01: View team members' profiles (excluding sensitive info)
- * US-E4-02: See summary of team's job titles and departments
- */
 export default function TeamProfilesPage() {
-  const [team, setTeam] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+  // Fetch team profiles
   useEffect(() => {
-    const fetchTeam = async () => {
+    const fetchTeamProfiles = async () => {
       try {
         setLoading(true);
+        setError(null);
+
         const response = await employeeProfileService.getTeamProfiles();
-        setTeam(Array.isArray(response.data) ? response.data : []);
+
+        if (response.error) {
+          throw new Error(response.error);
+        }
+
+        const data = response.data as TeamMember[] | undefined;
+        setTeamMembers(data || []);
       } catch (err: any) {
-        setError(err.message || 'Failed to load team profiles');
+        console.error('Failed to fetch team profiles:', err);
+        setError(err.message || 'Failed to load team members');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchTeam();
+    fetchTeamProfiles();
   }, []);
+
+  // Filter and search logic
+  const filteredMembers = useMemo(() => {
+    let filtered = teamMembers;
+
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(
+        (member) => member.status?.toLowerCase() === statusFilter.toLowerCase()
+      );
+    }
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter((member) => {
+        const fullName = member.fullName || `${member.firstName} ${member.lastName}`;
+        return (
+          fullName.toLowerCase().includes(query) ||
+          member.employeeNumber?.toLowerCase().includes(query) ||
+          member.workEmail?.toLowerCase().includes(query) ||
+          member.primaryPositionId?.title?.toLowerCase().includes(query) ||
+          member.primaryDepartmentId?.name?.toLowerCase().includes(query)
+        );
+      });
+    }
+
+    return filtered;
+  }, [teamMembers, statusFilter, searchQuery]);
+
+  const handleViewDetails = (member: TeamMember) => {
+    setSelectedMember(member);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedMember(null);
+  };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-slate-600">Loading team profiles...</p>
-        </div>
-      </div>
-    );
-  }
+      <div className="p-6 lg:p-8 bg-background min-h-screen">
+        <div className="max-w-7xl mx-auto space-y-6">
+          {/* Header skeleton */}
+          <div className="animate-pulse">
+            <div className="h-8 bg-muted rounded w-1/3 mb-2"></div>
+            <div className="h-4 bg-muted rounded w-1/2"></div>
+          </div>
 
-  if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-        <p className="text-red-800 font-medium">Error loading team</p>
-        <p className="text-red-700 text-sm mt-2">{error}</p>
+          {/* Stats skeleton */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-card border border-border rounded-xl p-5 animate-pulse">
+                <div className="h-4 bg-muted rounded w-1/2 mb-3"></div>
+                <div className="h-8 bg-muted rounded w-1/3"></div>
+              </div>
+            ))}
+          </div>
+
+          {/* Cards skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="bg-card border border-border rounded-xl p-5 animate-pulse">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-14 h-14 bg-muted rounded-full"></div>
+                  <div className="h-6 bg-muted rounded w-20"></div>
+                </div>
+                <div className="h-5 bg-muted rounded w-2/3 mb-2"></div>
+                <div className="h-4 bg-muted rounded w-1/2 mb-4"></div>
+                <div className="space-y-2">
+                  <div className="h-4 bg-muted rounded w-full"></div>
+                  <div className="h-4 bg-muted rounded w-3/4"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-slate-900">My Team</h1>
-        <p className="text-slate-600 mt-2">View and manage your direct reports</p>
-      </div>
-
-      {/* Team Overview */}
-      <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-lg p-8 text-white">
-        <div className="flex items-center justify-between">
+    <div className="p-6 lg:p-8 bg-background min-h-screen">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <h2 className="text-3xl font-bold">Team Overview</h2>
-            <p className="text-indigo-100 mt-2">{team.length} team members</p>
-          </div>
-          <div className="text-6xl">👥</div>
-        </div>
-      </div>
-
-      {/* Team Grid */}
-      {team.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {team.map((member) => (
-            <div key={member.id} className="bg-white rounded-lg border border-slate-200 shadow-sm p-6 hover:shadow-md transition-shadow">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="text-4xl">👤</div>
-                <div>
-                  <h3 className="font-bold text-slate-900">{member.firstName} {member.lastName}</h3>
-                  <p className="text-slate-600 text-sm">{member.position || 'N/A'}</p>
-                </div>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
               </div>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Employee ID:</span>
-                  <span className="text-slate-900 font-medium">{member.employeeId || 'N/A'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Department:</span>
-                  <span className="text-slate-900 font-medium">{member.department || 'N/A'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Email:</span>
-                  <span className="text-slate-900 font-medium truncate max-w-32">{member.email || 'N/A'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Status:</span>
-                  <span className={`font-medium ${member.status === 'Active' ? 'text-green-600' : 'text-slate-600'}`}>
-                    {member.status || 'Active'}
-                  </span>
-                </div>
-              </div>
+              <h1 className="text-2xl lg:text-3xl font-bold text-foreground">My Team</h1>
             </div>
-          ))}
+            <p className="text-muted-foreground">
+              View and manage your direct reports. Access non-sensitive profile information for your team members.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/dashboard/department-head"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-muted-foreground bg-card border border-border rounded-lg hover:bg-accent hover:text-foreground transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Back to Dashboard
+            </Link>
+          </div>
         </div>
-      ) : (
-        <div className="bg-slate-50 border border-slate-200 rounded-lg p-8 text-center">
-          <p className="text-slate-600">No team members found</p>
+
+        {/* Error State */}
+        {error && (
+          <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg flex items-center gap-3">
+            <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{error}</span>
+            <button
+              onClick={() => window.location.reload()}
+              className="ml-auto text-sm font-medium hover:underline"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* Team Stats */}
+        <TeamStats members={teamMembers} loading={loading} />
+
+        {/* Search and Filter */}
+        <TeamSearchFilter
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          statusFilter={statusFilter}
+          onStatusChange={setStatusFilter}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          totalResults={filteredMembers.length}
+        />
+
+        {/* Empty State */}
+        {!loading && teamMembers.length === 0 && (
+          <div className="bg-card border border-border rounded-xl p-12 text-center">
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">No Team Members Found</h3>
+            <p className="text-muted-foreground max-w-md mx-auto">
+              You don't have any direct reports assigned to you yet. Team members will appear here once they are assigned to your supervision.
+            </p>
+          </div>
+        )}
+
+        {/* No Results State */}
+        {!loading && teamMembers.length > 0 && filteredMembers.length === 0 && (
+          <div className="bg-card border border-border rounded-xl p-12 text-center">
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">No Results Found</h3>
+            <p className="text-muted-foreground max-w-md mx-auto mb-4">
+              No team members match your current search or filter criteria.
+            </p>
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setStatusFilter('all');
+              }}
+              className="text-primary font-medium hover:underline"
+            >
+              Clear filters
+            </button>
+          </div>
+        )}
+
+        {/* Team Members Grid/List */}
+        {filteredMembers.length > 0 && (
+          <div
+            className={
+              viewMode === 'grid'
+                ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'
+                : 'space-y-3'
+            }
+          >
+            {filteredMembers.map((member) => (
+              <TeamMemberCard
+                key={member._id}
+                member={member}
+                variant={viewMode}
+                onViewDetails={handleViewDetails}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Privacy Notice */}
+        <div className="bg-muted/50 border border-border rounded-xl p-4 flex items-start gap-3">
+          <svg className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+          <div>
+            <h4 className="text-sm font-medium text-foreground">Privacy Protected View</h4>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              As per company policy (BR 18b), sensitive information such as salary details, personal addresses, and financial data is restricted.
+              You can only view work-related profile information for your direct reports.
+            </p>
+          </div>
         </div>
-      )}
 
-      {/* Information Box */}
-      <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-6">
-        <h3 className="font-semibold text-indigo-900 mb-2">📋 Team Management</h3>
-        <ul className="text-indigo-800 text-sm space-y-2">
-          <li>• View your direct reports and their basic information</li>
-          <li>• Note: Sensitive information (salary, personal IDs) is restricted</li>
-          <li>• Access performance appraisals for your team members</li>
-        </ul>
-      </div>
-
-      {/* Actions */}
-      <div className="flex gap-4">
-        <Link href="/dashboard/department-head">
-          <button className="px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium">
-            Back to Dashboard
-          </button>
-        </Link>
+        {/* Member Detail Modal */}
+        <TeamMemberDetailModal
+          member={selectedMember}
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+        />
       </div>
     </div>
   );

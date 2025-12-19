@@ -1,8 +1,5 @@
-// COMMENTED OUT FOR TESTING - Using employee-profile-no-auth.controller.ts instead
-// Uncomment this controller and remove the no-auth version for production
-
-
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+// Production mode authenticated controller
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { UpdateContactInfoDto } from '../dto/employee-profile/update-contact-info.dto';
 import { UpdateBioDto } from '../dto/employee-profile/update-bio.dto';
 import { CreateCorrectionRequestDto } from '../dto/employee-profile/create-correction-request.dto';
@@ -11,7 +8,10 @@ import { AdminAssignRoleDto } from '../dto/employee-profile/admin-assign-role.dt
 import { SearchEmployeesDto, PaginationQueryDto } from '../dto/employee-profile/search-employees.dto';
 import { ProcessChangeRequestDto } from '../dto/employee-profile/process-change-request.dto';
 import { ProfileChangeStatus, SystemRole } from '../enums/employee-profile.enums';
+import { AddEmergencyContactDto, UpdateEmergencyContactDto } from '../dto/employee-profile/emergency-contact.dto';
+import { AddQualificationDto, UpdateQualificationDto } from '../dto/employee-profile/qualification.dto';
 import { EmployeeProfileService } from '../services/employee-profile.service';
+
 import { AuthenticationGuard } from '../../auth/guards/authentication-guard';
 import { AuthorizationGuard } from '../../auth/guards/authorization-guard';
 import { Roles } from '../../auth/decorators/roles-decorator';
@@ -21,7 +21,14 @@ import type { JwtPayload } from '../../auth/token/jwt-payload';
 @Controller('employee-profile')
 @UseGuards(AuthenticationGuard, AuthorizationGuard)
 export class EmployeeProfileController {
-    constructor(private readonly employeeProfileService: EmployeeProfileService) {}
+    constructor(
+        private readonly employeeProfileService: EmployeeProfileService,
+
+    ) { }
+
+    // ==========================================
+    // EMPLOYEE SELF-SERVICE ROUTES
+    // ==========================================
 
     @Get('me')
     async getMyProfile(@CurrentUser() user: JwtPayload) {
@@ -53,6 +60,67 @@ export class EmployeeProfileController {
         return this.employeeProfileService.cancelMyChangeRequest(user.sub, requestId);
     }
 
+
+    // ==========================================
+    // EMERGENCY CONTACT MANAGEMENT ROUTES
+    // ==========================================
+
+    @Get('me/emergency-contacts')
+    async getEmergencyContacts(@CurrentUser() user: JwtPayload) {
+        return this.employeeProfileService.getEmergencyContacts(user.sub);
+    }
+
+    @Post('me/emergency-contacts')
+    async addEmergencyContact(@CurrentUser() user: JwtPayload, @Body() dto: AddEmergencyContactDto) {
+        return this.employeeProfileService.addEmergencyContact(user.sub, dto);
+    }
+
+    @Patch('me/emergency-contacts/:index')
+    async updateEmergencyContact(
+        @CurrentUser() user: JwtPayload,
+        @Param('index') index: number,
+        @Body() dto: UpdateEmergencyContactDto
+    ) {
+        return this.employeeProfileService.updateEmergencyContact(user.sub, index, dto);
+    }
+
+    @Delete('me/emergency-contacts/:index')
+    async deleteEmergencyContact(@CurrentUser() user: JwtPayload, @Param('index') index: number) {
+        return this.employeeProfileService.deleteEmergencyContact(user.sub, index);
+    }
+
+    // ==========================================
+    // QUALIFICATION MANAGEMENT ROUTES
+    // ==========================================
+
+    @Get('me/qualifications')
+    async getQualifications(@CurrentUser() user: JwtPayload) {
+        return this.employeeProfileService.getQualifications(user.sub);
+    }
+
+    @Post('me/qualifications')
+    async addQualification(@CurrentUser() user: JwtPayload, @Body() dto: AddQualificationDto) {
+        return this.employeeProfileService.addQualification(user.sub, dto);
+    }
+
+    @Patch('me/qualifications/:id')
+    async updateQualification(
+        @CurrentUser() user: JwtPayload,
+        @Param('id') id: string,
+        @Body() dto: UpdateQualificationDto
+    ) {
+        return this.employeeProfileService.updateQualification(user.sub, id, dto);
+    }
+
+    @Delete('me/qualifications/:id')
+    async deleteQualification(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+        return this.employeeProfileService.deleteQualification(user.sub, id);
+    }
+
+    // ==========================================
+    // MANAGER ROUTES (TEAM VIEW)
+    // ==========================================
+
     @Get('team')
     @Roles(SystemRole.DEPARTMENT_HEAD, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
     async getTeamProfiles(@CurrentUser() user: JwtPayload) {
@@ -64,6 +132,10 @@ export class EmployeeProfileController {
     async getTeamProfilesPaginated(@CurrentUser() user: JwtPayload, @Query() queryDto: PaginationQueryDto) {
         return this.employeeProfileService.getTeamProfilesPaginated(user.sub, queryDto);
     }
+
+    // ==========================================
+    // HR ADMIN ROUTES
+    // ==========================================
 
     @Get('admin/employees')
     @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
@@ -107,7 +179,13 @@ export class EmployeeProfileController {
         @Body() dto: ProcessChangeRequestDto,
         @CurrentUser() user: JwtPayload
     ) {
-        return this.employeeProfileService.processChangeRequest(requestId, dto.status, user.sub, dto.rejectionReason);
+        return this.employeeProfileService.processChangeRequest(
+            requestId,
+            dto.status,
+            user.sub,
+            dto.rejectionReason,
+            dto.proposedChanges
+        );
     }
 
     @Get('admin/stats/by-status')

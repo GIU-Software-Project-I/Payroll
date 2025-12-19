@@ -10,7 +10,11 @@ import {
   Param,
   Query,
   UseGuards,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
+import { join } from 'path';
+import { existsSync, createReadStream } from 'fs';
 import { UnifiedLeaveService } from '../services/leaves.service';
 import { CreateLeaveTypeDto } from '../dto/create-leave-type.dto';
 import { UpdateLeaveTypeDto } from '../dto/update-leave-type.dto';
@@ -97,7 +101,11 @@ export class UnifiedLeaveController {
     @Param('id') id: string,
     @Body() body: any,
   ) {
-    return this.service.updateLeaveType(id, { eligibility: body });
+   // return this.service.updateLeaveType(id, { eligibility: body });
+    return this.service.updateLeaveType(id, {
+    eligibility: body,
+    minTenureMonths: body?.minTenureMonths ?? null, // <<< يخزنها في field الموجود بالـ schema
+  });
   }
 
   // -------------------------
@@ -146,7 +154,7 @@ export class UnifiedLeaveController {
   }
 
   @Get('requests')
-  @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  @Roles(SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async getAllRequests(
     @Query('page') page?: number,
     @Query('limit') limit?: number,
@@ -217,6 +225,31 @@ export class UnifiedLeaveController {
     return this.service.managerReject(id, managerId, reason);
   }
 
+  @Patch('requests/:id/return-for-correction')
+  @Roles(SystemRole.DEPARTMENT_HEAD, SystemRole.HR_MANAGER, SystemRole.HR_EMPLOYEE, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async returnForCorrection(
+    @Param('id') id: string,
+    @Query('reviewerId') reviewerId: string,
+    @Query('reason') reason: string,
+  ) {
+    return this.service.returnForCorrection(id, reviewerId, reason);
+  }
+
+  @Patch('requests/:id/resubmit')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async resubmitCorrectedRequest(
+    @Param('id') id: string,
+    @Query('employeeId') employeeId: string,
+    @Body() corrections: Partial<{
+      from: string;
+      to: string;
+      justification: string;
+      attachmentId: string;
+    }>,
+  ) {
+    return this.service.resubmitCorrectedRequest(id, employeeId, corrections);
+  }
+
   @Patch('requests/:id/hr-finalize')
   @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async hrFinalize(
@@ -224,9 +257,12 @@ export class UnifiedLeaveController {
     @Query('hrId') hrId: string,
     @Query('decision') decision: 'approve' | 'reject',
     @Query('allowNegative') allowNegative?: string,
+    @Query('reason') reason?: string,
+    @Query('isOverride') isOverride?: string,
   ) {
     const allow = allowNegative === 'true';
-    return this.service.hrFinalize(id, hrId, decision, allow);
+    const override = isOverride === 'true';
+    return this.service.hrFinalize(id, hrId, decision, allow, reason, override);
   }
 
   // -------------------------
@@ -404,11 +440,60 @@ export class UnifiedLeaveController {
     body?: {
       capDays?: number;
       expiryMonths?: number;
+      leaveTypeRules?: Record<string, { cap: number; expiryMonths: number; canCarryForward: boolean }>;
+      dryRun?: boolean;
     },
   ) {
-    const capDays = body?.capDays;
-    const expiryMonths = body?.expiryMonths;
-    return this.service.carryForward(referenceDate, capDays, expiryMonths);
+    return this.service.carryForward(referenceDate, body);
+  }
+
+  @Post('accruals/carryforward/preview')
+  @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async previewCarryForward(
+    @Query('referenceDate') referenceDate?: string,
+    @Body()
+    body?: {
+      capDays?: number;
+      expiryMonths?: number;
+      leaveTypeRules?: Record<string, { cap: number; expiryMonths: number; canCarryForward: boolean }>;
+    },
+  ) {
+    return this.service.previewCarryForward(referenceDate, body);
+  }
+
+  @Post('accruals/carryforward/override')
+  @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async overrideCarryForward(
+    @Body()
+    body: {
+      employeeId: string;
+      leaveTypeId: string;
+      carryForwardDays: number;
+      expiryDate?: string;
+      reason?: string;
+    },
+  ) {
+    return this.service.overrideCarryForward(
+      body.employeeId,
+      body.leaveTypeId,
+      body.carryForwardDays,
+      body.expiryDate,
+      body.reason,
+    );
+  }
+
+  @Get('accruals/carryforward/report')
+  @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async getCarryForwardReport(
+    @Query('employeeId') employeeId?: string,
+    @Query('leaveTypeId') leaveTypeId?: string,
+    @Query('year') year?: string,
+  ) {
+    return this.service.getCarryForwardReport({
+      employeeId,
+      leaveTypeId,
+      year: year ? parseInt(year) : undefined,
+    });
   }
 
   @Get('accruals/employee/:id/recalc')
@@ -417,20 +502,32 @@ export class UnifiedLeaveController {
     return this.service.recalcEmployee(id);
   }
 
+  // @Post('accruals/reset-year')
+  // @Roles(SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  // async resetLeaveYear(
+  //   @Body()
+  //   body: {
+  //     strategy: 'hireDate' | 'calendarYear' | 'custom';
+  //     referenceDate?: string;
+  //   },
+  // ) {
+  //   const referenceDate = body.referenceDate
+  //     ? new Date(body.referenceDate)
+  //     : undefined;
+  //   return this.service.resetLeaveYear(body.strategy, referenceDate);
+  // }
+
   @Post('accruals/reset-year')
-  @Roles(SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
-  async resetLeaveYear(
-    @Body()
-    body: {
-      strategy: 'hireDate' | 'calendarYear' | 'custom';
-      referenceDate?: string;
-    },
-  ) {
-    const referenceDate = body.referenceDate
-      ? new Date(body.referenceDate)
-      : undefined;
-    return this.service.resetLeaveYear(body.strategy, referenceDate);
-  }
+@Roles(SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+async resetLeaveYear(@Body() body: {
+  strategy: 'hireDate' | 'calendarYear' | 'custom';
+  referenceDate?: string;
+  employeeId?: string;   // ✅ new (optional)
+  dryRun?: boolean;      // ✅ new (optional)
+}) {
+  const referenceDate = body.referenceDate ? new Date(body.referenceDate) : undefined;
+  return this.service.resetLeaveYear(body.strategy, referenceDate, body.employeeId, body.dryRun);
+}
 
   @Post('accruals/adjust-suspension')
   @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
@@ -450,16 +547,20 @@ export class UnifiedLeaveController {
   // -------------------------
   // Attachments (REQ-016, REQ-028)
   // -------------------------
+  // More specific route must come first (NestJS route matching order matters)
+  @Post('attachments/:id/validate-medical')
+  @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async validateMedicalAttachment(
+    @Param('id') id: string,
+    @Query('verifiedBy') verifiedBy?: string,
+  ) {
+    return this.service.validateMedicalAttachment(id, verifiedBy);
+  }
+
   @Post('attachments')
   @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async saveAttachment(@Body() dto: any) {
     return this.service.saveAttachment(dto);
-  }
-
-  @Get('attachments/:id/validate-medical')
-  @Roles(SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
-  async validateMedicalAttachment(@Param('id') id: string) {
-    return this.service.validateMedicalAttachment(id);
   }
 
   // -------------------------
@@ -663,6 +764,119 @@ export class UnifiedLeaveController {
     return this.service.getAttachment(id);
   }
 
+  @Get('attachments/:id/download')
+  @Roles(SystemRole.DEPARTMENT_EMPLOYEE, SystemRole.DEPARTMENT_HEAD, SystemRole.HR_EMPLOYEE, SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async downloadAttachment(@Param('id') id: string, @Res() res: Response) {
+    try {
+      const attachment = await this.service.getAttachment(id);
+      if (!attachment) {
+        return res.status(404).json({ message: 'Attachment not found' });
+      }
+
+      const filePath = (attachment as any).filePath;
+      if (!filePath) {
+        return res.status(404).json({ message: 'File path not found' });
+      }
+
+      // Check if filePath is a URL (http/https) - if so, redirect to it
+      if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+        return res.redirect(filePath);
+      }
+
+      // Check if filePath is a data URL (base64) - if so, return it directly
+      if (filePath.startsWith('data:')) {
+        const base64Data = filePath.split(',')[1];
+        const mimeMatch = filePath.match(/data:([^;]+)/);
+        const mimeType = mimeMatch ? mimeMatch[1] : (attachment as any).fileType || 'application/octet-stream';
+        
+        const buffer = Buffer.from(base64Data, 'base64');
+        const originalName = (attachment as any).originalName || 'document';
+        
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(originalName)}"`);
+        res.setHeader('Content-Type', mimeType);
+        res.setHeader('Content-Length', buffer.length);
+        
+        return res.send(buffer);
+      }
+
+      // If filePath is a local path, try to read from filesystem
+      // Normalize the filePath - remove leading slash if present
+      let normalizedPath = filePath.replace(/^\/+/, '');
+      
+      // Try multiple path variations
+      const possiblePaths = [
+        join(process.cwd(), normalizedPath),
+        join(process.cwd(), filePath),
+        filePath,
+        join(process.cwd(), 'uploads', normalizedPath.replace(/^uploads\//, '')),
+      ];
+      
+      let fullPath: string | null = null;
+      for (const path of possiblePaths) {
+        if (existsSync(path)) {
+          fullPath = path;
+          break;
+        }
+      }
+      
+      if (!fullPath) {
+        // File doesn't exist on server filesystem
+        // Check if it's an external URL - if so, redirect to it
+        if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+          return res.redirect(filePath);
+        }
+        
+        // If filePath is a static path reference (/uploads/...), try to serve it via static middleware
+        // by redirecting to the static file URL
+        if (filePath.startsWith('/uploads/') || filePath.startsWith('uploads/')) {
+          const staticPath = filePath.startsWith('/') ? filePath : `/${filePath}`;
+          // Since static middleware might not work due to route conflicts,
+          // return a response that tells frontend to use the static path directly
+          // Frontend will construct: http://localhost:9000/uploads/...
+          return res.json({
+            filePath: filePath,
+            originalName: (attachment as any).originalName || 'document',
+            fileType: (attachment as any).fileType || 'application/octet-stream',
+            staticUrl: `http://localhost:9000${staticPath}`,
+            message: 'File path reference. Use the staticUrl to access the file.'
+          });
+        }
+        
+        // For other cases, return file info
+        const originalName = (attachment as any).originalName || 'document';
+        const fileType = (attachment as any).fileType || 'application/octet-stream';
+        
+        return res.json({
+          filePath: filePath,
+          originalName: originalName,
+          fileType: fileType,
+          isExternal: true,
+          message: 'File is stored externally. Use the filePath to access it.'
+        });
+      }
+
+      // Set headers for file download
+      const originalName = (attachment as any).originalName || 'document';
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(originalName)}"`);
+      res.setHeader('Content-Type', (attachment as any).fileType || 'application/octet-stream');
+
+      // Stream the file
+      const fileStream = createReadStream(fullPath);
+      fileStream.on('error', (error) => {
+        console.error('Error streaming file:', error);
+        if (!res.headersSent) {
+          res.status(500).json({ message: 'Error reading file', error: error.message });
+        }
+      });
+      fileStream.pipe(res);
+    } catch (error) {
+      console.error('Error in downloadAttachment:', error);
+      if (!res.headersSent) {
+        res.status(500).json({ message: 'Internal server error', error: error instanceof Error ? error.message : String(error) });
+      }
+    }
+  }
+
   @Delete('attachments/:id')
   @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
   async deleteAttachment(@Param('id') id: string) {
@@ -679,5 +893,53 @@ export class UnifiedLeaveController {
     @Query('leaveTypeId') leaveTypeId?: string,
   ) {
     return this.service.getAdjustmentHistory(employeeId, leaveTypeId);
+  }
+
+  @Post('fix-unpaid-balances')
+  @Roles(SystemRole.HR_MANAGER, SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async fixUnpaidLeaveBalances(
+    @Query('employeeId') employeeId?: string,
+    @Query('addDays') addDays?: string,
+  ) {
+    const daysToAdd = addDays ? parseInt(addDays, 10) : 0;
+    if (isNaN(daysToAdd) || daysToAdd < 0) {
+      return { error: 'addDays must be a non-negative number' };
+    }
+    return this.service.fixUnpaidLeaveBalances(employeeId, daysToAdd);
+  }
+
+  // -------------------------
+  // User Role Management (REQ: HR Admin manages user roles and permissions)
+  // -------------------------
+
+  /**
+   * GET /leaves/users/search?q=userIdOrEmail
+   * Search for a user by ID or email for role management
+   * @param q - User ID (ObjectId) or email address
+   * @returns User profile with roles
+   */
+  @Get('users/search')
+  @Roles(SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async getUserByIdOrEmail(@Query('q') q: string) {
+    if (!q) {
+      return { error: 'Query parameter "q" is required' };
+    }
+    return this.service.getUserByIdOrEmail(q);
+  }
+
+  /**
+   * PATCH /leaves/users/:userId/role
+   * Update user role for leave management
+   * @param userId - User ID (ObjectId)
+   * @param body - Update payload with role and optional actorId
+   * @returns Updated user profile with roles
+   */
+  @Patch('users/:userId/role')
+  @Roles(SystemRole.HR_ADMIN, SystemRole.SYSTEM_ADMIN)
+  async updateUserRole(
+    @Param('userId') userId: string,
+    @Body() body: { role: string; actorId?: string },
+  ) {
+    return this.service.updateUserRole(userId, body);
   }
 }

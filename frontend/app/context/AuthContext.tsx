@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { authService, BackendUser } from '@/app/services/auth';
-import {removeAccessToken } from '@/app/services/api';
+import { removeAccessToken, getAccessToken } from '@/app/services/api';
 
 // System roles enum
 export enum SystemRole {
@@ -118,18 +118,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Load user from localStorage on mount
   useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem(USER_STORAGE_KEY);
-      if (storedUser) {
-        const parsed = JSON.parse(storedUser);
-        setUser(parsed);
+    const loadUser = async () => {
+      try {
+        // Add minimum loading time to prevent flash
+        const startTime = Date.now();
+        const minLoadingTime = 500; // Minimum 500ms loading
+
+        const storedUser = localStorage.getItem(USER_STORAGE_KEY);
+        const token = getAccessToken();
+
+        if (storedUser && token) {
+          const parsed = JSON.parse(storedUser);
+          setUser(parsed);
+        } else if (storedUser && !token) {
+          // Token missing but user data exists - session expired
+          console.warn('User data found but no access token. Clearing session.');
+          localStorage.removeItem(USER_STORAGE_KEY);
+          setUser(null);
+        }
+
+        // Ensure minimum loading time
+        const elapsed = Date.now() - startTime;
+        if (elapsed < minLoadingTime) {
+          await new Promise(resolve => setTimeout(resolve, minLoadingTime - elapsed));
+        }
+      } catch (e) {
+        console.error('Failed to parse stored user:', e);
+        localStorage.removeItem(USER_STORAGE_KEY);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (e) {
-      console.error('Failed to parse stored user:', e);
-      localStorage.removeItem(USER_STORAGE_KEY);
-    } finally {
-      setIsLoading(false);
-    }
+    };
+
+    loadUser();
   }, []);
 
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
@@ -186,6 +207,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
+      // After successful registration, login the candidate and redirect to their dashboard
+      try {
+        const loginResponse = await authService.login({
+          email: data.email,
+          password: data.password,
+        });
+        
+        if (loginResponse.data?.user) {
+          const transformedUser = transformUser(loginResponse.data.user);
+          setUser(transformedUser);
+          localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(transformedUser));
+          
+          // Redirect to candidate dashboard
+          router.push('/dashboard/job-candidate');
+        }
+      } catch (loginErr) {
+        // If auto-login fails, just redirect to login page
+        router.push('/login');
+      }
+
       setIsLoading(false);
       return true;
     } catch (err) {
@@ -193,7 +234,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
       return false;
     }
-  }, []);
+  }, [router]);
 
   const logout = useCallback(async () => {
     setIsLoading(true);

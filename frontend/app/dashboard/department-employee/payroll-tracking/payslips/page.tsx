@@ -12,6 +12,7 @@ import { payrollTrackingService } from '@/app/services/payroll-tracking';
  * BR 17: Auto-generated Payslip with clear breakdown of components
  */
 
+// Frontend Payslip interface for display (canonical shape used by pages)
 interface Payslip {
   id: string;
   periodStart: string;
@@ -35,6 +36,10 @@ interface Payslip {
   }[];
 }
 
+// NOTE: Mapping logic has been centralized in `payrollTrackingService` as
+// `getEmployeePayslipsMapped` and `getPayslipDetailsMapped` so pages use a
+// single authority for shaping data coming from the backend.
+
 export default function PayslipsPage() {
   const { user } = useAuth();
   const [payslips, setPayslips] = useState<Payslip[]>([]);
@@ -52,10 +57,37 @@ export default function PayslipsPage() {
 
       try {
         setLoading(true);
-        const response = await payrollTrackingService.getEmployeePayslips(user.id);
-        setPayslips(response?.data || []);
-      } catch (err: any) {
-        setError(err.message || 'Failed to load payslips');
+        const response = await payrollTrackingService.getEmployeePayslipsMapped(user.id);
+        const mappedPayslips = (response?.data || []) as any[];
+        // Normalize mapped payslips to ensure required fields exist and types are correct
+        const normalizePayslip = (p: any): Payslip => {
+          const periodStart = p.periodStart || p.from || p.start || new Date().toISOString();
+          const periodEnd = p.periodEnd || p.to || p.end || periodStart;
+          const payDate = p.payDate || p.paidAt || periodEnd || periodStart;
+          const baseSalary = Number(p.baseSalary ?? p.earnings?.baseSalary ?? 0) || 0;
+          const grossPay = Number(p.grossPay ?? p.grossSalary ?? 0) || 0;
+          const totalDeductions = Number(p.totalDeductions ?? p.deductionsTotal ?? 0) || 0;
+          const netPay = Number(p.netPay ?? p.netSalary ?? (grossPay - totalDeductions)) || 0;
+          return {
+            id: p.id || p.payslipId || p._id || '',
+            periodStart,
+            periodEnd,
+            payDate,
+            status: p.status || 'unknown',
+            baseSalary,
+            grossPay,
+            totalDeductions,
+            netPay,
+            currency: p.currency || 'EGP',
+            earnings: Array.isArray(p.earnings) ? p.earnings : [],
+            deductions: Array.isArray(p.deductions) ? p.deductions : [],
+          };
+        };
+
+        setPayslips(mappedPayslips.map(normalizePayslip));
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load payslips';
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -68,9 +100,33 @@ export default function PayslipsPage() {
     if (!user?.id) return;
     
     try {
-      const response = await payrollTrackingService.getPayslipDetails(payslip.id, user.id);
-      setSelectedPayslip(response?.data || payslip);
-    } catch (err) {
+      const response = await payrollTrackingService.getPayslipDetailsMapped(payslip.id, user.id);
+      // Response shape: may contain backend-shaped payslip or already-mapped Payslip
+      const responseData = response?.data as unknown as { payslip?: any; disputes?: unknown[] } | undefined;
+      if (responseData?.payslip) {
+        const p = responseData.payslip;
+        // Ensure required frontend fields exist
+        const normalized: Payslip = {
+          id: p.id || p.payslipId || p._id || payslip.id,
+          periodStart: p.periodStart || p.from || p.start || payslip.periodStart,
+          periodEnd: p.periodEnd || p.to || p.end || payslip.periodEnd,
+          payDate: p.payDate || p.paidAt || payslip.payDate,
+          status: p.status || p.paymentStatus || payslip.status || 'unknown',
+          baseSalary: Number(p.baseSalary ?? p.earningsDetails?.baseSalary ?? payslip.baseSalary) || 0,
+          grossPay: Number(p.grossPay ?? p.grossSalary ?? payslip.grossPay) || 0,
+          totalDeductions: Number(p.totalDeductions ?? p.deductionsTotal ?? payslip.totalDeductions) || 0,
+          netPay: Number(p.netPay ?? p.netSalary ?? payslip.netPay) || 0,
+          currency: p.currency || payslip.currency || 'EGP',
+          earnings: Array.isArray(p.earnings) ? p.earnings : p.earningsDetails?.allowances || payslip.earnings || [],
+          deductions: Array.isArray(p.deductions) ? p.deductions : p.deductionsDetails?.taxes || payslip.deductions || [],
+        };
+        setSelectedPayslip(normalized);
+      } else {
+        // Fallback to the already mapped payslip from the list
+        setSelectedPayslip(payslip);
+      }
+    } catch {
+      // On error, just show the basic payslip data we already have
       setSelectedPayslip(payslip);
     }
   };
@@ -82,20 +138,22 @@ export default function PayslipsPage() {
       setDownloading(payslipId);
       const response = await payrollTrackingService.downloadPayslip(payslipId, user.id);
       
-      // Handle file download
-      if (response?.data) {
-        const blob = new Blob([response.data], { type: 'application/pdf' });
-        const url = window.URL.createObjectURL(blob);
+      // Handle file download - response now contains blob and filename
+      if (response?.blob) {
+        const url = window.URL.createObjectURL(response.blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `payslip-${payslipId}.pdf`;
+        a.download = response.filename || `payslip-${payslipId}.csv`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
+      } else if (response?.error) {
+        alert('Failed to download payslip: ' + response.error);
       }
-    } catch (err: any) {
-      alert('Failed to download payslip: ' + (err.message || 'Unknown error'));
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      alert('Failed to download payslip: ' + errorMessage);
     } finally {
       setDownloading(null);
     }
@@ -116,11 +174,13 @@ export default function PayslipsPage() {
     }
   };
 
-  const formatCurrency = (amount: number, currency: string = 'USD') => {
+  const formatCurrency = (amount: number | undefined | null, currency: string = 'USD') => {
+    const safeAmount = Number(amount ?? 0);
+    const value = isNaN(safeAmount) ? 0 : safeAmount;
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currency,
-    }).format(amount);
+    }).format(value);
   };
 
   const formatDate = (dateString: string) => {
@@ -134,7 +194,7 @@ export default function PayslipsPage() {
   const formatPeriod = (start: string, end: string) => {
     const startDate = new Date(start);
     const endDate = new Date(end);
-    return `${startDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`;
+    return `${startDate.toLocaleDateString('en-US', { month: 'short' })} - ${endDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`;
   };
 
   if (loading) {
@@ -184,14 +244,14 @@ export default function PayslipsPage() {
             <h2 className="text-xl font-bold">Payslip Overview</h2>
             <p className="text-blue-100 mt-1">{payslips.length} payslips available</p>
           </div>
-          <div className="text-5xl">📄</div>
+          <div className="text-5xl"></div>
         </div>
       </div>
 
       {/* Payslips List */}
       {payslips.length === 0 ? (
         <div className="bg-slate-50 border border-slate-200 rounded-lg p-8 text-center">
-          <div className="text-6xl mb-4">📭</div>
+          <div className="text-6xl mb-4"></div>
           <h3 className="text-xl font-semibold text-slate-900 mb-2">No Payslips Available</h3>
           <p className="text-slate-600">Your payslips will appear here once they are generated.</p>
         </div>
@@ -249,7 +309,7 @@ export default function PayslipsPage() {
                           disabled={downloading === payslip.id}
                           className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
                         >
-                          {downloading === payslip.id ? '...' : '⬇️ PDF'}
+                          {downloading === payslip.id ? '...' : 'PDF'}
                         </button>
                       </div>
                     </td>
@@ -315,7 +375,7 @@ export default function PayslipsPage() {
 
               {/* Earnings Breakdown */}
               <div className="border border-slate-200 rounded-lg p-4">
-                <h4 className="font-semibold text-slate-900 mb-4">💰 Earnings</h4>
+                <h4 className="font-semibold text-slate-900 mb-4">Earnings</h4>
                 <div className="space-y-2">
                   <div className="flex justify-between py-2 border-b border-slate-100">
                     <span className="text-slate-700">Base Salary</span>
@@ -342,7 +402,7 @@ export default function PayslipsPage() {
 
               {/* Deductions Breakdown */}
               <div className="border border-slate-200 rounded-lg p-4">
-                <h4 className="font-semibold text-slate-900 mb-4">💸 Deductions</h4>
+                <h4 className="font-semibold text-slate-900 mb-4">Deductions</h4>
                 <div className="space-y-2">
                   {selectedPayslip.deductions?.map((deduction, idx) => (
                     <div key={idx} className="flex justify-between py-2 border-b border-slate-100">
@@ -383,11 +443,11 @@ export default function PayslipsPage() {
                     disabled={downloading === selectedPayslip.id}
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                   >
-                    {downloading === selectedPayslip.id ? 'Downloading...' : '⬇️ Download PDF'}
+                    {downloading === selectedPayslip.id ? 'Downloading...' : 'Download PDF'}
                   </button>
                   <Link href="/dashboard/department-employee/payroll-tracking/claims-disputes">
                     <button className="px-4 py-2 border border-orange-300 text-orange-600 rounded-lg hover:bg-orange-50">
-                      ⚠️ Dispute
+                      Dispute
                     </button>
                   </Link>
                 </div>

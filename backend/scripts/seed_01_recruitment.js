@@ -23,7 +23,7 @@ async function seedRecruitment() {
         // Get existing data for references
         const departments = await db.collection('departments').find({}).toArray();
         const positions = await db.collection('positions').find({}).toArray();
-        const employees = await db.collection('employeeprofiles').find({}).toArray();
+        const employees = await db.collection('employee_profiles').find({}).toArray();
         const systemRoles = await db.collection('employee_system_roles').find({}).toArray();
         
         if (departments.length === 0 || positions.length === 0 || employees.length === 0) {
